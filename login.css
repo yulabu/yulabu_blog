@@ -20,32 +20,122 @@ section{
     min-height: 100vh;
     /* background: rgba(241, 244, 249, 0.2);  */
 }
-section .color{
+section .color1{
     position: absolute;
-    filter: blur(160px);
-}
-section .color:nth-child(1){
+    opacity: 0.7;
+    width: 640px;
+    height: 320px;
+    background: transparent;
     top: 0px;
-    left: 640px;
-    width: 1000px;
-    height: 480px;
+    right: 400px;
+    isolation: isolate; 
+    z-index: -1;
+}
+section .color1::before{
+    content: '';
+    position: absolute;
+    top: -100px;           /* 向上扩大 200px */
+    left: -100px;          /* 向左扩大 200px */
+    width: calc(100% + 200px);  /* 总宽度增加 400px */
+    height: calc(100% + 200px); /* 总高度增加 400px */
     background: #81d8af;
+    filter: blur(160px); 
+    z-index: -1;           /* 放在图片下方 */
 }
-
-section .color:nth-child(2){
-    left: 200px;
-    bottom: -150px;
-    width: 800px;
-    height: 648px;
+section .color2{
+    position: absolute;
+    opacity: 0.7;
+    width: 640px;
+    height: 480px;
+    background: transparent;
+    top: 600px;
+    left: 50px;
+    isolation: isolate; 
+    z-index: -1;
+}
+section .color2::before{
+    content: '';
+    position: absolute;
+    bottom: -100px;           /* 向上扩大 200px */
+    left: -100px;          /* 向左扩大 200px */
+    width: calc(100% + 200px);  /* 总宽度增加 400px */
+    height: calc(100% + 200px); /* 总高度增加 400px */
     background: #a1d881;
+    filter: blur(160px); 
+    z-index: -1;           /* 放在图片下方 */
 }
-section .color:nth-child(3){
+section .color3{
+    position: absolute;
+    opacity: 0.7;
+    width: 640px;
+    height: 480px;
+    background: transparent;
     bottom: 10px;
-    left: 1400px;
-    width: 800px;
-    height: 640px;
-    /* background: #87c5dc; */
+    left: 1500px;
+    isolation: isolate; 
+    z-index: -1;
+}
+section .color3::before{
+    content: '';
+    position: absolute;
+    top: -50px;       
+    left: -50px;          /* 向左扩大 200px */
+    width: calc(100% + 100px);  /* 总宽度增加 400px */
+    height: calc(100% + 100px); /* 总高度增加 400px */
     background: #87dc8b;
+    filter: blur(80px);  
+    z-index: -1;           /* 放在图片下方 */
+}
+/* color img bubble */
+.bubble-img{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 1;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    /* mix-blend-mode: overlay; */
+    pointer-events: none;
+    filter: blur(1px);
+    /* 羽化蒙版 */
+    mask-image: radial-gradient(circle at center,
+        rgba(255, 255, 255, 1) 15%,
+        rgba(255, 255, 255, 0) 40%);
+    -webkit-mask-image: radial-gradient(circle at center,
+                rgba(255,255,255,1) 15%, 
+                rgba(255,255,255,0) 40%);
+    mask-size: 240% 240%;
+    -webkit-mask-size: 240% 240%;
+    mask-position: center;
+    -webkit-mask-position: center;
+    clip-path: inset(0 round 30px);
+    animation: cycleBubble 18s ease-in-out infinite; 
+    animation-delay: calc(6s * var(--j));
+    /* priority */
+    z-index: 0;
+}
+/* 色块1 的三张图 */
+.color1 .bubble-img:nth-child(1) { background-image: url('assets/img/nxd_bubble1_1.png'); }
+.color1 .bubble-img:nth-child(2) { background-image: url('assets/img/nxd_bubble1_2.jpg'); }
+.color1 .bubble-img:nth-child(3) { background-image: url('assets/img/nxd_bubble1_3.jpg'); }
+
+/* 色块2 的两张图 */
+.color2 .bubble-img:nth-child(1) { background-image: url('assets/img/nxd_bubble2_1.jpg'); }
+.color2 .bubble-img:nth-child(2) { background-image: url('assets/img/nxd_bubble2_2.jpg'); }
+.color2 .bubble-img:nth-child(3) { background-image: url('assets/img/nxd_bubble2_3.jpg'); }
+/* 色块3 的三张图 */
+.color3 .bubble-img:nth-child(1) { background-image: url('assets/img/nxd_bubble3_1.jpg'); }
+.color3 .bubble-img:nth-child(2) { background-image: url('assets/img/nxd_bubble3_2.jpg'); }
+.color3 .bubble-img:nth-child(3) { background-image: url('assets/img/nxd_bubble3_3.jpg'); }
+@keyframes cycleBubble {
+    0%   { opacity: 0; }
+    11.11% { opacity: 1; }   /* 淡入结束 */
+    33.33% { opacity: 1; }   /* 显示结束 */
+    44.44% { opacity: 0; }   /* 淡出结束 */
+    100%  { opacity: 0; }    /* 保持隐藏 */
 }
 /* Container Style */
 .container{
