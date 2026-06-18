@@ -7,7 +7,10 @@
 body{
     overflow: hidden;
     background-size: cover;
-    background: url(assets/background_0.png) no-repeat center / cover;
+    background: url(assets/img/background_0.png) no-repeat center / cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 /* Background Colors */
 section{
@@ -15,7 +18,7 @@ section{
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: rgba(241, 244, 249, 0.2);  /* 半透明浅灰，露出 body 背景 */
+    /* background: rgba(241, 244, 249, 0.2);  */
 }
 section .color{
     position: absolute;
@@ -47,10 +50,10 @@ section .color:nth-child(3){
 /* Container Style */
 .container{
     position: relative;
-    width: 520px;
+    display: flex;
+    width: 900px;
     min-height: 520px;
     background: rgba(255, 255, 255, 0.1);
-    padding: 40px;
     border-radius: 15px;
     justify-content: center;
     align-items: center;
@@ -64,6 +67,19 @@ section .color:nth-child(3){
 /* login box style */
 .box{
     position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+.box .left-img{
+    position: relative;
+    top: 0;
+    left: px;
+    width: 40%;
+    height: 100%;
+    background-image: url(assets/img/login_left.jpg);
+    background-size: cover;
+    border-radius: 10px;
 }
 .box .square{
     position: absolute;
@@ -94,7 +110,7 @@ section .color:nth-child(3){
     height: 120px;
 }
 .box .square:nth-child(2){
-    top: 225px;
+    top: 120px;
     left: -100px;
     width: 150px;
     height: 150px;
@@ -102,7 +118,7 @@ section .color:nth-child(3){
 }
 .box .square:nth-child(3){
     top: 360px;
-    left: 475px;
+    left: 150px;
     width: 125px;
     height: 125px;
     z-index: 2;
@@ -116,17 +132,25 @@ section .color:nth-child(3){
 }
 .box .square:nth-child(5){
     top: 560px;
-    left: 240px;
+    left: 540px;
     width: 64px;
     height: 64px;
     z-index: 2;
 }
+.box .square:nth-child(6){
+    top: 320px;
+    left: 824px;
+    width: 150px;
+    height: 150px;
+    z-index: 0;
+}
 .form{
     position: relative;
-    width: 100%;
+    width: 65%;
     height: 100%;
     padding: 40px;
     display: flex;
+    padding: 40px 56px;
     flex-direction: column;
 }
 .form h2{
