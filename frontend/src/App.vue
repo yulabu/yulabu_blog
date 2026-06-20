@@ -349,6 +349,95 @@ section .color3::before{
     cursor: pointer;
     transition: 0.3s ease;
 }
+/* ==================== 移动端适配（改动最小方案） ==================== */
 
+/* 当屏幕宽度小于等于 768px 时（手机/小平板） */
+@media screen and (max-width: 830px) {
+    /* 1. 隐藏过于复杂的装饰元素（气泡和大部分方块） */
+    .color1, .color2, .color3 {
+        display: none;
+    }
+    .box .square:nth-child(2),
+    .box .square:nth-child(3),
+    .box .square:nth-child(5),
+    .box .square:nth-child(6) {
+        display: none;
+    }
+    /* 保留两个小方块作为点缀，并调整位置 */
+    .box .square:nth-child(1) {
+        top: -30px;
+        left: auto;
+        right: 20px;
+        width: 70px;
+        height: 70px;
+    }
+    .box .square:nth-child(4) {
+        top: auto;
+        bottom: -30px;
+        left: 20px;
+        width: 50px;
+        height: 50px;
+    }
+
+    /* 2. 容器变窄，改为纵向排列，高度自适应 */
+    .container {
+        width: 88%;
+        max-width: 440px;
+        min-height: auto;          /* 取消固定高度 */
+        flex-direction: column;    /* 改为上下排列 */
+        padding: 20px;
+    }
+
+    /* 3. 左侧图片隐藏（手机上没必要显示） */
+    .box .left-img {
+        display: none;
+    }
+
+    /* 4. 表单区域占满宽度，内边距减小 */
+    .form {
+        width: 100%;
+        padding: 24px 20px;
+    }
+    .form h2 {
+        font-size: 26px;
+        margin-bottom: 32px;
+    }
+    .form h2::before {
+        width: 60px;
+        height: 3px;
+    }
+    .form .inputBox input {
+        font-size: 15px;
+        padding: 10px 14px;
+    }
+    .form .inputBox input[type="submit"] {
+        max-width: 100%;   /* 按钮撑满 */
+        font-size: 17px;
+    }
+}
+
+/* 特别小的手机（宽度 ≤ 400px）进一步收紧 */
+@media screen and (max-width: 430px) {
+    .container {
+        width: 94%;
+        padding: 15px;
+    }
+    .form {
+        padding: 16px;
+    }
+    .form h2 {
+        font-size: 21px;
+    }
+    .box .square:nth-child(1) {
+        width: 42px;
+        height: 42px;
+        right: 10px;
+    }
+    .box .square:nth-child(4) {
+        width: 34px;
+        height: 34px;
+        left: 10px;
+    }
+}
 
 </style>
