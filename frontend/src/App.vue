@@ -75,21 +75,21 @@ section{
 section .color1{
     position: absolute;
     opacity: 0.7;
-    width: 640px;
-    height: 320px;
+    width: 36%;
+    height: 36%;
     background: transparent;
-    top: 0px;
-    right: 400px;
+    top: 0%;
+    right: 16%;
     isolation: isolate; 
     z-index: -1;
 }
 section .color1::before{
     content: '';
     position: absolute;
-    top: -100px;           /* 向上扩大 200px */
-    left: -100px;          /* 向左扩大 200px */
-    width: calc(100% + 200px);  /* 总宽度增加 400px */
-    height: calc(100% + 200px); /* 总高度增加 400px */
+    top: -20%;           /* 向上扩大 200px */
+    left: -20%;          /* 向左扩大 200px */
+    width: calc(120%);  /* 总宽度增加 400px */
+    height: calc(120%); /* 总高度增加 400px */
     background: #81d8af;
     filter: blur(160px); 
     z-index: -1;           /* 放在图片下方 */
@@ -97,21 +97,21 @@ section .color1::before{
 section .color2{
     position: absolute;
     opacity: 0.7;
-    width: 640px;
-    height: 480px;
+    width: 36%;
+    height: 36%;
     background: transparent;
-    bottom: 160px;
-    left: 50px;
+    bottom: 16%;
+    left: 0%;
     isolation: isolate; 
     z-index: -1;
 }
 section .color2::before{
     content: '';
     position: absolute;
-    bottom: -100px;           /* 向上扩大 200px */
-    left: -100px;          /* 向左扩大 200px */
-    width: calc(100% + 200px);  /* 总宽度增加 400px */
-    height: calc(100% + 200px); /* 总高度增加 400px */
+    bottom: -36%;           /* 向上扩大 200px */
+    left: -20%;          /* 向左扩大 200px */
+    width: calc(120%);  /* 总宽度增加 400px */
+    height: calc(136%); /* 总高度增加 400px */
     background: #a1d881;
     filter: blur(160px); 
     z-index: -1;           /* 放在图片下方 */
@@ -119,23 +119,23 @@ section .color2::before{
 section .color3{
     position: absolute;
     opacity: 0.7;
-    width: 640px;
-    height: 480px;
+    width: 36%;
+    height: 36%;
     background: transparent;
-    bottom: 200px;
-    left: 1500px;
+    bottom: 6%;
+    left: 64%;
     isolation: isolate; 
     z-index: -1;
 }
 section .color3::before{
     content: '';
     position: absolute;
-    top: -50px;       
-    left: -50px;          /* 向左扩大 200px */
-    width: calc(100% + 100px);  /* 总宽度增加 400px */
-    height: calc(100% + 100px); /* 总高度增加 400px */
+    top: -20%;       
+    left: -20%;          /* 向左扩大 200px */
+    width: calc(120%);  /* 总宽度增加 400px */
+    height: calc(120%); /* 总高度增加 400px */
     background: #87dc8b;
-    filter: blur(80px);  
+    filter: blur(160px);  
     z-index: -1;           /* 放在图片下方 */
 }
 /* color img bubble */
