@@ -16,7 +16,7 @@ export default defineConfig({
     },
   },
   server: {
-    host: true, // 允许外部访问
+    host: false, // 允许外部访问
     port: 5173, // 指定端口
   }
 })
