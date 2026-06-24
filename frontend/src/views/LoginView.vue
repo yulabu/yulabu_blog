@@ -1,5 +1,5 @@
 <template>
-      <section>
+      <section class="login-page">
         <div class="color1">
             <div class="bubble-img" style="--j:0"></div>
             <div class="bubble-img" style="--j:1"></div>
@@ -16,13 +16,13 @@
             <div class="bubble-img" style="--j:2"></div>
         </div>
         <div class="box">
-            <div class="square" style="--i:0;"></div>
-            <div class="square" style="--i:1;"></div>
-            <div class="square" style="--i:2;"></div>
-            <div class="square" style="--i:3;"></div>
-            <div class="square" style="--i:4;"></div>
-            <div class="square" style="--i:5;"></div>
             <div class="container">  
+                <div class="square" style="--i:0;"></div>
+                <div class="square" style="--i:1;"></div>
+                <div class="square" style="--i:2;"></div>
+                <div class="square" style="--i:3;"></div>
+                <div class="square" style="--i:4;"></div>
+                <div class="square" style="--i:5;"></div>
                 <div class="left-img"></div>  
                 <div class="form">
                     <h2>Login Form</h2>
@@ -38,6 +38,7 @@
                         </div>
                     </form>
                 </div>
+                
             </div>
 
         </div>
@@ -53,7 +54,7 @@
 body{
     overflow: hidden;
     background-size: cover;
-    background: url('../assets/img/background_0.png') no-repeat center / cover;
+    /* background: url('../assets/img/background_0.png') no-repeat center / cover; */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -61,7 +62,16 @@ body{
 </style>
 
 <style scoped>
-
+.login-page{
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: url('../assets/img/background_0.png') no-repeat center / cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
 /* Background Colors */
 section{
     display: flex;
@@ -192,7 +202,7 @@ section .color3::before{
     position: relative;
     display: flex;
     width: 900px;
-    min-height: 520px;
+    height: 520px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;
     justify-content: center;
@@ -210,16 +220,19 @@ section .color3::before{
     display: flex;
     width: 100%;
     height: 100%;
+    justify-content: center;
+    align-items: center;
 }
 .box .left-img{
     position: relative;
     top: 0;
-    left: px;
-    width: 40%;
+    left: 0px;
+    width: 35%;
     height: 100%;
-    background-image: url(assets/img/login_left.jpg);
+    background-image: url('assets/img/login_left.jpg');
     background-size: cover;
     border-radius: 10px;
+    z-index: 3;
 }
 .box .square{
     position: absolute;
@@ -243,46 +256,47 @@ section .color3::before{
         transform: translateY(40px);
      }
 }
-.box .square:nth-child(1){
+.container .square:nth-child(1){
     top: -50px;
-    left: 475px;
+    left: 648px;
     width: 120px;
     height: 120px;
+    z-index: 4;
 }
-.box .square:nth-child(2){
+.container .square:nth-child(2){
     top: 120px;
     left: -100px;
     width: 150px;
     height: 150px;
-    z-index: 2;
+    z-index: 4;
 }
-.box .square:nth-child(3){
+.container .square:nth-child(3){
     top: 360px;
     left: 150px;
     width: 125px;
     height: 125px;
-    z-index: 2;
+    z-index: 4;
 }
-.box .square:nth-child(4){
+.container .square:nth-child(4){
     top: -75px;
     left: 100px;
     width: 64px;
     height: 64px;
-    z-index: 2;
+    z-index: 4;
 }
-.box .square:nth-child(5){
+.container .square:nth-child(5){
     top: 560px;
     left: 540px;
     width: 64px;
     height: 64px;
-    z-index: 2;
+    z-index: 4;
 }
-.box .square:nth-child(6){
+.container .square:nth-child(6){
     top: 320px;
     left: 824px;
     width: 150px;
     height: 150px;
-    z-index: 0;
+    z-index: 4;
 }
 .form{
     position: relative;
@@ -292,6 +306,7 @@ section .color3::before{
     display: flex;
     padding: 40px 56px;
     flex-direction: column;
+    justify-content: center;
 }
 .form h2{
     position: relative;
