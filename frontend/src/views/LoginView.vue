@@ -89,7 +89,7 @@ section .color1{
     top: 0%;
     right: 16%;
     isolation: isolate; 
-    z-index: -1;
+    z-index: 0;
 }
 section .color1::before{
     content: '';
@@ -99,7 +99,7 @@ section .color1::before{
     width: calc(120%);  /* 总宽度增加 400px */
     height: calc(120%); /* 总高度增加 400px */
     background: #81d8af;
-    filter: blur(160px); 
+    filter: blur(8.33vw); 
     z-index: -1;           /* 放在图片下方 */
 }
 section .color2{
@@ -111,7 +111,7 @@ section .color2{
     bottom: 16%;
     left: 0%;
     isolation: isolate; 
-    z-index: -1;
+    z-index: 0;
 }
 section .color2::before{
     content: '';
@@ -121,7 +121,7 @@ section .color2::before{
     width: calc(120%);  /* 总宽度增加 400px */
     height: calc(136%); /* 总高度增加 400px */
     background: #a1d881;
-    filter: blur(160px); 
+    filter: blur(8.33vw); 
     z-index: -1;           /* 放在图片下方 */
 }
 section .color3{
@@ -133,7 +133,7 @@ section .color3{
     bottom: 6%;
     left: 64%;
     isolation: isolate; 
-    z-index: -1;
+    z-index: 0;
 }
 section .color3::before{
     content: '';
@@ -143,7 +143,7 @@ section .color3::before{
     width: calc(120%);  /* 总宽度增加 400px */
     height: calc(120%); /* 总高度增加 400px */
     background: #87dc8b;
-    filter: blur(160px);  
+    filter: blur(8.33vw);  
     z-index: -1;           /* 放在图片下方 */
 }
 /* color img bubble */
@@ -398,9 +398,9 @@ section .color3::before{
     }
 
     /* 3. 左侧图片隐藏（手机上没必要显示） */
-    /* .box .left-img {
+    .box .left-img {
         display: none;
-    } */
+    }
 
     /* 4. 表单区域占满宽度，内边距减小 */
     .form {
