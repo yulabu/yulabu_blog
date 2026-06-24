@@ -44,22 +44,6 @@
         </div>
     </section>
 </template>
-<style>
-*{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
-}
-body{
-    overflow: hidden;
-    background-size: cover;
-    /* background: url('../assets/img/background_0.png') no-repeat center / cover; */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-</style>
 
 <style scoped>
 .login-page{
