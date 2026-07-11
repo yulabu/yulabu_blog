@@ -8,6 +8,9 @@ const app = express();
 // 中间件
 app.use(cors());
 app.use(express.json());
+// post路由
+const postRoutes = require('./routes/postRoutes');
+app.use('/api/posts', postRoutes);
 
 // 导入模型
 const Tag = require('./models/Tag')(sequelize, require('sequelize').DataTypes);
