@@ -13,8 +13,7 @@ const postRoutes = require('./routes/postRoutes');
 app.use('/api/posts', postRoutes);
 
 // 导入模型
-const Tag = require('./models/Tag')(sequelize, require('sequelize').DataTypes);
-const Post = require('./models/Post')(sequelize, require('sequelize').DataTypes);
+const { Post, Tag } = require('./models');
 
 // 同步数据库（创建表）
 sequelize.sync({ alter: true })
