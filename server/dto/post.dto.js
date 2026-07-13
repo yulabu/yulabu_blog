@@ -54,7 +54,7 @@ function updatePostDTO(body) {
 
 // ========== 列表分页 ==========
 function listPostsDTO(query) {
-  const page = Math.min(1000, Math.max(parseInt(query.page), 1));
+  const page = Math.min(1000, Math.max(parseInt(query.page) || 1, 1));
   const limit = Math.min(50, Math.max(parseInt(query.limit), 1) || 10);
   return { page, limit };
 }

@@ -1,5 +1,6 @@
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('../dto/post.dto');
 const { Post, Tag } = require('../models');
+const { postDetail, postSummary } = require('../vo/post.vo');
 
 // 获取文章列表（带分类 + 分页）
 exports.getPosts = async (req, res) => {
@@ -14,9 +15,9 @@ exports.getPosts = async (req, res) => {
       offset,
     });
 
-    res.json({ posts, total, page, totalPages: Math.ceil(total / limit) });
+    res.json({ posts: posts.map(postSummary), total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
-    res.status(500).json({ message: '服务器错误', error: error.message });
+    res.status(error.status || 500).json({ message: error.message || '服务器错误' });
   }
 };
 
@@ -28,9 +29,9 @@ exports.getPostById = async (req, res) => {
       include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name', 'tag_color'] },
     });
     if (!post) return res.status(404).json({ message: '文章不存在' });
-    res.json(post);
+    res.json(postDetail(post));
   } catch (error) {
-    res.status(500).json({ message: '服务器错误', error: error.message });
+    res.status(error.status || 500).json({ message: error.message || '服务器错误' });
   }
 };
 
@@ -39,9 +40,9 @@ exports.createPost = async (req, res) => {
   try {
     const data = createPostDTO(req.body);
     const post = await Post.create(data);
-    res.status(201).json(post);
+    res.status(201).json({ id: post.post_id, message: '创建成功' });
   } catch (error) {
-    res.status(500).json({ message: '服务器错误', error: error.message });
+    res.status(error.status || 500).json({ message: error.message || '服务器错误' });
   }
 };
 
@@ -54,9 +55,9 @@ exports.updatePost = async (req, res) => {
 
     const data = updatePostDTO(req.body);
     await post.update(data);
-    res.json(post);
+    res.json({ id: post.post_id, message: '更新成功' });
   } catch (error) {
-    res.status(500).json({ message: '服务器错误', error: error.message });
+    res.status(error.status || 500).json({ message: error.message || '服务器错误' });
   }
 };
 
@@ -70,6 +71,6 @@ exports.deletePost = async (req, res) => {
     await post.update({ post_status: 'trash' });
     res.json({ message: '已移入回收站' });
   } catch (error) {
-    res.status(500).json({ message: '服务器错误', error: error.message });
+    res.status(error.status || 500).json({ message: error.message || '服务器错误' });
   }
 };

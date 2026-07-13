@@ -1,13 +1,13 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+
 const { Admin } = require('../models');
+const { loginDTO } = require('../dto/auth.dto');
+const { loginResult } = require('../vo/auth.vo');
 
 exports.login = async (req, res) => {
   try {
-    const { admin_name, admin_password } = req.body;
-    if (!admin_name || !admin_password) {
-      return res.status(400).json({ message: '用户名和密码不能为空' });
-    }
+    const { admin_name, admin_password } = loginDTO(req.body);
 
     const admin = await Admin.findOne({ where: { admin_name } });
     if (!admin) {
@@ -25,8 +25,8 @@ exports.login = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ token, admin: { id: admin.admin_id, name: admin.admin_name, avatar: admin.admin_avatar } });
+    res.json(loginResult(token, admin));
   } catch (error) {
-    res.status(500).json({ message: '服务器错误', error: error.message });
+    res.status(error.status || 500).json({ message: error.message || '服务器错误' });
   }
 };
