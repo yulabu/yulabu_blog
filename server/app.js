@@ -32,6 +32,10 @@ app.get('/', (req, res) => {
   res.send('Hello, Blog Backend!');
 });
 
+// 错误处理中间件，需在所有路由之后使用
+const errorHandler = require('./middleware/errorHandler');
+app.use(errorHandler);
+
 // 启动服务器
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

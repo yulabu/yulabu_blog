@@ -1,11 +1,13 @@
+const AppError = require('../middleware/AppError');
+
 // ========== 创建文章 ==========
 function createPostDTO(body) {
   const title = body.post_title?.trim();
   const content = body.post_content;
 
-  if (!title) throw { status: 400, message: '标题不能为空' };
-  if (title.length > 32) throw { status: 400, message: '标题不能超过32个字符' };
-  if (!content) throw { status: 400, message: '正文不能为空' };
+  if (!title) throw new AppError(400, '标题不能为空');
+  if (title.length > 32) throw new AppError(400, '标题不能超过32个字符');
+  if (!content) throw new AppError(400, '正文不能为空');
 
   return {
     post_title: title,
@@ -23,8 +25,8 @@ function updatePostDTO(body) {
 
   if (body.post_title !== undefined) {
     const title = body.post_title.trim();
-    if (!title) throw { status: 400, message: '标题不能为空' };
-    if (title.length > 32) throw { status: 400, message: '标题不能超过32个字符' };
+    if (!title) throw new AppError(400, '标题不能为空');
+    if (title.length > 32) throw new AppError(400, '标题不能超过32个字符');
     dto.post_title = title;
   }
 
@@ -46,7 +48,7 @@ function updatePostDTO(body) {
   }
 
   if (Object.keys(dto).length === 0) {
-    throw { status: 400, message: '没有需要更新的字段' };
+    throw new AppError(400, '没有需要更新的字段');
   }
 
   return dto;
@@ -55,14 +57,14 @@ function updatePostDTO(body) {
 // ========== 列表分页 ==========
 function listPostsDTO(query) {
   const page = Math.min(1000, Math.max(parseInt(query.page) || 1, 1));
-  const limit = Math.min(50, Math.max(parseInt(query.limit), 1) || 10);
+  const limit = Math.min(50, Math.max(1, parseInt(query.limit) || 10));
   return { page, limit };
 }
 
 // ========== 文章ID ==========
 function postIdDTO(params) {
   const id = Number(params.id);
-  if (!id || id < 1) throw { status: 400, message: '无效的文章ID' };
+  if (!id || id < 1) throw new AppError(400, '无效的文章ID');
   return id;
 }
 
