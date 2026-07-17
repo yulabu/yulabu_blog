@@ -14,6 +14,9 @@ app.use('/api/posts', postRoutes);
 // auth路由
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
+// tag路由
+const tagRoutes = require('./routes/tagRoutes');
+app.use('/api/tags', tagRoutes);
 // 导入模型
 const { Post, Tag } = require('./models');
 
