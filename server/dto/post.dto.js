@@ -58,7 +58,9 @@ function updatePostDTO(body) {
 function listPostsDTO(query) {
   const page = Math.min(1000, Math.max(parseInt(query.page) || 1, 1));
   const limit = Math.min(50, Math.max(1, parseInt(query.limit) || 10));
-  return { page, limit };
+  const category_id = query.category_id ? Number(query.category_id) : null; // 查询是否有分类ID
+  if (category_id !== null && category_id < 1) throw new AppError(400, '无效的分类ID');
+  return { page, limit, category_id };
 }
 
 // ========== 文章ID ==========

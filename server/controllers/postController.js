@@ -6,10 +6,15 @@ const { postDetail, postSummary } = require('../vo/post.vo');
 // 获取文章列表（带分类 + 分页）
 exports.getPosts = async (req, res) => {
 
-  const { page, limit } = listPostsDTO(req.query);
+  const { page, limit, category_id } = listPostsDTO(req.query);
   const offset = (page - 1) * limit;
 
+  const where = { post_status: 'published' };
+  if (category_id) {
+    where.post_category_id = category_id;
+  }
   const { rows: posts, count: total } = await Post.findAndCountAll({
+    where,
     include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name', 'tag_color'] },
     order: [['created_at', 'DESC']], // 按创建时间降序排列
     limit,
