@@ -26,17 +26,18 @@
                 <div class="left-img"></div>  
                 <div class="form">
                     <h2>Login Form</h2>
-                    <form>
+                    <form @submit.prevent="handleLogin">
                         <div class="inputBox">
-                            <input type="text" placeholder="Username">
+                            <input type="text" placeholder="Username" v-model.trim="admin_name">
                         </div>
                         <div class="inputBox">
-                            <input type="password" placeholder="Password">
+                            <input type="password" placeholder="Password" v-model="admin_password">
                         </div>
                         <div class="inputBox">
                             <input type="submit" value="Login">
                         </div>
                     </form>
+                    <p v-if="loginError" class="error">{{ loginError }}</p>
                 </div>
                 
             </div>
@@ -408,7 +409,42 @@ section .color3::before{
         font-size: 17px;
     }
 }
-
+.error {
+    color: #ff6b6b;
+    margin-top: 10px;
+    font-size: 14px;
+}
 </style>
-<script>
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const admin_name = ref('')
+const admin_password = ref('')
+const errorMsg = ref('')
+const router = useRouter()
+
+async function handleLogin() {
+  errorMsg.value = ''
+  if (!admin_name.value || !admin_password.value) {
+    errorMsg.value = '请输入用户名和密码'
+    return
+  }
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        admin_name: admin_name.value,
+        admin_password: admin_password.value,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || '登录失败')
+    localStorage.setItem('token', data.token)
+    router.push('/home')
+  } catch (e) {
+    errorMsg.value = e.message
+  }
+}
 </script>
