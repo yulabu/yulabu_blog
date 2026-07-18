@@ -25,7 +25,7 @@ import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
 <style scoped>
 .home-layout {
   display: grid;
-  grid-template-columns: 330px 1fr 280px;
+  grid-template-columns: 300px 1fr 280px;
   gap: 20px;
   max-width: 1280px;
   margin: 0 auto;

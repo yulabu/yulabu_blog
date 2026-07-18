@@ -107,6 +107,7 @@
   .calender{
     position: relative;
     margin-top: auto;
+    table-layout: fixed;
     width: 100%;
     height: auto;
     text-align: center;
@@ -117,16 +118,22 @@
     font-size: 14px;
     color: rgb(130, 226, 216);
   }
-  .calender th, .calender td{
+  .calender td{
     border-radius: 36%;
     text-align: center;
-    font: 600 17px;
-    padding: 16px 0;
+    font:600 23px;
+    padding: 15px 0;
+  }
+  .calender th{
+    text-align: center;
+    font:600 23px;
+    padding: 32px 0 6px;
   }
   .calender td:hover{
     color: rgb(80, 140, 134);
     background-color: rgb(181, 199, 186);
     font:600 23px;
+    transition: .2s;
   }
   .current-day{
     color: rgb(80, 140, 134);
@@ -136,15 +143,16 @@
   .next-month{
     color: rgb(130, 226, 216);
   }
-  .ring-left:before, .ring-right:before{
+  .ring-left, .ring-right{
     position: absolute;
-    top: 55%;
   }
   .ring-left{
-    left: 2px;
+    left: 6px;
+    top: 30%;
   }
   .ring-right{
-    right: 2px;
+    right: 6px;
+    top: 30%;
   }
   .ring-left:before, .ring-right:before{
     content: "";
