@@ -421,13 +421,13 @@ import { useRouter } from 'vue-router'
 
 const admin_name = ref('')
 const admin_password = ref('')
-const errorMsg = ref('')
+const loginError = ref('')
 const router = useRouter()
 
 async function handleLogin() {
-  errorMsg.value = ''
+  loginError.value = ''
   if (!admin_name.value || !admin_password.value) {
-    errorMsg.value = '请输入用户名和密码'
+    loginError.value = '请输入用户名和密码'
     return
   }
   try {
@@ -444,7 +444,7 @@ async function handleLogin() {
     localStorage.setItem('token', data.token)
     router.push('/home')
   } catch (e) {
-    errorMsg.value = e.message
+    loginError.value = e.message
   }
 }
 </script>
