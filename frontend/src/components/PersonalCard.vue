@@ -63,7 +63,7 @@
 .card-bottom, .card-bottom2{
   position: absolute;
   top: 150px;
-  width: 330px;
+  width: 100%;
   height: 130px;
   text-align: center;
   transition: .5s;
@@ -93,12 +93,15 @@
   height: 30%;
 }
 .card-bottom2 li{
-  margin: 26px;
+  margin: 26px 0;
   font: 800 24px 'OCR A Std';
+  text-align: center;
   transition: .2s;
 }
 ul{
   list-style: none;
+  padding: 0;
+  margin: 0;
 }
 /* 鼠标移入动画实现 */
 .card:hover .card-top{
