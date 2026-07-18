@@ -1,11 +1,13 @@
 <template>
     <div class="home-layout">
+        <header class="top-banner">
+            <WelcomeBanner /> 
+        </header>
         <aside class="left-sidebar">
             <PersonalCard />
             <Calendar />
         </aside>
         <main class="center">
-            <WelcomeBanner /> 
             <PostList />
         </main>
         <aside class="right-sidebar">
@@ -23,9 +25,12 @@ import MusicPlayer from '@/components/MusicPlayer.vue';
 import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
 </script>
 <style scoped>
+.top-banner{
+    grid-column: 1 / -1;
+}
 .home-layout {
   display: grid;
-  grid-template-columns: 300px 1fr 280px;
+  grid-template-columns: 300px 640px 280px;
   gap: 20px;
   max-width: 1280px;
   margin: 0 auto;
