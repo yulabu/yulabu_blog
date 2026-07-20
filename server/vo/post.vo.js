@@ -7,8 +7,8 @@ function postDetail(post) {
     author: post.post_author,
     category: post.category ? toCategory(post.category) : null,
     status: post.post_status,
-    createdAt: post.created_at,
-    updatedAt: post.updated_at,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
   };
 }
 
