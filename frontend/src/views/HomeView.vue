@@ -12,8 +12,9 @@
                 <PostList />
             </main>
             <aside class="right-sidebar">
-                <MusicPlayer />
                 <AnnouncementBoard />
+                <MusicPlayer />
+                
             </aside>
         </div>  
     </div>
