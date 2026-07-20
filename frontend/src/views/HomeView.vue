@@ -1,20 +1,23 @@
 <template>
-    <div class="home-layout">
-        <header class="top-banner">
-            <WelcomeBanner /> 
-        </header>
-        <aside class="left-sidebar">
-            <PersonalCard />
-            <Calendar />
-        </aside>
-        <main class="center">
-            <PostList />
-        </main>
-        <aside class="right-sidebar">
-            <MusicPlayer />
-            <AnnouncementBoard />
-        </aside>
+    <div class="page-bg">
+        <div class="home-layout">
+            <header class="top-banner">
+                <WelcomeBanner /> 
+            </header>
+            <aside class="left-sidebar">
+                <PersonalCard />
+                <Calendar />
+            </aside>
+            <main class="center">
+                <PostList />
+            </main>
+            <aside class="right-sidebar">
+                <MusicPlayer />
+                <AnnouncementBoard />
+            </aside>
+        </div>  
     </div>
+    
 </template>
 <script setup>
 import PersonalCard from '@/components/PersonalCard.vue';
@@ -25,17 +28,22 @@ import MusicPlayer from '@/components/MusicPlayer.vue';
 import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
 </script>
 <style scoped>
-.top-banner{
-    grid-column: 1 / -1;
-}
-.home-layout {
-  display: grid;
-  grid-template-columns: 300px 640px 280px;
-  gap: 20px;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 76px 24px 40px;   /* 76 = 56navbar + 20间距 */
-  min-height: 100vh;
-}
+    .page-bg{
+        width: 100%;
+        min-height: 100vh;
+        background-color: rgb(202, 242, 203);
+    }
+    .top-banner{
+        grid-column: 1 / -1;
+    }
+    .home-layout {
+    display: grid;
+    grid-template-columns: 300px 640px 280px;
+    gap: 20px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 76px 24px 40px;   /* 76 = 56navbar + 20间距 */
+    min-height: 100vh;
+    }
 /* 移动端暂时不管，后面再说 */
 </style>
