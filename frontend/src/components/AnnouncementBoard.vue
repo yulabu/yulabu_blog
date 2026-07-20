@@ -86,15 +86,6 @@ const notices = [
   flex-direction: column;
 }
 
-.active {
-  display: flex;
-  flex-direction: column;
-}
-
-.active>:last-child {
-  display: none;
-}
-
 .notice {
   display: flex;
   gap: 10px;
