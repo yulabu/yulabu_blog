@@ -20,7 +20,6 @@
   width: 100%;
   height: 360px;
   overflow: hidden;
-  border-radius: 5%;
 }
 
 .bg {
@@ -107,7 +106,7 @@
 .wave-4 {
   bottom: 0;
   height: 80px;
-  opacity: 0.9;
+  opacity: 1;
   animation-duration: 6s;
   animation-delay: -1s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,90 C180,30 420,150 600,90 C780,30 1020,150 1200,90 L1200,120 L0,120 Z' fill='%23caf2cb'/%3E%3C/svg%3E");

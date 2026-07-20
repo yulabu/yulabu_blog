@@ -1,9 +1,9 @@
 <template>
     <div class="page-bg">
+        <header class="top-banner">
+            <WelcomeBanner /> 
+        </header>
         <div class="home-layout">
-            <header class="top-banner">
-                <WelcomeBanner /> 
-            </header>
             <aside class="left-sidebar">
                 <PersonalCard />
                 <Calendar />
@@ -14,7 +14,6 @@
             <aside class="right-sidebar">
                 <AnnouncementBoard />
                 <MusicPlayer />
-                
             </aside>
         </div>  
     </div>
@@ -35,7 +34,7 @@ import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
         background-color: rgb(202, 242, 203);
     }
     .top-banner{
-        grid-column: 1 / -1;
+        margin-top: 76px;   /* 56navbar + 20间距 */
     }
     .home-layout {
     display: grid;
@@ -43,7 +42,7 @@ import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
     gap: 20px;
     max-width: 1280px;
     margin: 0 auto;
-    padding: 76px 24px 40px;   /* 76 = 56navbar + 20间距 */
+    padding: 20px 24px 40px;
     min-height: 100vh;
     }
 .left-sidebar,
