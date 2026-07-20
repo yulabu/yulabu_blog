@@ -39,7 +39,7 @@ const notices = [
   width: 100%;
   padding: 24px 20px;
   border-radius: 5%;
-  box-shadow: 0 10px 30px black;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-top: 1px solid white;
   border-left: 1px solid white;
   background: linear-gradient(to right bottom,

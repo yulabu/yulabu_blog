@@ -22,8 +22,14 @@
   position: relative;
   width: 300px;
   height: 260px;
-  background-color: rgb(234, 248, 236);
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  background: linear-gradient(to right bottom,
+      rgba(255, 255, 255, .6),
+      rgba(255, 255, 255, .3),
+      rgba(255, 255, 255, .2));
+  backdrop-filter: blur(16px);
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   border-radius: 0 0 30px 30px;
 }
@@ -31,7 +37,7 @@
   position: relative;
   width: 330px;
   height: 130px;
-  background-color: rgb(167, 233, 186);
+  background-color: rgba(167, 233, 186, .85);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -43,7 +49,7 @@
   position: absolute;
   width: 40px;
   height: 40px;
-  background-color: rgb(167, 233, 186);
+  background-color: rgba(167, 233, 186, .85);
   transition: translate(-50%);
   /* left: 50%; */
   bottom: -30%;

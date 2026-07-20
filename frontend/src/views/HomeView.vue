@@ -46,5 +46,11 @@ import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
     padding: 76px 24px 40px;   /* 76 = 56navbar + 20间距 */
     min-height: 100vh;
     }
+.left-sidebar,
+.right-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
 /* 移动端暂时不管，后面再说 */
 </style>

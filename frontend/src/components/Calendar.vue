@@ -78,7 +78,7 @@
     width: 100%; 
     height: auto;
     background-color: rgb(234, 248, 236);
-    box-shadow: 0 19px 38px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     border-radius: 0 0 30px 30px;
   }
