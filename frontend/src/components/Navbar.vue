@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar">
+  <nav class="navbar" :class="{ scrolled: isScrolled }">
     <div class="nav-brand">
       <span class="logo">Yulabu</span>
     </div>
@@ -14,6 +14,25 @@
   </nav>
 </template>
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const isScrolled = ref(false)
+const BANNER_HEIGHT = 360
+const NAVBAR_HEIGHT = 56
+const THRESHOLD = BANNER_HEIGHT - NAVBAR_HEIGHT
+
+function handleScroll() {
+  isScrolled.value = window.scrollY > THRESHOLD
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  handleScroll()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 </script>
 <style scoped>
 .navbar {
@@ -27,9 +46,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 32px;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .65),
-      rgba(255, 255, 255, .45));
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+  transition: background .3s, border-color .3s, box-shadow .3s;
+}
+
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
