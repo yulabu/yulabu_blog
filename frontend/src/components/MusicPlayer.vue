@@ -104,17 +104,30 @@
   }
   .music-box, .volume-box {
     display: flex;
-    text-align: center;
+    align-items: center;
     justify-content: center;
-  }
-  .seekbar, .volume-range{
-    /* appearance: none; */
     width: 100%;
+    gap: 16px;
+  }
+  .current-time,
+  .duration {
+    font-size: 12px;
+    color: rgb(65, 110, 105);
+    min-width: 36px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .seekbar, .volume-range {
     height: 2px;
     border-radius: 3px;
-    /* background-color: rgba(80, 140, 134, 0.2); */
     accent-color: rgb(65, 110, 105);
     outline: none;
+  }
+  .seekbar {
+    flex: 1;
+  }
+  .volume-range {
+    width: 100%;
   }
 </style>
 <script setup>
