@@ -34,7 +34,7 @@ import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
         background-color: rgb(202, 242, 203);
     }
     .top-banner{
-        margin-top: 76px;   /* 56navbar + 20间距 */
+        width: 100%;
     }
     .home-layout {
     display: grid;
