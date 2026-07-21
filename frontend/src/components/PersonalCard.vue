@@ -125,6 +125,9 @@ ul{
 .card:hover .card-bottom2{
   top: 50px;
 }
+li {
+  cursor: default;
+}
 li:hover{
   color: rgb(87, 228, 191);
   transform: translateY(-10px);

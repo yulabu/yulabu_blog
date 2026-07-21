@@ -6,7 +6,6 @@
         <div class="home-layout">
             <aside class="left-sidebar">
                 <PersonalCard />
-                <Calendar />
             </aside>
             <main class="center">
                 <PostList />
