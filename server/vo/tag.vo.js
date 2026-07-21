@@ -2,7 +2,7 @@ function tagDetail(tag) {
   return {
     id: tag.tag_id,
     name: tag.tag_name,
-    color: tag.tag_color,
+    count: Number(tag.count || 0),
   };
 }
 

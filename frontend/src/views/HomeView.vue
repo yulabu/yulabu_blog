@@ -6,6 +6,7 @@
         <div class="home-layout">
             <aside class="left-sidebar">
                 <PersonalCard />
+                <TagBox />
             </aside>
             <main class="center">
                 <PostList />
@@ -20,7 +21,7 @@
 </template>
 <script setup>
 import PersonalCard from '@/components/PersonalCard.vue';
-import Calendar from '@/components/Calendar.vue';
+import TagBox from '@/components/TagBox.vue';
 import WelcomeBanner from '@/components/WelcomeBanner.vue';
 import PostList from '@/components/PostList.vue';
 import MusicPlayer from '@/components/MusicPlayer.vue';

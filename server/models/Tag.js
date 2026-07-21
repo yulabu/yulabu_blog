@@ -10,10 +10,6 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       unique: true,
       comment: '分类名称'
-    },
-    tag_color: {
-      type: DataTypes.STRING(7),
-      allowNull: false,
     }
   }, {
     tableName: 'Tag',

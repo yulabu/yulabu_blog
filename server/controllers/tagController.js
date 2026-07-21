@@ -1,10 +1,26 @@
 const AppError = require('../middleware/AppError');
+const { Sequelize } = require('sequelize');
 const { createTagDTO, updateTagDTO, tagIdDTO } = require('../dto/tag.dto');
 const { Post, Tag } = require('../models');
 const { tagDetail, taglist } = require('../vo/tag.vo');
 
 exports.getTagslist = async (req, res) => {
-  const tags = await Tag.findAll();
+  const tags = await Tag.findAll({
+    attributes: [
+      'tag_id',
+      'tag_name',
+      [Sequelize.fn('COUNT', Sequelize.col('posts.post_id')), 'count']
+    ],
+    include: [{
+      model: Post,
+      as: 'posts',
+      where: { post_status: 'published' },
+      attributes: [],
+      required: false
+    }],
+    group: ['Tag.tag_id', 'Tag.tag_name'],
+    raw: true
+  });
   res.json(taglist(tags));
 };
 
