@@ -12,7 +12,7 @@
     <article v-else v-for="post in posts" :key="post.id" class="post-card">
       <div class="post-head">
         <h4 class="title">{{ post.title }}</h4>
-        <span v-if="post.category" class="tag" :style="{ backgroundColor: post.category.color }">{{ post.category.name }}</span>
+        <span v-if="post.category" class="tag">{{ post.category.name }}</span>
       </div>
       <p class="excerpt">{{ post.summary }}</p>
       <div class="meta">
@@ -109,7 +109,8 @@ function formatDate(str) {
 .post-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
   margin-bottom: 8px;
 }
 
@@ -135,6 +136,7 @@ function formatDate(str) {
   letter-spacing: 1px;
   white-space: nowrap;
   flex-shrink: 0;
+  background: rgba(99, 149, 86, 0.85);
 }
 
 .excerpt {

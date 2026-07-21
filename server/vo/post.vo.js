@@ -23,7 +23,6 @@ function toCategory(tag) {
   return {
     id: tag.tag_id,
     name: tag.tag_name,
-    color: tag.tag_color,
   };
 }
 

@@ -15,7 +15,7 @@ exports.getPosts = async (req, res) => {
   }
   const { rows: posts, count: total } = await Post.findAndCountAll({
     where,
-    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name', 'tag_color'] },
+    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
     order: [['created_at', 'DESC']], // 按创建时间降序排列
     limit,
     offset,
@@ -29,7 +29,7 @@ exports.getPosts = async (req, res) => {
 exports.getPostById = async (req, res) => {
   const postId = postIdDTO(req.params);
   const post = await Post.findByPk(postId, {
-    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name', 'tag_color'] },
+    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
   });
   if (!post) throw new AppError(404, '文章不存在');
   res.json(postDetail(post));
