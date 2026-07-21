@@ -2,10 +2,11 @@
   <div class="banner">
     <div class="bg"></div>
     <div class="content">
-      <h1 class="title">
+      <h1 class="site-title">yulabu's blog</h1>
+      <h2 class="subtitle">
         <span>{{ currentText }}</span>
         <span class="cursor"></span>
-      </h1>
+      </h2>
     </div>
     <div class="waves">
       <div class="wave wave-1"></div>
@@ -98,7 +99,17 @@ onUnmounted(() => {
   padding: 76px 24px 0;
 }
 
-.title {
+.site-title {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 42px;
+  color: white;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 20px rgba(255, 255, 255, 0.25);
+  margin: 0 0 12px;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.subtitle {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 42px;
   color: white;
@@ -107,7 +118,6 @@ onUnmounted(() => {
   letter-spacing: 4px;
   text-align: center;
   min-height: 1.2em;
-  user-select: none;
 }
 
 .cursor {
