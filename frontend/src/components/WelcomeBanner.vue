@@ -117,7 +117,11 @@ onUnmounted(() => {
   margin: 0;
   letter-spacing: 4px;
   text-align: center;
-  min-height: 1.2em;
+  height: 1.3em;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cursor {
