@@ -2,7 +2,10 @@
   <div class="banner">
     <div class="bg"></div>
     <div class="content">
-      <h1 class="title">欢迎来到鱼辣不的博客</h1>
+      <h1 class="title">
+        <span>{{ currentText }}</span>
+        <span class="cursor"></span>
+      </h1>
     </div>
     <div class="waves">
       <div class="wave wave-1"></div>
@@ -13,6 +16,56 @@
   </div>
 </template>
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const texts = [
+  '欢迎来到鱼辣不的博客',
+  '记录生活，分享技术',
+  '愿每一次思考都有回响'
+]
+
+const currentText = ref('')
+let timer = null
+
+const typeSpeed = 120
+const deleteSpeed = 60
+const stayAfterType = 2000
+const switchDelay = 300
+
+let textIndex = 0
+let charIndex = 0
+let isDeleting = false
+
+function tick() {
+  const fullText = texts[textIndex]
+
+  if (isDeleting) {
+    currentText.value = fullText.slice(0, charIndex - 1)
+    charIndex--
+  } else {
+    currentText.value = fullText.slice(0, charIndex + 1)
+    charIndex++
+  }
+
+  if (!isDeleting && charIndex === fullText.length) {
+    isDeleting = true
+    timer = setTimeout(tick, stayAfterType)
+  } else if (isDeleting && charIndex === 0) {
+    isDeleting = false
+    textIndex = (textIndex + 1) % texts.length
+    timer = setTimeout(tick, switchDelay)
+  } else {
+    timer = setTimeout(tick, isDeleting ? deleteSpeed : typeSpeed)
+  }
+}
+
+onMounted(() => {
+  timer = setTimeout(tick, 500)
+})
+
+onUnmounted(() => {
+  if (timer) clearTimeout(timer)
+})
 </script>
 <style scoped>
 .banner {
@@ -46,13 +99,31 @@
 }
 
 .title {
-  font-family: '华文琥珀', 'STHupo', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 42px;
   color: white;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
   margin: 0;
   letter-spacing: 4px;
   text-align: center;
+  min-height: 1.2em;
+  user-select: none;
+}
+
+.cursor {
+  display: inline-block;
+  width: 3px;
+  height: 1em;
+  background-color: white;
+  margin-left: 6px;
+  vertical-align: middle;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .waves {
