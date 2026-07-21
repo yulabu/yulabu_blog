@@ -9,7 +9,7 @@
       <Icon icon="material-symbols:description-off-outline" class="empty-icon" />
       <span>暂无文章</span>
     </div>
-    <article v-else v-for="post in posts" :key="post.id" class="post-card">
+    <article v-else v-for="post in posts" :key="post.id" class="post-card" @click="goToDetail(post.id)">
       <div class="post-head">
         <h4 class="title">{{ post.title }}</h4>
         <span v-if="post.category" class="tag">{{ post.category.name }}</span>
@@ -24,9 +24,11 @@
 </template>
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 
 const posts = ref([])
+const router = useRouter()
 
 onMounted(async () => {
   try {
@@ -37,6 +39,10 @@ onMounted(async () => {
     console.error('获取文章列表失败:', e)
   }
 })
+
+function goToDetail(id) {
+  router.push(`/post/${id}`)
+}
 
 function formatDate(str) {
   if (!str) return ''
@@ -99,6 +105,7 @@ function formatDate(str) {
       rgba(255, 255, 255, .16));
   backdrop-filter: blur(16px);
   transition: transform .2s, box-shadow .2s;
+  cursor: pointer;
 }
 
 .post-card:hover {

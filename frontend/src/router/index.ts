@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
+import PostDetailView from '../views/PostDetailView.vue';
 
 const routes = [
   { path: '/', redirect: '/home' },           // 默认跳转到登录页
   { path: '/login', name: 'Login', component: LoginView },
-  { path: '/home', name: 'Home', component: HomeView,  
-},
+  { path: '/home', name: 'Home', component: HomeView },
+  { path: '/post/:id', name: 'PostDetail', component: PostDetailView },
 ];
 
 const router = createRouter({
