@@ -8,9 +8,7 @@
       <router-link to="/articles" class="nav-link">文章</router-link>
       <router-link to="/about" class="nav-link">关于</router-link>
     </div>
-    <div class="nav-actions">
-      <router-link to="/login" class="nav-link login">登录</router-link>
-    </div>
+
   </nav>
 </template>
 <script setup>
@@ -113,21 +111,4 @@ onUnmounted(() => {
   border-radius: 1px;
 }
 
-.nav-actions {
-  display: flex;
-  align-items: center;
-}
-
-.login {
-  border: 1px solid rgb(99, 149, 86);
-  border-radius: 16px;
-  padding: 4px 16px;
-  color: rgb(99, 149, 86);
-  transition: all .2s;
-}
-
-.login:hover {
-  background: rgb(99, 149, 86);
-  color: white;
-}
 </style>
