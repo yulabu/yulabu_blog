@@ -2,7 +2,7 @@
   <header class="admin-header">
     <div class="header-inner">
       <div class="left">
-        <span class="brand">Yulabu 后台</span>
+        <router-link to="/home" class="logo">Yulabu</router-link>
         <router-link to="/home" class="nav-link">返回博客</router-link>
       </div>
       <div class="right">
@@ -42,12 +42,17 @@
   gap: 20px;
 }
 
-.brand {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  color: rgb(45, 90, 65);
-  letter-spacing: 1px;
+.logo {
+  font-family: '华文琥珀', 'STHupo', sans-serif;
+  font-size: 24px;
+  color: rgb(99, 149, 86);
+  letter-spacing: 2px;
+  text-decoration: none;
+  transition: color .2s;
+}
+
+.logo:hover {
+  color: rgb(71, 120, 65);
 }
 
 .nav-link {
