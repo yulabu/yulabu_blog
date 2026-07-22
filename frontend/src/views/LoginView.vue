@@ -442,7 +442,7 @@ async function handleLogin() {
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || '登录失败')
     localStorage.setItem('token', data.token)
-    router.push('/home')
+    router.push('/admin')
   } catch (e) {
     loginError.value = e.message
   }
