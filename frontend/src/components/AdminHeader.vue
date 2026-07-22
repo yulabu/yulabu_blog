@@ -7,6 +7,7 @@
       </div>
       <div class="right">
         <router-link to="/admin" class="nav-link">文章管理</router-link>
+        <router-link to="/admin/tags" class="nav-link">标签管理</router-link>
       </div>
     </div>
   </header>
