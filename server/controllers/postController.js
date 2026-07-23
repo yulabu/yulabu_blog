@@ -31,7 +31,7 @@ exports.getPostById = async (req, res) => {
   const post = await Post.findByPk(postId, {
     include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
   });
-  if (!post) throw new AppError(404, '文章不存在');
+  if (!post || post.post_status !== 'published') throw new AppError(404, '文章不存在');
   res.json(postDetail(post));
 };
 

@@ -17,6 +17,9 @@ app.use('/api/auth', authRoutes);
 // tag路由
 const tagRoutes = require('./routes/tagRoutes');
 app.use('/api/tags', tagRoutes);
+// admin路由
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/api/admin', adminRoutes);
 // 导入模型
 const { Post, Tag } = require('./models');
 
