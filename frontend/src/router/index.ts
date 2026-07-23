@@ -8,6 +8,7 @@ import AdminPostEdit from '../views/AdminPostEdit.vue';
 import AdminTagList from '../views/AdminTagList.vue';
 import AdminDashboard from '../views/AdminDashboard.vue';
 import AdminSettings from '../views/AdminSettings.vue';
+import AdminTrash from '../views/AdminTrash.vue';
 
 const routes = [
   { path: '/', redirect: '/home' },           // 默认跳转到登录页
@@ -25,6 +26,7 @@ const routes = [
       { path: 'posts/new', component: AdminPostEdit },
       { path: 'posts/:id/edit', component: AdminPostEdit },
       { path: 'tags', component: AdminTagList },
+      { path: 'trash', component: AdminTrash },
       { path: 'settings', component: AdminSettings }
     ]
   }

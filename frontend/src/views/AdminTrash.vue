@@ -1,15 +1,16 @@
 <template>
-  <div class="post-list-page">
+  <div class="trash-page">
     <div class="card">
       <div class="card-header">
-        <h2 class="title">文章管理</h2>
-        <div class="header-actions">
-          <button class="btn-text" @click="router.push('/admin/trash')">回收站</button>
-          <button class="btn-primary" @click="goNew">新建文章</button>
+        <div class="header-left">
+          <h2 class="title">回收站</h2>
+          <span class="subtitle">共 {{ total }} 篇文章</span>
         </div>
+        <button class="btn-text" @click="router.push('/admin/posts')">返回文章列表</button>
       </div>
 
       <div v-if="loading" class="loading">加载中...</div>
+      <div v-else-if="posts.length === 0" class="empty">回收站是空的</div>
 
       <table v-else class="post-table">
         <thead>
@@ -17,8 +18,7 @@
             <th>标题</th>
             <th>分类</th>
             <th>作者</th>
-            <th>状态</th>
-            <th>创建时间</th>
+            <th>删除时间</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -30,14 +30,11 @@
               <span v-else class="text-muted">-</span>
             </td>
             <td>{{ post.author }}</td>
-            <td>
-              <span class="status" :class="post.status">{{ statusText(post.status) }}</span>
-            </td>
-            <td class="text-muted">{{ formatDate(post.createdAt) }}</td>
+            <td class="text-muted">{{ formatDate(post.updatedAt) }}</td>
             <td>
               <div class="actions">
-                <button class="btn-text" @click="goEdit(post.id)">编辑</button>
-                <button class="btn-text danger" @click="onDelete(post.id)">删除</button>
+                <button class="btn-text" @click="onRestore(post.id)">恢复</button>
+                <button class="btn-text danger" @click="onForceDelete(post.id)">彻底删除</button>
               </div>
             </td>
           </tr>
@@ -62,62 +59,67 @@ const { confirm, toast } = useMessageBox()
 const posts = ref([])
 const page = ref(1)
 const totalPages = ref(1)
+const total = ref(0)
 const loading = ref(false)
 
-async function fetchPosts() {
+async function fetchTrash() {
   loading.value = true
   try {
-    const res = await authFetch(`/api/posts?limit=10&page=${page.value}`)
-    if (!res.ok) throw new Error('获取文章列表失败')
+    const res = await authFetch(`/api/admin/posts/trash?limit=10&page=${page.value}`)
+    if (!res.ok) throw new Error('获取回收站列表失败')
     const data = await res.json()
     posts.value = data.posts
+    total.value = data.total || 0
     totalPages.value = data.totalPages || 1
   } catch (e) {
     console.error(e)
-    toast('获取文章列表失败', 'error')
+    toast('获取回收站列表失败', 'error')
   } finally {
     loading.value = false
   }
 }
 
-watch(page, fetchPosts, { immediate: true })
+watch(page, fetchTrash, { immediate: true })
 
-function goNew() {
-  router.push('/admin/posts/new')
-}
-
-function goEdit(id) {
-  router.push(`/admin/posts/${id}/edit`)
-}
-
-async function onDelete(id) {
-  const ok = await confirm('删除确认', '确定要删除这篇文章吗？删除后可在回收站恢复。')
+async function onRestore(id) {
+  const ok = await confirm('恢复确认', '确定要恢复这篇文章吗？恢复后将回到文章列表。')
   if (!ok) return
 
   try {
-    const res = await authFetch(`/api/posts/${id}`, { method: 'DELETE' })
+    const res = await authFetch(`/api/admin/posts/${id}/restore`, { method: 'PUT' })
+    if (!res.ok) throw new Error('恢复失败')
+    toast('恢复成功')
+    fetchTrash()
+  } catch (e) {
+    console.error(e)
+    toast('恢复失败', 'error')
+  }
+}
+
+async function onForceDelete(id) {
+  const ok = await confirm('彻底删除确认', '彻底删除后无法恢复，确定要删除这篇文章吗？')
+  if (!ok) return
+
+  try {
+    const res = await authFetch(`/api/admin/posts/${id}/force`, { method: 'DELETE' })
     if (!res.ok) throw new Error('删除失败')
-    toast('删除成功')
-    fetchPosts()
+    toast('已彻底删除')
+    fetchTrash()
   } catch (e) {
     console.error(e)
     toast('删除失败', 'error')
   }
 }
 
-function statusText(status) {
-  return status === 'published' ? '已发布' : '回收站'
-}
-
 function formatDate(str) {
   if (!str) return '-'
   const d = new Date(str)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 </script>
 
 <style scoped>
-.post-list-page {
+.trash-page {
   width: 100%;
 }
 
@@ -141,9 +143,9 @@ function formatDate(str) {
   margin-bottom: 20px;
 }
 
-.header-actions {
+.header-left {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
 }
 
@@ -155,26 +157,22 @@ function formatDate(str) {
   margin: 0;
 }
 
-.btn-primary {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  background: rgb(99, 149, 86);
-  color: white;
+.subtitle {
   font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-primary:hover {
-  background: rgb(79, 129, 66);
+  color: rgb(120, 140, 125);
 }
 
 .loading {
   padding: 40px 0;
   text-align: center;
   color: rgb(65, 110, 105);
+}
+
+.empty {
+  padding: 60px 0;
+  text-align: center;
+  color: rgb(120, 140, 125);
+  font-size: 14px;
 }
 
 .post-table {
@@ -215,22 +213,6 @@ function formatDate(str) {
   background: rgba(99, 149, 86, 0.85);
   color: white;
   font-size: 12px;
-}
-
-.status {
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.status.published {
-  background: rgba(99, 149, 86, 0.15);
-  color: rgb(45, 90, 65);
-}
-
-.status.trash {
-  background: rgba(120, 120, 120, 0.15);
-  color: rgb(100, 100, 100);
 }
 
 .actions {

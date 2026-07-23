@@ -20,6 +20,10 @@
           <Icon icon="material-symbols:label-outline" class="menu-icon" />
           <span>标签管理</span>
         </router-link>
+        <router-link to="/admin/trash" class="menu-item" active-class="active">
+          <Icon icon="material-symbols:delete-outline" class="menu-icon" />
+          <span>回收站</span>
+        </router-link>
       </div>
 
       <router-link to="/admin/settings" class="menu-item" active-class="active">
