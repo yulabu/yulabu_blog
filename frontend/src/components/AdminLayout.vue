@@ -1,5 +1,6 @@
 <template>
   <div class="admin-layout">
+    <AdminSidebar />
     <AdminHeader />
     <main class="admin-main">
       <router-view />
@@ -8,18 +9,20 @@
 </template>
 
 <script setup>
+import AdminSidebar from './AdminSidebar.vue'
 import AdminHeader from './AdminHeader.vue'
 </script>
 
 <style scoped>
 .admin-layout {
   min-height: 100vh;
-  background-color: rgb(202, 242, 203);
+  background-color: #f5f7fa;
 }
 
 .admin-main {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 84px 24px 40px;
+  margin-left: 220px;
+  margin-top: 60px;
+  padding: 24px;
+  min-height: calc(100vh - 60px);
 }
 </style>

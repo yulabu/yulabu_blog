@@ -6,6 +6,8 @@ import AdminLayout from '../components/AdminLayout.vue';
 import AdminPostList from '../views/AdminPostList.vue';
 import AdminPostEdit from '../views/AdminPostEdit.vue';
 import AdminTagList from '../views/AdminTagList.vue';
+import AdminDashboard from '../views/AdminDashboard.vue';
+import AdminSettings from '../views/AdminSettings.vue';
 
 const routes = [
   { path: '/', redirect: '/home' },           // 默认跳转到登录页
@@ -15,13 +17,15 @@ const routes = [
   {
     path: '/admin',
     component: AdminLayout,
-    redirect: '/admin/posts',
+    redirect: '/admin/dashboard',
     meta: { requiresAuth: true },
     children: [
+      { path: 'dashboard', component: AdminDashboard },
       { path: 'posts', component: AdminPostList },
       { path: 'posts/new', component: AdminPostEdit },
       { path: 'posts/:id/edit', component: AdminPostEdit },
-      { path: 'tags', component: AdminTagList }
+      { path: 'tags', component: AdminTagList },
+      { path: 'settings', component: AdminSettings }
     ]
   }
 ];
