@@ -27,7 +27,7 @@ const routes = [
     path: '/admin',
     component: AdminLayout,
     redirect: '/admin/dashboard',
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: '后台管理' },
     children: [
       { path: 'dashboard', component: AdminDashboard },
       { path: 'posts', component: AdminPostList },
@@ -48,14 +48,16 @@ const router = createRouter({
   routes
 });
 
-// 路由守卫：保护需要登录的页面
+// 路由守卫：保护需要登录的页面，并设置页面标题
 router.beforeEach((to, from, next) => {
   const isLoggedIn = !!localStorage.getItem('token');
   if (to.meta.requiresAuth && !isLoggedIn) {
     next('/login');
-  } else {
-    next();
+    return;
   }
+
+  document.title = (to.meta.title as string) || '博客';
+  next();
 });
 
 export default router;
