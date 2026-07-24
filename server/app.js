@@ -17,11 +17,14 @@ app.use('/api/auth', authRoutes);
 // tag路由
 const tagRoutes = require('./routes/tagRoutes');
 app.use('/api/tags', tagRoutes);
+// notice路由
+const noticeRoutes = require('./routes/noticeRoutes');
+app.use('/api/notices', noticeRoutes);
 // admin路由
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/admin', adminRoutes);
 // 导入模型
-const { Post, Tag } = require('./models');
+const { Post, Tag, Admin, Notice } = require('./models');
 
 // 同步数据库（创建表）
 // 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。
