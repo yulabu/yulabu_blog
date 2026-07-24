@@ -5,7 +5,7 @@ function noticeDetail(notice) {
     notice_content: notice.notice_content,
     notice_status: notice.notice_status,
     notice_is_pinned: notice.notice_is_pinned,
-    notice_created_at: notice.created_at,
+    notice_created_at: notice.createdAt,
   };
 }
 

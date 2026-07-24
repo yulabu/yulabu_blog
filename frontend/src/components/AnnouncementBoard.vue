@@ -26,13 +26,23 @@
   </div>
 </template>
 <script setup>
+import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 
-const notices = [
-  { notice_id: 1, notice_title: '博客上线', notice_content: '欢迎访问我的个人博客！文章会持续更新，敬请关注。', notice_created_at: '2026-07-15', notice_status: 'show' },
-  { notice_id: 2, notice_title: '登录功能已开放', notice_content: '管理后台登录功能已上线，管理员可以通过右上角登录按钮进入后台管理文章和公告。', notice_created_at: '2026-07-18', notice_status: 'show' },
-  { notice_id: 3, notice_title: '更多功能开发中', notice_content: '评论区、搜索、分类标签等功能正在开发中，敬请期待。', notice_created_at: '2026-07-20', notice_status: 'show' },
-]
+const notices = ref([])
+
+async function fetchNotices() {
+  try {
+    const res = await fetch('/api/notices')
+    if (!res.ok) throw new Error('获取公告失败')
+    const data = await res.json()
+    notices.value = data.notices || []
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+onMounted(fetchNotices)
 </script>
 <style scoped>
 .card {

@@ -14,6 +14,8 @@ const AdminPostList = () => import(/* webpackChunkName: "admin" */ '../views/Adm
 const AdminPostEdit = () => import(/* webpackChunkName: "admin" */ '../views/AdminPostEdit.vue');
 const AdminTagList = () => import(/* webpackChunkName: "admin" */ '../views/AdminTagList.vue');
 const AdminTrash = () => import(/* webpackChunkName: "admin" */ '../views/AdminTrash.vue');
+const AdminNoticeList = () => import(/* webpackChunkName: "admin" */ '../views/AdminNoticeList.vue');
+const AdminNoticeEdit = () => import(/* webpackChunkName: "admin" */ '../views/AdminNoticeEdit.vue');
 const AdminSettings = () => import(/* webpackChunkName: "admin" */ '../views/AdminSettings.vue');
 
 const routes = [
@@ -33,6 +35,9 @@ const routes = [
       { path: 'posts/:id/edit', component: AdminPostEdit },
       { path: 'tags', component: AdminTagList },
       { path: 'trash', component: AdminTrash },
+      { path: 'notices', component: AdminNoticeList },
+      { path: 'notices/new', component: AdminNoticeEdit },
+      { path: 'notices/:id/edit', component: AdminNoticeEdit },
       { path: 'settings', component: AdminSettings }
     ]
   }
