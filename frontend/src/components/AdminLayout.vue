@@ -9,8 +9,8 @@
 </template>
 
 <script setup>
-import AdminSidebar from './AdminSidebar.vue'
-import AdminHeader from './AdminHeader.vue'
+import AdminSidebar from '@/components/AdminSidebar.vue'
+import AdminHeader from '@/components/AdminHeader.vue'
 </script>
 
 <style scoped>

@@ -51,7 +51,7 @@
     width: 100vw;
     height: 100vh;
     position: relative;
-    background: url('../assets/img/background_0.png') no-repeat center / cover;
+    background: url('@/assets/img/background_0.png') no-repeat center / cover;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -163,18 +163,18 @@ section .color3::before{
     z-index: 0;
 }
 /* 色块1 的三张图 */
-.color1 .bubble-img:nth-child(1) { background-image: url('assets/img/nxd_bubble1_1.png'); }
-.color1 .bubble-img:nth-child(2) { background-image: url('assets/img/nxd_bubble1_2.jpg'); }
-.color1 .bubble-img:nth-child(3) { background-image: url('assets/img/nxd_bubble1_3.jpg'); }
+.color1 .bubble-img:nth-child(1) { background-image: url('@/assets/img/nxd_bubble1_1.png'); }
+.color1 .bubble-img:nth-child(2) { background-image: url('@/assets/img/nxd_bubble1_2.jpg'); }
+.color1 .bubble-img:nth-child(3) { background-image: url('@/assets/img/nxd_bubble1_3.jpg'); }
 
 /* 色块2 的两张图 */
-.color2 .bubble-img:nth-child(1) { background-image: url('assets/img/nxd_bubble2_1.jpg'); }
-.color2 .bubble-img:nth-child(2) { background-image: url('assets/img/nxd_bubble2_2.jpg'); }
-.color2 .bubble-img:nth-child(3) { background-image: url('assets/img/nxd_bubble2_3.jpg'); }
+.color2 .bubble-img:nth-child(1) { background-image: url('@/assets/img/nxd_bubble2_1.jpg'); }
+.color2 .bubble-img:nth-child(2) { background-image: url('@/assets/img/nxd_bubble2_2.jpg'); }
+.color2 .bubble-img:nth-child(3) { background-image: url('@/assets/img/nxd_bubble2_3.jpg'); }
 /* 色块3 的三张图 */
-.color3 .bubble-img:nth-child(1) { background-image: url('assets/img/nxd_bubble3_1.jpg'); }
-.color3 .bubble-img:nth-child(2) { background-image: url('assets/img/nxd_bubble3_2.jpg'); }
-.color3 .bubble-img:nth-child(3) { background-image: url('assets/img/nxd_bubble3_3.jpg'); }
+.color3 .bubble-img:nth-child(1) { background-image: url('@/assets/img/nxd_bubble3_1.jpg'); }
+.color3 .bubble-img:nth-child(2) { background-image: url('@/assets/img/nxd_bubble3_2.jpg'); }
+.color3 .bubble-img:nth-child(3) { background-image: url('@/assets/img/nxd_bubble3_3.jpg'); }
 @keyframes cycleBubble {
     0%   { opacity: 0; transform: translateY(100%); }
     11.11% { opacity: 1; transform: translateY(30%);}   /* 淡入结束 */
@@ -214,7 +214,7 @@ section .color3::before{
     left: 0px;
     width: 35%;
     height: 100%;
-    background-image: url('assets/img/login_left.jpg');
+    background-image: url('@/assets/img/login_left.jpg');
     background-size: cover;
     border-radius: 10px;
     z-index: 3;

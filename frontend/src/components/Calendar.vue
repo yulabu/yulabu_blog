@@ -91,7 +91,7 @@
     display: flex;
     padding: 30px 20px;
     background-size: cover;
-    background-image: url(../assets/img/calender.jpg);
+    background-image: url('@/assets/img/calender.jpg');
   }
   .day{
     font-size: 36px;

@@ -1,7 +1,7 @@
 <template>
   <div class="card">
     <div class="cover">
-      <img src="../../assets/img/music_player.jpg" alt="">
+      <img :src="musicPlayerImg" alt="">
     </div>
     <div class="info">
       <div class="title">我爱你</div>
@@ -17,7 +17,7 @@
       </span>
     </div>
     <div class="music-box">
-      <audio ref="audioRef" src="../../assets/music/我爱你 - nxd.mp3"></audio>
+      <audio ref="audioRef" :src="musicSrc"></audio>
       <span class="current-time">{{ formatTime(currentTime) }}</span>
       <input type="range" class="seekbar" :value="progress" @input="seek">
       <span class="duration">{{ formatTime(duration) }}</span>
@@ -133,6 +133,8 @@
 <script setup>
   import { ref, onMounted, onUnmounted } from 'vue';
   import { Icon } from '@iconify/vue'
+  import musicPlayerImg from '@/assets/img/music_player.jpg'
+  import musicSrc from '@/assets/music/我爱你 - nxd.mp3'
   const audioRef = ref(null);
   const isPlaying = ref(false);
   const currentTime = ref(0);

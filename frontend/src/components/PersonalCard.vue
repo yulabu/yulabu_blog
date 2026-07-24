@@ -61,7 +61,7 @@
   top: 20px;
   width: 90px;
   height: 90px;
-  background-image: url('../../assets/img/Personal_img.jpg');
+  background-image: url('@/assets/img/Personal_img.jpg');
   background-size: cover;
   border: 5px solid rgb(139, 194, 155);;
   transition: .5s;

@@ -1,11 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
 // 首屏必须快的页面：静态导入
-import LoginView from '../views/LoginView.vue';
-import HomeView from '../views/HomeView.vue';
+import LoginView from '@/views/LoginView.vue';
+import HomeView from '@/views/HomeView.vue';
 
 // 前台其他页面：懒加载
-const PostDetailView = () => import('../views/PostDetailView.vue');
+const PostDetailView = () => import('@/views/PostDetailView.vue');
 
 // 后台所有组件：统一打包到 admin chunk，按需加载
 const AdminLayout = () => import(/* webpackChunkName: "admin" */ '../components/AdminLayout.vue');
