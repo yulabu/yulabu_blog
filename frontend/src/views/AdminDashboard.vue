@@ -1,48 +1,47 @@
 <template>
   <div class="dashboard-page">
-    <header class="page-header">
-      <h1 class="page-title">{{ greeting }}，{{ adminName }}</h1>
-      <p class="page-subtitle">{{ currentDateText }} {{ currentTime }}</p>
-    </header>
+    <section class="top-section">
+      <DashboardWelcomeCard :admin-name="adminName" />
 
-    <section class="stats-grid">
-      <div class="stat-card" @click="router.push('/admin/posts')">
-        <div class="stat-icon">
-          <Icon icon="material-symbols:today-outline" />
+      <div class="stats-grid-compact">
+        <div class="stat-card" @click="router.push('/admin/posts')">
+          <div class="stat-icon">
+            <Icon icon="material-symbols:today-outline" />
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">今日新增</div>
+            <div class="stat-value">{{ stats.todayCount }}</div>
+          </div>
         </div>
-        <div class="stat-info">
-          <div class="stat-label">今日新增</div>
-          <div class="stat-value">{{ stats.todayCount }}</div>
-        </div>
-      </div>
 
-      <div class="stat-card" @click="router.push('/admin/posts')">
-        <div class="stat-icon">
-          <Icon icon="material-symbols:article-outline" />
+        <div class="stat-card" @click="router.push('/admin/posts')">
+          <div class="stat-icon">
+            <Icon icon="material-symbols:article-outline" />
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">文章总数</div>
+            <div class="stat-value">{{ stats.totalCount }}</div>
+          </div>
         </div>
-        <div class="stat-info">
-          <div class="stat-label">文章总数</div>
-          <div class="stat-value">{{ stats.totalCount }}</div>
-        </div>
-      </div>
 
-      <div class="stat-card" @click="router.push('/admin/posts')">
-        <div class="stat-icon">
-          <Icon icon="material-symbols:check-circle-outline" />
+        <div class="stat-card" @click="router.push('/admin/posts')">
+          <div class="stat-icon">
+            <Icon icon="material-symbols:check-circle-outline" />
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">已发布</div>
+            <div class="stat-value">{{ stats.publishedCount }}</div>
+          </div>
         </div>
-        <div class="stat-info">
-          <div class="stat-label">已发布</div>
-          <div class="stat-value">{{ stats.publishedCount }}</div>
-        </div>
-      </div>
 
-      <div class="stat-card" @click="router.push('/admin/trash')">
-        <div class="stat-icon">
-          <Icon icon="material-symbols:delete-outline" />
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">回收站</div>
-          <div class="stat-value">{{ stats.trashCount }}</div>
+        <div class="stat-card" @click="router.push('/admin/trash')">
+          <div class="stat-icon">
+            <Icon icon="material-symbols:delete-outline" />
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">回收站</div>
+            <div class="stat-value">{{ stats.trashCount }}</div>
+          </div>
         </div>
       </div>
     </section>
@@ -105,11 +104,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { authFetch } from '@/utils/request'
 import Calendar from '@/components/Calendar.vue'
+import DashboardWelcomeCard from '@/components/DashboardWelcomeCard.vue'
 
 const router = useRouter()
 
@@ -123,27 +123,6 @@ const stats = ref({
 })
 const recentPosts = ref([])
 
-const currentTime = ref('')
-let timer = null
-
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 12) return '早上好'
-  if (hour < 18) return '下午好'
-  return '晚上好'
-})
-
-const currentDateText = computed(() => {
-  const d = new Date()
-  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${weekdays[d.getDay()]}`
-})
-
-function updateTime() {
-  const d = new Date()
-  currentTime.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
 onMounted(() => {
   try {
     const admin = JSON.parse(localStorage.getItem('admin') || '{}')
@@ -152,14 +131,7 @@ onMounted(() => {
     adminName.value = '管理员'
   }
 
-  updateTime()
-  timer = setInterval(updateTime, 1000 * 60)
-
   fetchDashboard()
-})
-
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
 })
 
 async function fetchDashboard() {
@@ -199,36 +171,26 @@ function onDateSelect(date) {
   width: 100%;
 }
 
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 24px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0 0 6px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: rgb(120, 140, 125);
-  margin: 0;
-}
-
-.stats-grid {
+.top-section {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 2fr 3fr;
   gap: 20px;
   margin-bottom: 24px;
+  align-items: stretch;
+}
+
+.stats-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 16px;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
+  gap: 14px;
+  padding: 16px;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-top: 1px solid white;
@@ -249,14 +211,14 @@ function onDateSelect(date) {
 
 .stat-icon {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: rgba(99, 149, 86, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: 22px;
   color: rgb(99, 149, 86);
 }
 
@@ -267,7 +229,7 @@ function onDateSelect(date) {
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: rgb(45, 90, 65);
 }
@@ -438,12 +400,19 @@ function onDateSelect(date) {
 }
 
 @media (max-width: 960px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .top-section {
+    grid-template-columns: 1fr;
   }
 
   .main-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid-compact {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 }
 </style>
