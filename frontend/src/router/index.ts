@@ -8,15 +8,16 @@ import HomeView from '@/views/HomeView.vue';
 const PostDetailView = () => import('@/views/PostDetailView.vue');
 
 // 后台所有组件：统一打包到 admin chunk，按需加载
-const AdminLayout = () => import(/* webpackChunkName: "admin" */ '../components/AdminLayout.vue');
-const AdminDashboard = () => import(/* webpackChunkName: "admin" */ '../views/AdminDashboard.vue');
-const AdminPostList = () => import(/* webpackChunkName: "admin" */ '../views/AdminPostList.vue');
-const AdminPostEdit = () => import(/* webpackChunkName: "admin" */ '../views/AdminPostEdit.vue');
-const AdminTagList = () => import(/* webpackChunkName: "admin" */ '../views/AdminTagList.vue');
-const AdminTrash = () => import(/* webpackChunkName: "admin" */ '../views/AdminTrash.vue');
-const AdminNoticeList = () => import(/* webpackChunkName: "admin" */ '../views/AdminNoticeList.vue');
-const AdminNoticeEdit = () => import(/* webpackChunkName: "admin" */ '../views/AdminNoticeEdit.vue');
-const AdminSettings = () => import(/* webpackChunkName: "admin" */ '../views/AdminSettings.vue');
+const AdminLayout = () => import(/* webpackChunkName: "admin" */ '@/components/AdminLayout.vue');
+const AdminDashboard = () => import(/* webpackChunkName: "admin" */ '@/views/AdminDashboard.vue');
+const AdminPostList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminPostList.vue');
+const AdminPostEdit = () => import(/* webpackChunkName: "admin" */ '@/views/AdminPostEdit.vue');
+const AdminTagList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminTagList.vue');
+const AdminTrash = () => import(/* webpackChunkName: "admin" */ '@/views/AdminTrash.vue');
+const AdminNoticeList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminNoticeList.vue');
+const AdminNoticeEdit = () => import(/* webpackChunkName: "admin" */ '@/views/AdminNoticeEdit.vue');
+const AdminUserList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminUserList.vue');
+const AdminSettings = () => import(/* webpackChunkName: "admin" */ '@/views/AdminSettings.vue');
 
 const routes = [
   { path: '/', redirect: '/home' },           // 默认跳转到登录页
@@ -38,6 +39,7 @@ const routes = [
       { path: 'notices', component: AdminNoticeList },
       { path: 'notices/new', component: AdminNoticeEdit },
       { path: 'notices/:id/edit', component: AdminNoticeEdit },
+      { path: 'users', component: AdminUserList },
       { path: 'settings', component: AdminSettings }
     ]
   }

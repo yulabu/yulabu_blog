@@ -39,7 +39,6 @@
                     </form>
                     <p v-if="loginError" class="error">{{ loginError }}</p>
                 </div>
-                
             </div>
 
         </div>
@@ -442,6 +441,7 @@ async function handleLogin() {
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || '登录失败')
     localStorage.setItem('token', data.token)
+    localStorage.setItem('admin', JSON.stringify(data.admin))
     router.push('/admin')
   } catch (e) {
     loginError.value = e.message

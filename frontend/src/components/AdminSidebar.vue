@@ -30,6 +30,11 @@
         </router-link>
       </div>
 
+      <router-link to="/admin/users" class="menu-item" active-class="active">
+        <Icon icon="material-symbols:shield-person-outline" class="menu-icon" />
+        <span>用户与权限</span>
+      </router-link>
+
       <router-link to="/admin/settings" class="menu-item" active-class="active">
         <Icon icon="material-symbols:settings-outline" class="menu-icon" />
         <span>系统设置</span>
