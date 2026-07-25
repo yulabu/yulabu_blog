@@ -1,4 +1,4 @@
-const AppError = require('../middleware/AppError');
+const AppError = require('@middleware/AppError');
 
 function createTagDTO(body) {
   const name = body.tag_name?.trim();

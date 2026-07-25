@@ -1,6 +1,6 @@
-const AppError = require('../middleware/AppError');
-const { Post, Tag } = require('../models');
-const { postSummary } = require('../vo/post.vo');
+const AppError = require('@middleware/AppError');
+const { Post, Tag } = require('@models');
+const { postSummary } = require('@vo/post.vo');
 
 // 工作台统计数据
 exports.getDashboard = async (req, res) => {

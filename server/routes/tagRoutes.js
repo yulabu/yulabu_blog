@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const tagController = require('../controllers/tagController');
-const auth = require('../middleware/auth');
+const tagController = require('@controllers/tagController');
+const auth = require('@middleware/auth');
 
 router.get('/',            tagController.getTagslist);
 router.get('/:id',         tagController.getTagById);

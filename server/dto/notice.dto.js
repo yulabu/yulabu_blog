@@ -1,4 +1,4 @@
-const AppError = require('../middleware/AppError');
+const AppError = require('@middleware/AppError');
 
 function noticeIdDTO(params) {
   const id = Number(params.id);

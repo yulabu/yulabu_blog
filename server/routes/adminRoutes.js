@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
-const adminController = require('../controllers/adminController');
-const noticeController = require('../controllers/noticeController');
+const auth = require('@middleware/auth');
+const adminController = require('@controllers/adminController');
+const noticeController = require('@controllers/noticeController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);

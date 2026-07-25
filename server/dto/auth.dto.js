@@ -1,4 +1,4 @@
-const AppError = require('../middleware/AppError');
+const AppError = require('@middleware/AppError');
 
 function loginDTO(body) {
   const admin_name = (body.admin_name || '').trim();

@@ -1,4 +1,4 @@
-const AppError = require('./AppError');
+const AppError = require('@middleware/AppError');
 
 function errorHandler(err, req, res, next) {
   if (err instanceof AppError) {

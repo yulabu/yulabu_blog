@@ -1,7 +1,7 @@
-const AppError = require('../middleware/AppError');
-const { Notice } = require('../models');
-const { noticeIdDTO, createNoticeDTO, updateNoticeDTO } = require('../dto/notice.dto');
-const { noticeDetail, noticeList } = require('../vo/notice.vo');
+const AppError = require('@middleware/AppError');
+const { Notice } = require('@models');
+const { noticeIdDTO, createNoticeDTO, updateNoticeDTO } = require('@dto/notice.dto');
+const { noticeDetail, noticeList } = require('@vo/notice.vo');
 
 // 公开接口：获取 show 状态的公告，置顶优先
 exports.getPublicNotices = async (req, res) => {

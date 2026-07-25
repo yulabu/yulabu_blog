@@ -1,10 +1,10 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const AppError = require('../middleware/AppError');
+const AppError = require('@middleware/AppError');
 
-const { Admin } = require('../models');
-const { loginDTO } = require('../dto/auth.dto');
-const { loginResult } = require('../vo/auth.vo');
+const { Admin } = require('@models');
+const { loginDTO } = require('@dto/auth.dto');
+const { loginResult } = require('@vo/auth.vo');
 
 exports.login = async (req, res) => {
   const { admin_name, admin_password } = loginDTO(req.body);

@@ -1,8 +1,8 @@
-const AppError = require('../middleware/AppError');
+const AppError = require('@middleware/AppError');
 const { Sequelize } = require('sequelize');
-const { createTagDTO, updateTagDTO, tagIdDTO } = require('../dto/tag.dto');
-const { Post, Tag } = require('../models');
-const { tagDetail, taglist } = require('../vo/tag.vo');
+const { createTagDTO, updateTagDTO, tagIdDTO } = require('@dto/tag.dto');
+const { Post, Tag } = require('@models');
+const { tagDetail, taglist } = require('@vo/tag.vo');
 
 exports.getTagslist = async (req, res) => {
   const tags = await Tag.findAll({

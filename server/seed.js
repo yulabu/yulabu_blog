@@ -1,6 +1,7 @@
+require('module-alias/register');
 require('dotenv').config();
 const bcrypt = require('bcrypt');
-const { Admin, sequelize } = require('./models');
+const { Admin, sequelize } = require('@models');
 
 async function seed() {
   await sequelize.sync();

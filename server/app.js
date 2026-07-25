@@ -1,30 +1,31 @@
 // 基础配置
+require('module-alias/register');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const sequelize = require('./config/database');
+const sequelize = require('@config/database');
 
 const app = express();
 // 中间件
 app.use(cors());
 app.use(express.json());
 // post路由
-const postRoutes = require('./routes/postRoutes');
+const postRoutes = require('@routes/postRoutes');
 app.use('/api/posts', postRoutes);
 // auth路由
-const authRoutes = require('./routes/authRoutes');
+const authRoutes = require('@routes/authRoutes');
 app.use('/api/auth', authRoutes);
 // tag路由
-const tagRoutes = require('./routes/tagRoutes');
+const tagRoutes = require('@routes/tagRoutes');
 app.use('/api/tags', tagRoutes);
 // notice路由
-const noticeRoutes = require('./routes/noticeRoutes');
+const noticeRoutes = require('@routes/noticeRoutes');
 app.use('/api/notices', noticeRoutes);
 // admin路由
-const adminRoutes = require('./routes/adminRoutes');
+const adminRoutes = require('@routes/adminRoutes');
 app.use('/api/admin', adminRoutes);
 // 导入模型
-const { Post, Tag, Admin, Notice } = require('./models');
+const { Post, Tag, Admin, Notice } = require('@models');
 
 // 同步数据库（创建表）
 // 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。
@@ -45,7 +46,7 @@ app.get('/', (req, res) => {
 });
 
 // 错误处理中间件，需在所有路由之后使用
-const errorHandler = require('./middleware/errorHandler');
+const errorHandler = require('@middleware/errorHandler');
 app.use(errorHandler);
 
 // 启动服务器

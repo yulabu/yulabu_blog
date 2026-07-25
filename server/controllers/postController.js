@@ -1,7 +1,7 @@
-const AppError = require('../middleware/AppError');
-const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('../dto/post.dto');
-const { Post, Tag } = require('../models');
-const { postDetail, postSummary } = require('../vo/post.vo');
+const AppError = require('@middleware/AppError');
+const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
+const { Post, Tag } = require('@models');
+const { postDetail, postSummary } = require('@vo/post.vo');
 
 // 获取文章列表（带分类 + 分页）
 exports.getPosts = async (req, res) => {

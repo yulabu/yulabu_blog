@@ -1,4 +1,4 @@
-const AppError = require('../middleware/AppError');
+const AppError = require('@middleware/AppError');
 
 // ========== 创建文章 ==========
 function createPostDTO(body) {
