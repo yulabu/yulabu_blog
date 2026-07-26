@@ -106,6 +106,7 @@
 import { ref, computed, watch } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { authFetch } from '@/utils/request'
+import { formatDate } from '@/utils/date'
 import Pagination from '@/components/Pagination.vue'
 
 const { confirm, toast } = useMessageBox()
@@ -125,12 +126,6 @@ const currentAdmin = computed(() => {
 
 function avatarUrl(src) {
   return src || new URL('@/assets/img/Personal_img.jpg', import.meta.url).href
-}
-
-function formatDate(str) {
-  if (!str) return '-'
-  const d = new Date(str)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 async function fetchAdmins() {

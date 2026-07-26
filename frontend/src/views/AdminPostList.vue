@@ -54,6 +54,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { authFetch } from '@/utils/request'
+import { formatDate } from '@/utils/date'
 import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
@@ -107,12 +108,6 @@ async function onDelete(id) {
 
 function statusText(status) {
   return status === 'published' ? '已发布' : '回收站'
-}
-
-function formatDate(str) {
-  if (!str) return '-'
-  const d = new Date(str)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 </script>
 

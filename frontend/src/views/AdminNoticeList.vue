@@ -57,6 +57,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { authFetch } from '@/utils/request'
+import { formatDate } from '@/utils/date'
 
 const router = useRouter()
 const { confirm, toast } = useMessageBox()
@@ -132,12 +133,6 @@ async function onDelete(id) {
 
 function statusText(status) {
   return status === 'show' ? '显示' : '隐藏'
-}
-
-function formatDate(str) {
-  if (!str) return '-'
-  const d = new Date(str)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 onMounted(fetchNotices)

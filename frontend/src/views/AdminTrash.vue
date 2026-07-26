@@ -30,7 +30,7 @@
               <span v-else class="text-muted">-</span>
             </td>
             <td>{{ post.author }}</td>
-            <td class="text-muted">{{ formatDate(post.updatedAt) }}</td>
+            <td class="text-muted">{{ formatDateTime(post.updatedAt) }}</td>
             <td>
               <div class="actions">
                 <button class="btn-text" @click="onRestore(post.id)">恢复</button>
@@ -51,6 +51,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { authFetch } from '@/utils/request'
+import { formatDateTime } from '@/utils/date'
 import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
@@ -111,11 +112,6 @@ async function onForceDelete(id) {
   }
 }
 
-function formatDate(str) {
-  if (!str) return '-'
-  const d = new Date(str)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
 </script>
 
 <style scoped>

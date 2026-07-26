@@ -17,7 +17,7 @@
         <div class="notice-right">
           <div class="notice-head">
             <span class="notice-title">{{ item.notice_title }}</span>
-            <span class="notice-date">{{ item.notice_created_at }}</span>
+            <span class="notice-date">{{ formatDate(item.notice_created_at) }}</span>
           </div>
           <p class="notice-content">{{ item.notice_content }}</p>
         </div>
@@ -28,6 +28,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import { formatDate } from '@/utils/date'
 
 const notices = ref([])
 

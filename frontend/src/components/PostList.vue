@@ -26,6 +26,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import { formatDate } from '@/utils/date'
 
 const posts = ref([])
 const router = useRouter()
@@ -42,12 +43,6 @@ onMounted(async () => {
 
 function goToDetail(id) {
   router.push(`/post/${id}`)
-}
-
-function formatDate(str) {
-  if (!str) return ''
-  const d = new Date(str)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 </script>
 <style scoped>

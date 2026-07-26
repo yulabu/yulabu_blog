@@ -108,6 +108,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { authFetch } from '@/utils/request'
+import { formatDate } from '@/utils/date'
 import Calendar from '@/components/Calendar.vue'
 import DashboardWelcomeCard from '@/components/DashboardWelcomeCard.vue'
 
@@ -152,12 +153,6 @@ async function fetchDashboard() {
   } finally {
     loading.value = false
   }
-}
-
-function formatDate(str) {
-  if (!str) return '-'
-  const d = new Date(str)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function onDateSelect(date) {
