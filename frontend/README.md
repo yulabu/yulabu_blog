@@ -1,42 +1,130 @@
-# frontend
+# Yulabu Blog 前端
 
-This template should help get you started developing with Vue 3 in Vite.
+博客前台与管理后台前端，基于 Vue 3 + Vite + TypeScript。
 
-## Recommended IDE Setup
+## 技术栈
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- Vue 3.5（Composition API + `<script setup>`）
+- Vue Router 4（History 模式）
+- Vite 8
+- TypeScript
+- md-editor-v3（Markdown 编辑器）
+- @iconify/vue（图标）
 
-## Recommended Browser Setup
+## 功能
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+### 前台
 
-## Type Support for `.vue` Imports in TS
+- 首页：欢迎横幅、个人卡片、分类标签、文章列表、公告板、音乐播放器
+- 文章详情页：Markdown 渲染
+- 按分类筛选文章
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+### 管理后台
 
-## Customize configuration
+- 工作台：今日新增 / 文章总数 / 已发布 / 回收站统计、最近文章、日历、快捷操作
+- 文章管理：新建 / 编辑 / 删除（软删除）、分页列表
+  - Markdown 编辑器支持粘贴/上传图片
+  - 支持导入本地 Markdown 文章及其引用的图片
+- 标签管理：新建 / 编辑 / 删除，显示各标签下文章数量
+- 公告管理：新建 / 编辑 / 删除、显示/隐藏、置顶/取消置顶
+- 回收站：查看已删除文章、恢复、彻底删除
+- 用户与权限：管理员列表、新建管理员、编辑资料、修改密码
+- 系统设置（占位页）
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## 目录结构
 
-## Project Setup
-
-```sh
-npm install
+```
+frontend/
+├── public/
+├── src/
+│   ├── assets/                 # 图片、音乐、图标等静态资源
+│   ├── components/             # 公共组件
+│   │   ├── AdminLayout.vue
+│   │   ├── AdminHeader.vue
+│   │   ├── AdminSidebar.vue
+│   │   ├── AnnouncementBoard.vue
+│   │   ├── Calendar.vue
+│   │   ├── ImportMarkdownModal.vue
+│   │   ├── MessageBox.vue
+│   │   ├── MusicPlayer.vue
+│   │   ├── Pagination.vue
+│   │   ├── PersonalCard.vue
+│   │   ├── PostList.vue
+│   │   ├── TagBox.vue
+│   │   └── WelcomeBanner.vue
+│   ├── composables/
+│   │   └── useMessageBox.ts    # alert / confirm / toast
+│   ├── utils/
+│   │   ├── request.ts          # 带 token 的请求封装
+│   │   ├── date.ts             # 日期格式化
+│   │   └── importMarkdown.ts   # 本地 Markdown 导入
+│   ├── views/
+│   │   ├── HomeView.vue
+│   │   ├── PostDetailView.vue
+│   │   ├── LoginView.vue
+│   │   ├── AdminDashboard.vue
+│   │   ├── AdminPostList.vue
+│   │   ├── AdminPostEdit.vue
+│   │   ├── AdminTagList.vue
+│   │   ├── AdminNoticeList.vue
+│   │   ├── AdminNoticeEdit.vue
+│   │   ├── AdminTrash.vue
+│   │   ├── AdminUserList.vue
+│   │   └── AdminSettings.vue
+│   ├── router/
+│   │   └── index.ts            # 路由配置与登录守卫
+│   ├── App.vue
+│   ├── main.ts
+│   └── main.css
+├── index.html
+├── vite.config.ts
+└── package.json
 ```
 
-### Compile and Hot-Reload for Development
+## 开发环境要求
 
-```sh
+- Node.js `^22.18.0 || >=24.12.0`
+- 后端服务已启动并监听 `http://localhost:3000`
+
+## 安装与启动
+
+```bash
+cd frontend
+npm install
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+默认端口 `5173`。`vite.config.ts` 已将 `/api` 与 `/uploads` 代理到后端。
 
-```sh
+## 构建
+
+```bash
+# 类型检查 + 生产构建
 npm run build
+
+# 仅构建
+npm run build-only
+
+# 仅类型检查
+npm run type-check
+
+# 预览生产包
+npm run preview
 ```
+
+## 认证说明
+
+管理后台通过 `localStorage` 中的 `token` 与 `admin` 信息鉴权。登录由后端 `/api/auth/login` 提供，`request.ts` 会自动在请求头附加：
+
+```
+Authorization: Bearer <token>
+```
+
+收到 401 响应时自动清理 token 并跳转登录页。
+
+## 图片上传说明
+
+- 编辑器中粘贴/上传的图片会调用 `/api/upload/batch`
+- 新建文章时图片先进入临时目录 `uploads/temp/<tempId>/`
+- 保存文章后，后端只把正文引用到的图片迁移到 `uploads/<postId>/`
+- 编辑文章时直接上传到 `uploads/<postId>/`，保存后自动清理未被引用的图片
