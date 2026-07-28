@@ -1,6 +1,7 @@
 const AppError = require('@middleware/AppError');
 const { Post, Tag } = require('@models');
 const { postSummary } = require('@vo/post.vo');
+const { deletePostImages } = require('@utils/image');
 
 // 工作台统计数据
 exports.getDashboard = async (req, res) => {
@@ -77,6 +78,7 @@ exports.forceDeletePost = async (req, res) => {
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
+  await deletePostImages(postId);
   await post.destroy();
   res.json({ message: '已彻底删除' });
 };

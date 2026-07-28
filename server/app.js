@@ -70,3 +70,10 @@ app.listen(PORT, () => {
 cleanupOldTempDirs().catch(err => {
   console.error('清理临时目录失败:', err);
 });
+
+// 每 24 小时自动清理一次过期临时目录
+setInterval(() => {
+  cleanupOldTempDirs().catch(err => {
+    console.error('定时清理临时目录失败:', err);
+  });
+}, 24 * 60 * 60 * 1000);

@@ -2,7 +2,7 @@ const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { Post, Tag } = require('@models');
 const { postDetail, postSummary } = require('@vo/post.vo');
-const { finalizeTempImages } = require('@utils/image');
+const { finalizeTempImages, syncPostImages } = require('@utils/image');
 
 // 获取文章列表（带分类 + 分页）
 exports.getPosts = async (req, res) => {
@@ -64,6 +64,11 @@ exports.updatePost = async (req, res) => {
 
   const data = updatePostDTO(req.body);
   await post.update(data);
+
+  if (data.post_content !== undefined) {
+    await syncPostImages(postId, data.post_content);
+  }
+
   res.json({ id: post.post_id, message: '更新成功' });
 };
 
