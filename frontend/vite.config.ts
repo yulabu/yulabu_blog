@@ -15,14 +15,18 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  server: {
-    host: false, // 允许外部访问
-    port: 5173, // 指定端口
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000', // 代理目标地址
-        changeOrigin: true, // 是否改变请求源
+    server: {
+      host: false, // 允许外部访问
+      port: 5173, // 指定端口
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000', // 代理目标地址
+          changeOrigin: true, // 是否改变请求源
+        },
+        '/uploads': {
+          target: 'http://localhost:3000', // 代理目标地址
+          changeOrigin: true,
+        },
       },
-    },
-  }
+    }
 })

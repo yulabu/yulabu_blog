@@ -2,6 +2,7 @@ const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { Post, Tag } = require('@models');
 const { postDetail, postSummary } = require('@vo/post.vo');
+const { finalizeTempImages } = require('@utils/image');
 
 // 获取文章列表（带分类 + 分页）
 exports.getPosts = async (req, res) => {
@@ -37,8 +38,21 @@ exports.getPostById = async (req, res) => {
 
 // 创建文章
 exports.createPost = async (req, res) => {
+  const { temp_id } = req.body;
   const data = createPostDTO(req.body);
   const post = await Post.create(data);
+
+  if (temp_id) {
+    const finalContent = await finalizeTempImages(
+      post.post_id,
+      temp_id,
+      post.post_content
+    );
+    if (finalContent !== post.post_content) {
+      await post.update({ post_content: finalContent });
+    }
+  }
+
   res.status(201).json({ id: post.post_id, message: '创建成功' });
 };
 

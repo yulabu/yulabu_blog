@@ -24,6 +24,17 @@ app.use('/api/notices', noticeRoutes);
 // admin路由
 const adminRoutes = require('@routes/adminRoutes');
 app.use('/api/admin', adminRoutes);
+// 上传路由
+const uploadRoutes = require('@routes/uploadRoutes');
+const { UPLOAD_DIR } = require('@config/upload');
+app.use('/api/upload', uploadRoutes);
+// 静态图片服务
+app.use('/uploads', express.static(UPLOAD_DIR, {
+  dotfiles: 'deny',
+  index: false
+}));
+// 图片清理
+const { cleanupOldTempDirs } = require('@utils/image');
 // 导入模型
 const { Post, Tag, Admin, Notice } = require('@models');
 
@@ -53,4 +64,9 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+// 启动后异步清理过期临时目录，失败不影响服务
+cleanupOldTempDirs().catch(err => {
+  console.error('清理临时目录失败:', err);
 });

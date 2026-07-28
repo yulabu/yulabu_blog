@@ -5,6 +5,7 @@
         <h2 class="title">{{ isEdit ? '编辑文章' : '新建文章' }}</h2>
         <div class="actions">
           <button class="btn-secondary" @click="goBack">返回</button>
+          <button class="btn-secondary" @click="openImportModal">导入附图片Markdown文章</button>
           <button class="btn-primary" @click="onSave">保存</button>
         </div>
       </div>
@@ -47,6 +48,7 @@
             :showCodeRowNumber="true"
             :toolbars="toolbars"
             class="md-editor"
+            @onUploadImg="onUploadImg"
           />
         </div>
       </div>
@@ -73,6 +75,15 @@
         </div>
       </div>
     </div>
+
+    <!-- 导入本地 Markdown 弹窗 -->
+    <ImportMarkdownModal
+      ref="importModalRef"
+      :visible="importModalVisible"
+      :loading="loading"
+      @confirm="handleImport"
+      @cancel="closeImportModal"
+    />
   </div>
 </template>
 
@@ -83,6 +94,12 @@ import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { authFetch } from '@/utils/request'
+import {
+  extractLocalImageRefs,
+  matchImagesByFilename,
+  buildMarkdownWithImageUrls
+} from '@/utils/importMarkdown'
+import ImportMarkdownModal from '@/components/ImportMarkdownModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,6 +120,9 @@ const loading = ref(false)
 const tagModalVisible = ref(false)
 const newTagName = ref('')
 const tagInputRef = ref(null)
+const tempId = ref('')
+const importModalVisible = ref(false)
+const importModalRef = ref(null)
 
 const toolbars = [
   'bold',
@@ -155,6 +175,22 @@ function closeTagModal() {
   newTagName.value = ''
 }
 
+function openImportModal() {
+  importModalVisible.value = true
+}
+
+function closeImportModal() {
+  importModalVisible.value = false
+  importModalRef.value?.reset()
+}
+
+function generateTempId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2)
+}
+
 async function onCreateTag() {
   const name = newTagName.value.trim()
   if (!name) {
@@ -187,6 +223,90 @@ async function onCreateTag() {
   } catch (e) {
     console.error(e)
     toast(e.message || '创建失败', 'error')
+  }
+}
+
+async function uploadImages(files) {
+  const formData = new FormData()
+  files.forEach((f) => formData.append('images', f))
+
+  if (isEdit.value) {
+    formData.append('post_id', String(route.params.id))
+  } else {
+    formData.append('temp_id', tempId.value)
+  }
+
+  const res = await authFetch('/api/upload/batch', {
+    method: 'POST',
+    body: formData
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.message || '上传失败')
+  }
+
+  const data = await res.json()
+  return data.urls
+}
+
+async function onUploadImg(files, callback) {
+  try {
+    const urls = await uploadImages(Array.from(files))
+    callback(urls)
+  } catch (e) {
+    console.error(e)
+    toast(e.message || '图片上传失败', 'error')
+  }
+}
+
+async function handleImport({ markdown, files }) {
+  const refs = extractLocalImageRefs(markdown)
+  if (refs.length === 0) {
+    form.value.content = markdown
+    closeImportModal()
+    return
+  }
+
+  const { matched, unmatched, conflicted } = matchImagesByFilename(refs, files)
+  if (matched.length === 0) {
+    toast('没有匹配到任何图片', 'error')
+    return
+  }
+
+  loading.value = true
+  try {
+    const uniqueFiles = []
+    const seen = new Set()
+    for (const m of matched) {
+      if (!seen.has(m.file)) {
+        seen.add(m.file)
+        uniqueFiles.push(m.file)
+      }
+    }
+
+    const urls = await uploadImages(uniqueFiles)
+    const fileToUrl = new Map()
+    uniqueFiles.forEach((file, i) => fileToUrl.set(file, urls[i]))
+
+    const replacements = matched.map((m) => ({
+      ref: m.ref,
+      url: fileToUrl.get(m.file)
+    }))
+
+    form.value.content = buildMarkdownWithImageUrls(markdown, replacements)
+
+    let msg = `导入完成：成功 ${matched.length} 张`
+    if (unmatched.length) msg += `，未匹配 ${unmatched.length} 张`
+    if (conflicted.length) msg += `，冲突跳过 ${conflicted.length} 张`
+    toast(msg, unmatched.length || conflicted.length ? 'warning' : 'success')
+
+    closeImportModal()
+  } catch (e) {
+    console.error(e)
+    toast(e.message || '导入失败', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -229,6 +349,10 @@ async function onSave() {
       post_category_id: form.value.categoryId ? Number(form.value.categoryId) : null
     }
 
+    if (!isEdit.value) {
+      payload.temp_id = tempId.value
+    }
+
     const url = isEdit.value ? `/api/posts/${route.params.id}` : '/api/posts'
     const method = isEdit.value ? 'PUT' : 'POST'
 
@@ -242,9 +366,12 @@ async function onSave() {
       throw new Error(data.message || '保存失败')
     }
 
-    toast(isEdit.value ? '保存成功' : '创建成功')
-    if (!isEdit.value) {
-      router.push('/admin')
+    if (isEdit.value) {
+      toast('保存成功')
+    } else {
+      const data = await res.json()
+      toast('创建成功')
+      router.push(`/admin/posts/${data.id}/edit`)
     }
   } catch (e) {
     console.error(e)
@@ -259,6 +386,9 @@ function goBack() {
 }
 
 onMounted(() => {
+  if (!isEdit.value) {
+    tempId.value = generateTempId()
+  }
   fetchTags()
   fetchPost()
 })
