@@ -27,14 +27,14 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { formatDate } from '@/utils/date'
+import { getPosts } from '@/api/post'
 
 const posts = ref([])
 const router = useRouter()
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/posts?limit=20')
-    const data = await res.json()
+    const data = await getPosts(1, 20)
     posts.value = data.posts
   } catch (e) {
     console.error('获取文章列表失败:', e)

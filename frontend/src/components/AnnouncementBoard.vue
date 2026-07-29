@@ -29,14 +29,13 @@
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { formatDate } from '@/utils/date'
+import { getPublicNotices } from '@/api/notice'
 
 const notices = ref([])
 
 async function fetchNotices() {
   try {
-    const res = await fetch('/api/notices')
-    if (!res.ok) throw new Error('获取公告失败')
-    const data = await res.json()
+    const data = await getPublicNotices()
     notices.value = data.notices || []
   } catch (e) {
     console.error(e)

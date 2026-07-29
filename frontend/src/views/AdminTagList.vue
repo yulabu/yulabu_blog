@@ -58,7 +58,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { authFetch } from '@/utils/request'
+import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
 
 const { confirm, toast } = useMessageBox()
 
@@ -72,9 +72,7 @@ const inputRef = ref(null)
 async function fetchTags() {
   loading.value = true
   try {
-    const res = await authFetch('/api/tags/')
-    if (!res.ok) throw new Error('获取标签失败')
-    tags.value = await res.json()
+    tags.value = await getTags()
   } catch (e) {
     console.error(e)
     toast('获取标签失败', 'error')
@@ -111,17 +109,10 @@ async function onSave() {
   }
 
   try {
-    const url = editingTag.value ? `/api/tags/${editingTag.value.id}` : '/api/tags/'
-    const method = editingTag.value ? 'PUT' : 'POST'
-
-    const res = await authFetch(url, {
-      method,
-      body: JSON.stringify({ tag_name: name })
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '保存失败')
+    if (editingTag.value) {
+      await updateTag(editingTag.value.id, name)
+    } else {
+      await createTag(name)
     }
 
     toast(editingTag.value ? '保存成功' : '创建成功')
@@ -138,11 +129,7 @@ async function onDelete(id) {
   if (!ok) return
 
   try {
-    const res = await authFetch(`/api/tags/${id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '删除失败')
-    }
+    await deleteTag(id)
     toast('删除成功')
     fetchTags()
   } catch (e) {

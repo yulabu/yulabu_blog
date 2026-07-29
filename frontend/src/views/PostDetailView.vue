@@ -52,6 +52,7 @@ import { useRoute } from 'vue-router'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
+import { getPost } from '@/api/post'
 
 const route = useRoute()
 
@@ -67,10 +68,7 @@ const activeHeading = ref('')
 
 async function fetchPost() {
   try {
-    const res = await fetch(`/api/posts/${route.params.id}`)
-    if (!res.ok) throw new Error('获取文章失败')
-    const data = await res.json()
-    post.value = data
+    post.value = await getPost(Number(route.params.id))
   } catch (e) {
     console.error('获取文章详情失败:', e)
   }

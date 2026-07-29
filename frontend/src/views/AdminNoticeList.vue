@@ -56,7 +56,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { authFetch } from '@/utils/request'
+import { getAdminNotices, togglePin, updateNotice, deleteNotice } from '@/api/notice'
 import { formatDate } from '@/utils/date'
 
 const router = useRouter()
@@ -68,9 +68,7 @@ const loading = ref(false)
 async function fetchNotices() {
   loading.value = true
   try {
-    const res = await authFetch('/api/admin/notices')
-    if (!res.ok) throw new Error('获取公告列表失败')
-    const data = await res.json()
+    const data = await getAdminNotices()
     notices.value = data.notices
   } catch (e) {
     console.error(e)
@@ -90,8 +88,7 @@ function goEdit(id) {
 
 async function onTogglePin(notice) {
   try {
-    const res = await authFetch(`/api/admin/notices/${notice.notice_id}/pin`, { method: 'PUT' })
-    if (!res.ok) throw new Error('操作失败')
+    await togglePin(notice.notice_id)
     toast(notice.notice_is_pinned ? '已取消置顶' : '已置顶')
     fetchNotices()
   } catch (e) {
@@ -103,11 +100,7 @@ async function onTogglePin(notice) {
 async function onToggleStatus(notice) {
   const newStatus = notice.notice_status === 'show' ? 'hide' : 'show'
   try {
-    const res = await authFetch(`/api/admin/notices/${notice.notice_id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ notice_status: newStatus })
-    })
-    if (!res.ok) throw new Error('操作失败')
+    await updateNotice(notice.notice_id, { status: newStatus })
     toast(newStatus === 'show' ? '已显示' : '已隐藏')
     fetchNotices()
   } catch (e) {
@@ -121,8 +114,7 @@ async function onDelete(id) {
   if (!ok) return
 
   try {
-    const res = await authFetch(`/api/admin/notices/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('删除失败')
+    await deleteNotice(id)
     toast('删除成功')
     fetchNotices()
   } catch (e) {

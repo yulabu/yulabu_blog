@@ -80,17 +80,17 @@
 
         <div class="form-group">
           <label>旧密码</label>
-          <input v-model="passwordForm.old_password" type="password" />
+          <input v-model="passwordForm.oldPassword" type="password" />
         </div>
 
         <div class="form-group">
           <label>新密码</label>
-          <input v-model="passwordForm.new_password" type="password" placeholder="至少 8 位" />
+          <input v-model="passwordForm.newPassword" type="password" placeholder="至少 8 位" />
         </div>
 
         <div class="form-group">
           <label>确认新密码</label>
-          <input v-model="passwordForm.confirm_password" type="password" />
+          <input v-model="passwordForm.confirmPassword" type="password" />
         </div>
 
         <div class="modal-actions">
@@ -105,7 +105,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { authFetch } from '@/utils/request'
+import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import Pagination from '@/components/Pagination.vue'
 
@@ -131,9 +131,7 @@ function avatarUrl(src) {
 async function fetchAdmins() {
   loading.value = true
   try {
-    const res = await authFetch(`/api/admin/admins?page=${page.value}&limit=10`)
-    if (!res.ok) throw new Error('获取管理员列表失败')
-    const data = await res.json()
+    const data = await getAdmins(page.value, 10)
     admins.value = data.admins || []
     totalPages.value = data.totalPages || 1
   } catch (e) {
@@ -183,26 +181,15 @@ async function submitForm() {
 
   try {
     const payload = {
-      admin_name: form.value.name,
-      admin_avatar: form.value.avatar || null
-    }
-    if (!isEditing.value) {
-      payload.admin_password = form.value.password
+      name: form.value.name,
+      avatar: form.value.avatar || null,
+      password: form.value.password || null
     }
 
-    const res = isEditing.value
-      ? await authFetch(`/api/admin/admins/${form.value.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload)
-        })
-      : await authFetch('/api/admin/admins', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '保存失败')
+    if (isEditing.value) {
+      await updateAdmin(form.value.id, payload)
+    } else {
+      await createAdmin(payload)
     }
 
     toast(isEditing.value ? '修改成功' : '创建成功')
@@ -223,13 +210,7 @@ async function onDelete(admin) {
   if (!ok) return
 
   try {
-    const res = await authFetch(`/api/admin/admins/${admin.id}`, {
-      method: 'DELETE'
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '删除失败')
-    }
+    await deleteAdmin(admin.id)
     toast('删除成功')
     fetchAdmins()
   } catch (e) {
@@ -238,10 +219,10 @@ async function onDelete(admin) {
 }
 
 const passwordVisible = ref(false)
-const passwordForm = ref({ old_password: '', new_password: '', confirm_password: '' })
+const passwordForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
 function openPasswordChange() {
-  passwordForm.value = { old_password: '', new_password: '', confirm_password: '' }
+  passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
   passwordVisible.value = true
 }
 
@@ -250,15 +231,15 @@ function closePassword() {
 }
 
 function validatePassword() {
-  if (!passwordForm.value.old_password) {
+  if (!passwordForm.value.oldPassword) {
     toast('请输入旧密码', 'error')
     return false
   }
-  if (!passwordForm.value.new_password || passwordForm.value.new_password.length < 8) {
+  if (!passwordForm.value.newPassword || passwordForm.value.newPassword.length < 8) {
     toast('新密码至少需要 8 位', 'error')
     return false
   }
-  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
     toast('两次输入的新密码不一致', 'error')
     return false
   }
@@ -269,17 +250,10 @@ async function submitPassword() {
   if (!validatePassword()) return
 
   try {
-    const res = await authFetch(`/api/admin/admins/${currentAdmin.value.id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        old_password: passwordForm.value.old_password,
-        new_password: passwordForm.value.new_password
-      })
+    await updateAdmin(currentAdmin.value.id, {
+      oldPassword: passwordForm.value.oldPassword,
+      newPassword: passwordForm.value.newPassword
     })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '修改失败')
-    }
     toast('密码修改成功')
     closePassword()
   } catch (e) {

@@ -25,15 +25,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import { getTags } from '@/api/tag'
 
 const tags = ref([])
 const loading = ref(true)
 
 async function fetchTags() {
   try {
-    const res = await fetch('/api/tags/')
-    if (!res.ok) throw new Error('获取标签失败')
-    const data = await res.json()
+    const data = await getTags()
     tags.value = (data || []).filter(tag => tag.count > 0)
   } catch (err) {
     console.error(err)

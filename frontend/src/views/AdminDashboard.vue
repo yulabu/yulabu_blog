@@ -107,7 +107,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { authFetch } from '@/utils/request'
+import { getDashboard } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import Calendar from '@/components/Calendar.vue'
 import DashboardWelcomeCard from '@/components/DashboardWelcomeCard.vue'
@@ -138,9 +138,7 @@ onMounted(() => {
 async function fetchDashboard() {
   loading.value = true
   try {
-    const res = await authFetch('/api/admin/dashboard')
-    if (!res.ok) throw new Error('获取工作台数据失败')
-    const data = await res.json()
+    const data = await getDashboard()
     stats.value = {
       todayCount: data.todayCount || 0,
       totalCount: data.totalCount || 0,

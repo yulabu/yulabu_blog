@@ -12,13 +12,13 @@
       <div class="form">
         <div class="form-row">
           <label class="form-label">标题</label>
-          <input v-model="form.notice_title" class="form-input" type="text" placeholder="请输入公告标题" />
+          <input v-model="form.title" class="form-input" type="text" placeholder="请输入公告标题" />
         </div>
 
         <div class="form-row inline">
           <div class="form-group">
             <label class="form-label">状态</label>
-            <select v-model="form.notice_status" class="form-select">
+            <select v-model="form.status" class="form-select">
               <option value="show">显示</option>
               <option value="hide">隐藏</option>
             </select>
@@ -26,7 +26,7 @@
           <div class="form-group checkbox-group">
             <label class="form-label">置顶</label>
             <label class="checkbox-wrap">
-              <input v-model="form.notice_is_pinned" type="checkbox" />
+              <input v-model="form.isPinned" type="checkbox" />
               <span>置顶公告</span>
             </label>
           </div>
@@ -35,7 +35,7 @@
         <div class="form-row editor-row">
           <label class="form-label">内容</label>
           <MdEditor
-            v-model="form.notice_content"
+            v-model="form.content"
             theme="light"
             previewTheme="github"
             codeTheme="github"
@@ -55,7 +55,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { authFetch } from '@/utils/request'
+import { getNotice, createNotice, updateNotice } from '@/api/notice'
 
 const route = useRoute()
 const router = useRouter()
@@ -64,10 +64,10 @@ const { toast } = useMessageBox()
 const isEdit = computed(() => !!route.params.id)
 
 const form = ref({
-  notice_title: '',
-  notice_content: '',
-  notice_status: 'show',
-  notice_is_pinned: false
+  title: '',
+  content: '',
+  status: 'show',
+  isPinned: false
 })
 
 const loading = ref(false)
@@ -103,14 +103,12 @@ const toolbars = [
 async function fetchNotice() {
   if (!isEdit.value) return
   try {
-    const res = await authFetch(`/api/admin/notices/${route.params.id}`)
-    if (!res.ok) throw new Error('获取公告失败')
-    const notice = await res.json()
+    const notice = await getNotice(Number(route.params.id))
     form.value = {
-      notice_title: notice.notice_title || '',
-      notice_content: notice.notice_content || '',
-      notice_status: notice.notice_status || 'show',
-      notice_is_pinned: !!notice.notice_is_pinned
+      title: notice.notice_title || '',
+      content: notice.notice_content || '',
+      status: notice.notice_status || 'show',
+      isPinned: !!notice.notice_is_pinned
     }
   } catch (e) {
     console.error(e)
@@ -119,8 +117,8 @@ async function fetchNotice() {
 }
 
 async function onSave() {
-  const title = form.value.notice_title.trim()
-  const content = form.value.notice_content.trim()
+  const title = form.value.title.trim()
+  const content = form.value.content.trim()
 
   if (!title) {
     toast('标题不能为空', 'error')
@@ -133,24 +131,17 @@ async function onSave() {
 
   loading.value = true
   try {
-    const payload = {
-      notice_title: title,
-      notice_content: content,
-      notice_status: form.value.notice_status,
-      notice_is_pinned: form.value.notice_is_pinned
+    const noticeForm = {
+      title,
+      content,
+      status: form.value.status,
+      isPinned: form.value.isPinned
     }
 
-    const url = isEdit.value ? `/api/admin/notices/${route.params.id}` : '/api/admin/notices'
-    const method = isEdit.value ? 'PUT' : 'POST'
-
-    const res = await authFetch(url, {
-      method,
-      body: JSON.stringify(payload)
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '保存失败')
+    if (isEdit.value) {
+      await updateNotice(Number(route.params.id), noticeForm)
+    } else {
+      await createNotice(noticeForm)
     }
 
     toast(isEdit.value ? '保存成功' : '创建成功')

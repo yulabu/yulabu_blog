@@ -53,7 +53,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { authFetch } from '@/utils/request'
+import { getPosts, deletePost } from '@/api/post'
 import { formatDate } from '@/utils/date'
 import Pagination from '@/components/Pagination.vue'
 
@@ -68,9 +68,7 @@ const loading = ref(false)
 async function fetchPosts() {
   loading.value = true
   try {
-    const res = await authFetch(`/api/posts?limit=10&page=${page.value}`)
-    if (!res.ok) throw new Error('获取文章列表失败')
-    const data = await res.json()
+    const data = await getPosts(page.value, 10)
     posts.value = data.posts
     totalPages.value = data.totalPages || 1
   } catch (e) {
@@ -96,8 +94,7 @@ async function onDelete(id) {
   if (!ok) return
 
   try {
-    const res = await authFetch(`/api/posts/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('删除失败')
+    await deletePost(id)
     toast('删除成功')
     fetchPosts()
   } catch (e) {

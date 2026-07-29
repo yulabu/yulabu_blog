@@ -93,7 +93,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { authFetch } from '@/utils/request'
+import { getTags, createTag } from '@/api/tag'
+import { getPost, createPost, updatePost } from '@/api/post'
+import { uploadImages } from '@/api/upload'
 import {
   extractLocalImageRefs,
   matchImagesByFilename,
@@ -154,9 +156,7 @@ const toolbars = [
 
 async function fetchTags() {
   try {
-    const res = await fetch('/api/tags/')
-    if (!res.ok) throw new Error('获取标签失败')
-    tags.value = await res.json()
+    tags.value = await getTags()
   } catch (e) {
     console.error(e)
   }
@@ -205,17 +205,7 @@ async function onCreateTag() {
   }
 
   try {
-    const res = await authFetch('/api/tags/', {
-      method: 'POST',
-      body: JSON.stringify({ tag_name: name })
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '创建失败')
-    }
-
-    const newTag = await res.json()
+    const newTag = await createTag(name)
     toast('分类创建成功')
     closeTagModal()
     await fetchTags()
@@ -226,33 +216,18 @@ async function onCreateTag() {
   }
 }
 
-async function uploadImages(files) {
-  const formData = new FormData()
-  files.forEach((f) => formData.append('images', f))
-
-  if (isEdit.value) {
-    formData.append('post_id', String(route.params.id))
-  } else {
-    formData.append('temp_id', tempId.value)
-  }
-
-  const res = await authFetch('/api/upload/batch', {
-    method: 'POST',
-    body: formData
+async function handleUploadImages(files) {
+  const urls = await uploadImages({
+    files,
+    postId: isEdit.value ? Number(route.params.id) : undefined,
+    tempId: isEdit.value ? undefined : tempId.value
   })
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.message || '上传失败')
-  }
-
-  const data = await res.json()
-  return data.urls
+  return urls
 }
 
 async function onUploadImg(files, callback) {
   try {
-    const urls = await uploadImages(Array.from(files))
+    const urls = await handleUploadImages(Array.from(files))
     callback(urls)
   } catch (e) {
     console.error(e)
@@ -285,7 +260,7 @@ async function handleImport({ markdown, files }) {
       }
     }
 
-    const urls = await uploadImages(uniqueFiles)
+    const urls = await handleUploadImages(uniqueFiles)
     const fileToUrl = new Map()
     uniqueFiles.forEach((file, i) => fileToUrl.set(file, urls[i]))
 
@@ -313,9 +288,7 @@ async function handleImport({ markdown, files }) {
 async function fetchPost() {
   if (!isEdit.value) return
   try {
-    const res = await authFetch(`/api/posts/${route.params.id}`)
-    if (!res.ok) throw new Error('获取文章失败')
-    const post = await res.json()
+    const post = await getPost(Number(route.params.id))
     form.value = {
       title: post.title || '',
       summary: post.summary || '',
@@ -341,35 +314,19 @@ async function onSave() {
 
   loading.value = true
   try {
-    const payload = {
-      post_title: form.value.title.trim(),
-      post_content: form.value.content,
-      post_summary: form.value.summary.trim() || null,
-      post_author: form.value.author.trim() || '匿名',
-      post_category_id: form.value.categoryId ? Number(form.value.categoryId) : null
-    }
-
-    if (!isEdit.value) {
-      payload.temp_id = tempId.value
-    }
-
-    const url = isEdit.value ? `/api/posts/${route.params.id}` : '/api/posts'
-    const method = isEdit.value ? 'PUT' : 'POST'
-
-    const res = await authFetch(url, {
-      method,
-      body: JSON.stringify(payload)
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.message || '保存失败')
+    const postForm = {
+      title: form.value.title.trim(),
+      content: form.value.content,
+      summary: form.value.summary.trim(),
+      author: form.value.author.trim(),
+      categoryId: form.value.categoryId ? Number(form.value.categoryId) : null
     }
 
     if (isEdit.value) {
+      await updatePost(Number(route.params.id), postForm)
       toast('保存成功')
     } else {
-      const data = await res.json()
+      const data = await createPost(postForm, tempId.value)
       toast('创建成功')
       router.push(`/admin/posts/${data.id}/edit`)
     }

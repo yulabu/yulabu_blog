@@ -417,6 +417,7 @@ section .color3::before{
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { login } from '@/api/auth'
 
 const admin_name = ref('')
 const admin_password = ref('')
@@ -430,21 +431,15 @@ async function handleLogin() {
     return
   }
   try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        admin_name: admin_name.value,
-        admin_password: admin_password.value,
-      }),
+    const data = await login({
+      admin_name: admin_name.value,
+      admin_password: admin_password.value
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || '登录失败')
     localStorage.setItem('token', data.token)
     localStorage.setItem('admin', JSON.stringify(data.admin))
     router.push('/admin')
   } catch (e) {
-    loginError.value = e.message
+    loginError.value = e.message || '登录失败'
   }
 }
 </script>

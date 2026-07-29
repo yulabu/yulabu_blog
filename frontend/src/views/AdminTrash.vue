@@ -50,7 +50,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { authFetch } from '@/utils/request'
+import { getTrashPosts, restorePost, forceDeletePost } from '@/api/admin'
 import { formatDateTime } from '@/utils/date'
 import Pagination from '@/components/Pagination.vue'
 
@@ -66,9 +66,7 @@ const loading = ref(false)
 async function fetchTrash() {
   loading.value = true
   try {
-    const res = await authFetch(`/api/admin/posts/trash?limit=10&page=${page.value}`)
-    if (!res.ok) throw new Error('获取回收站列表失败')
-    const data = await res.json()
+    const data = await getTrashPosts(page.value, 10)
     posts.value = data.posts
     total.value = data.total || 0
     totalPages.value = data.totalPages || 1
@@ -87,8 +85,7 @@ async function onRestore(id) {
   if (!ok) return
 
   try {
-    const res = await authFetch(`/api/admin/posts/${id}/restore`, { method: 'PUT' })
-    if (!res.ok) throw new Error('恢复失败')
+    await restorePost(id)
     toast('恢复成功')
     fetchTrash()
   } catch (e) {
@@ -102,8 +99,7 @@ async function onForceDelete(id) {
   if (!ok) return
 
   try {
-    const res = await authFetch(`/api/admin/posts/${id}/force`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('删除失败')
+    await forceDeletePost(id)
     toast('已彻底删除')
     fetchTrash()
   } catch (e) {
