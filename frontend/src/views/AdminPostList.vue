@@ -22,7 +22,7 @@
         </template>
 
         <template #cell-status="{ row }">
-          <span class="status" :class="row.status">{{ statusText(row.status) }}</span>
+          <AdminStatusBadge :type="row.status" />
         </template>
 
         <template #cell-createdAt="{ row }">
@@ -50,6 +50,7 @@ import { getPosts, deletePost } from '@/api/post'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
+import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
@@ -107,9 +108,6 @@ async function onDelete(id) {
   }
 }
 
-function statusText(status) {
-  return status === 'published' ? '已发布' : '回收站'
-}
 </script>
 
 <style scoped>
@@ -148,22 +146,6 @@ function statusText(status) {
   background: rgba(99, 149, 86, 0.85);
   color: white;
   font-size: 12px;
-}
-
-.status {
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.status.published {
-  background: rgba(99, 149, 86, 0.15);
-  color: rgb(45, 90, 65);
-}
-
-.status.trash {
-  background: rgba(120, 120, 120, 0.15);
-  color: rgb(100, 100, 100);
 }
 
 .actions {

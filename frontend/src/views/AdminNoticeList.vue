@@ -16,15 +16,11 @@
         </template>
 
         <template #cell-notice_status="{ row }">
-          <span class="status" :class="row.notice_status">
-            {{ statusText(row.notice_status) }}
-          </span>
+          <AdminStatusBadge :type="row.notice_status" />
         </template>
 
         <template #cell-notice_is_pinned="{ row }">
-          <span class="pin" :class="{ active: row.notice_is_pinned }">
-            {{ row.notice_is_pinned ? '置顶' : '普通' }}
-          </span>
+          <AdminStatusBadge :type="row.notice_is_pinned ? 'pinned' : 'normal'" />
         </template>
 
         <template #cell-notice_created_at="{ row }">
@@ -56,6 +52,7 @@ import { getAdminNotices, togglePin, updateNotice, deleteNotice } from '@/api/no
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
+import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 
 const router = useRouter()
 const { confirm, toast } = useMessageBox()
@@ -129,10 +126,6 @@ async function onDelete(id) {
   }
 }
 
-function statusText(status) {
-  return status === 'show' ? '显示' : '隐藏'
-}
-
 onMounted(fetchNotices)
 </script>
 
@@ -164,35 +157,6 @@ onMounted(fetchNotices)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.status {
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.status.show {
-  background: rgba(99, 149, 86, 0.15);
-  color: rgb(45, 90, 65);
-}
-
-.status.hide {
-  background: rgba(120, 120, 120, 0.15);
-  color: rgb(100, 100, 100);
-}
-
-.pin {
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-  background: rgba(120, 120, 120, 0.12);
-  color: rgb(100, 100, 100);
-}
-
-.pin.active {
-  background: rgba(230, 160, 80, 0.2);
-  color: rgb(180, 120, 40);
 }
 
 .actions {
