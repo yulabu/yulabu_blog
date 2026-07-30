@@ -2,8 +2,8 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import Navbar from '@/components/Navbar.vue'
-import MessageBox from '@/components/MessageBox.vue'
+import Navbar from '@/components/common/Navbar.vue'
+import MessageBox from '@/components/common/MessageBox.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()

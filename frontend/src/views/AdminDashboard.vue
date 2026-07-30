@@ -110,8 +110,8 @@ import { Icon } from '@iconify/vue'
 import { useAuthStore } from '@/stores/auth'
 import { getDashboard } from '@/api/admin'
 import { formatDate } from '@/utils/date'
-import Calendar from '@/components/Calendar.vue'
-import DashboardWelcomeCard from '@/components/DashboardWelcomeCard.vue'
+import Calendar from '@/components/admin/Calendar.vue'
+import DashboardWelcomeCard from '@/components/admin/DashboardWelcomeCard.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

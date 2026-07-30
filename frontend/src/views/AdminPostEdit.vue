@@ -101,7 +101,7 @@ import {
   matchImagesByFilename,
   buildMarkdownWithImageUrls
 } from '@/utils/importMarkdown'
-import ImportMarkdownModal from '@/components/ImportMarkdownModal.vue'
+import ImportMarkdownModal from '@/components/admin/ImportMarkdownModal.vue'
 
 const route = useRoute()
 const router = useRouter()

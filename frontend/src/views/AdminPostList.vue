@@ -55,7 +55,7 @@ import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getPosts, deletePost } from '@/api/post'
 import { formatDate } from '@/utils/date'
-import Pagination from '@/components/Pagination.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
 const { confirm, toast } = useMessageBox()

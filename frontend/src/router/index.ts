@@ -9,7 +9,7 @@ import HomeView from '@/views/HomeView.vue';
 const PostDetailView = () => import('@/views/PostDetailView.vue');
 
 // 后台所有组件：统一打包到 admin chunk，按需加载
-const AdminLayout = () => import(/* webpackChunkName: "admin" */ '@/components/AdminLayout.vue');
+const AdminLayout = () => import(/* webpackChunkName: "admin" */ '@/components/admin/AdminLayout.vue');
 const AdminDashboard = () => import(/* webpackChunkName: "admin" */ '@/views/AdminDashboard.vue');
 const AdminPostList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminPostList.vue');
 const AdminPostEdit = () => import(/* webpackChunkName: "admin" */ '@/views/AdminPostEdit.vue');

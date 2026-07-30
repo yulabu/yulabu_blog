@@ -20,12 +20,12 @@
     
 </template>
 <script setup>
-import PersonalCard from '@/components/PersonalCard.vue';
-import TagBox from '@/components/TagBox.vue';
-import WelcomeBanner from '@/components/WelcomeBanner.vue';
-import PostList from '@/components/PostList.vue';
-import MusicPlayer from '@/components/MusicPlayer.vue';
-import AnnouncementBoard from '@/components/AnnouncementBoard.vue';
+import PersonalCard from '@/components/home/PersonalCard.vue';
+import TagBox from '@/components/home/TagBox.vue';
+import WelcomeBanner from '@/components/home/WelcomeBanner.vue';
+import PostList from '@/components/home/PostList.vue';
+import MusicPlayer from '@/components/home/MusicPlayer.vue';
+import AnnouncementBoard from '@/components/home/AnnouncementBoard.vue';
 </script>
 <style scoped>
     .page-bg{

@@ -108,7 +108,7 @@ import { useMessageBox } from '@/composables/useMessageBox'
 import { useAuthStore } from '@/stores/auth'
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
 import { formatDate } from '@/utils/date'
-import Pagination from '@/components/Pagination.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 const { confirm, toast } = useMessageBox()
 const authStore = useAuthStore()
