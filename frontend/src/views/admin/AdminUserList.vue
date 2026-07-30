@@ -37,64 +37,58 @@
     </AdminPageCard>
 
     <!-- 新增/编辑弹窗 -->
-    <div v-if="formVisible" class="overlay" @click="closeForm">
-      <div class="modal" @click.stop>
-        <h3 class="modal-title">{{ isEditing ? '编辑管理员' : '新建管理员' }}</h3>
-
-        <div class="form-group">
-          <label>用户名</label>
-          <input v-model.trim="form.name" type="text" placeholder="至少 6 位" />
-        </div>
-
-        <div v-if="!isEditing" class="form-group">
-          <label>密码</label>
-          <input v-model="form.password" type="password" placeholder="至少 8 位" />
-        </div>
-
-        <div class="form-group">
-          <label>头像 URL（可选）</label>
-          <input v-model.trim="form.avatar" type="text" placeholder="留空使用默认头像" />
-        </div>
-
-        <div v-if="isEditing && form.id === currentAdmin.id" class="form-group">
-          <button class="btn-text" @click="openPasswordChange">
-            修改密码
-          </button>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="closeForm">取消</button>
-          <button class="btn-confirm" @click="submitForm">保存</button>
-        </div>
+    <AdminModal
+      v-model:visible="formVisible"
+      :title="isEditing ? '编辑管理员' : '新建管理员'"
+      confirm-text="保存"
+      :confirm-loading="saving"
+      @confirm="submitForm"
+    >
+      <div class="form-group">
+        <label>用户名</label>
+        <input v-model.trim="form.name" type="text" placeholder="至少 6 位" />
       </div>
-    </div>
+
+      <div v-if="!isEditing" class="form-group">
+        <label>密码</label>
+        <input v-model="form.password" type="password" placeholder="至少 8 位" />
+      </div>
+
+      <div class="form-group">
+        <label>头像 URL（可选）</label>
+        <input v-model.trim="form.avatar" type="text" placeholder="留空使用默认头像" />
+      </div>
+
+      <div v-if="isEditing && form.id === currentAdmin.id" class="form-group">
+        <button class="btn-text" @click="openPasswordChange">
+          修改密码
+        </button>
+      </div>
+    </AdminModal>
 
     <!-- 修改密码弹窗 -->
-    <div v-if="passwordVisible" class="overlay" @click="closePassword">
-      <div class="modal" @click.stop>
-        <h3 class="modal-title">修改密码</h3>
-
-        <div class="form-group">
-          <label>旧密码</label>
-          <input v-model="passwordForm.oldPassword" type="password" />
-        </div>
-
-        <div class="form-group">
-          <label>新密码</label>
-          <input v-model="passwordForm.newPassword" type="password" placeholder="至少 8 位" />
-        </div>
-
-        <div class="form-group">
-          <label>确认新密码</label>
-          <input v-model="passwordForm.confirmPassword" type="password" />
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="closePassword">取消</button>
-          <button class="btn-confirm" @click="submitPassword">保存</button>
-        </div>
+    <AdminModal
+      v-model:visible="passwordVisible"
+      title="修改密码"
+      confirm-text="保存"
+      :confirm-loading="passwordSaving"
+      @confirm="submitPassword"
+    >
+      <div class="form-group">
+        <label>旧密码</label>
+        <input v-model="passwordForm.oldPassword" type="password" />
       </div>
-    </div>
+
+      <div class="form-group">
+        <label>新密码</label>
+        <input v-model="passwordForm.newPassword" type="password" placeholder="至少 8 位" />
+      </div>
+
+      <div class="form-group">
+        <label>确认新密码</label>
+        <input v-model="passwordForm.confirmPassword" type="password" />
+      </div>
+    </AdminModal>
   </div>
 </template>
 
@@ -106,6 +100,7 @@ import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
+import AdminModal from '@/components/admin/AdminModal.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const { confirm, toast } = useMessageBox()
@@ -148,6 +143,7 @@ watch(page, fetchAdmins, { immediate: true })
 const formVisible = ref(false)
 const isEditing = ref(false)
 const form = ref({ id: null, name: '', password: '', avatar: '' })
+const saving = ref(false)
 
 function openCreate() {
   isEditing.value = false
@@ -180,6 +176,7 @@ function validateForm() {
 async function submitForm() {
   if (!validateForm()) return
 
+  saving.value = true
   try {
     const payload = {
       name: form.value.name,
@@ -201,6 +198,8 @@ async function submitForm() {
     fetchAdmins()
   } catch (e) {
     toast(e.message, 'error')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -224,6 +223,7 @@ async function onDelete(admin) {
 
 const passwordVisible = ref(false)
 const passwordForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
+const passwordSaving = ref(false)
 
 function openPasswordChange() {
   passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
@@ -253,6 +253,7 @@ function validatePassword() {
 async function submitPassword() {
   if (!validatePassword()) return
 
+  passwordSaving.value = true
   try {
     await updateAdmin(currentAdmin.value.id, {
       oldPassword: passwordForm.value.oldPassword,
@@ -262,6 +263,8 @@ async function submitPassword() {
     closePassword()
   } catch (e) {
     toast(e.message, 'error')
+  } finally {
+    passwordSaving.value = false
   }
 }
 </script>
@@ -346,42 +349,6 @@ async function submitPassword() {
   color: rgb(120, 140, 125);
 }
 
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.modal {
-  min-width: 360px;
-  max-width: 480px;
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .85),
-      rgba(255, 255, 255, .65));
-  backdrop-filter: blur(16px);
-}
-
-.modal-title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0 0 20px;
-}
-
 .form-group {
   margin-bottom: 16px;
 }
@@ -407,40 +374,5 @@ async function submitPassword() {
 
 .form-group input:focus {
   border-color: rgb(99, 149, 86);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 24px;
-}
-
-.modal-actions button {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-confirm {
-  background: rgb(99, 149, 86);
-  color: white;
-}
-
-.btn-confirm:hover {
-  background: rgb(79, 129, 66);
-}
-
-.btn-cancel {
-  background: rgba(80, 140, 134, 0.12);
-  color: rgb(65, 110, 65);
-}
-
-.btn-cancel:hover {
-  background: rgba(80, 140, 134, 0.22);
 }
 </style>

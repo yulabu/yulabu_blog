@@ -24,26 +24,24 @@
     </AdminPageCard>
 
     <!-- 弹窗 -->
-    <div v-if="modalVisible" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <h3 class="modal-title">{{ editingTag ? '编辑标签' : '新建标签' }}</h3>
-        <div class="form-row">
-          <label class="form-label">标签名</label>
-          <input
-            ref="inputRef"
-            v-model="form.name"
-            class="form-input"
-            type="text"
-            placeholder="请输入标签名"
-            @keyup.enter="onSave"
-          />
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeModal">取消</button>
-          <button class="btn btn-primary" @click="onSave">确定</button>
-        </div>
+    <AdminModal
+      v-model:visible="modalVisible"
+      :title="editingTag ? '编辑标签' : '新建标签'"
+      confirm-text="确定"
+      @confirm="onSave"
+    >
+      <div class="form-row">
+        <label class="form-label">标签名</label>
+        <input
+          ref="inputRef"
+          v-model="form.name"
+          class="form-input"
+          type="text"
+          placeholder="请输入标签名"
+          @keyup.enter="onSave"
+        />
       </div>
-    </div>
+    </AdminModal>
   </div>
 </template>
 
@@ -53,6 +51,7 @@ import { useMessageBox } from '@/composables/useMessageBox'
 import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
+import AdminModal from '@/components/admin/AdminModal.vue'
 
 const { confirm, toast } = useMessageBox()
 
@@ -199,41 +198,6 @@ onMounted(() => {
   background: rgba(200, 80, 80, 0.1);
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.modal {
-  min-width: 360px;
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .85),
-      rgba(255, 255, 255, .65));
-  backdrop-filter: blur(16px);
-}
-
-.modal-title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0 0 20px;
-}
-
 .form-row {
   display: flex;
   flex-direction: column;
@@ -261,39 +225,5 @@ onMounted(() => {
 
 .form-input:focus {
   border-color: rgb(99, 149, 86);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.btn {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-primary {
-  background: rgb(99, 149, 86);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: rgb(79, 129, 66);
-}
-
-.btn-secondary {
-  background: rgba(80, 140, 134, 0.12);
-  color: rgb(65, 110, 105);
-}
-
-.btn-secondary:hover {
-  background: rgba(80, 140, 134, 0.22);
 }
 </style>

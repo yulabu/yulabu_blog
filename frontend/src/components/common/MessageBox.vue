@@ -1,24 +1,30 @@
 <template>
   <Teleport to="body">
-    <!-- 遮罩层：alert 和 confirm 显示 -->
-    <div
+    <BaseModal
       v-if="state.visible && (state.type === 'alert' || state.type === 'confirm')"
-      class="overlay"
-      @click="onOverlayClick"
+      class="message-box-modal"
+      :visible="state.visible"
+      :title="state.title"
+      @cancel="onCancel"
     >
-      <div class="modal" @click.stop>
-        <h3 v-if="state.title" class="modal-title">{{ state.title }}</h3>
-        <p class="modal-message">{{ state.message }}</p>
-        <div class="modal-actions">
-          <button v-if="state.type === 'confirm'" class="btn btn-cancel" @click="onCancel">
-            取消
-          </button>
-          <button class="btn btn-confirm" @click="onConfirm">
-            {{ state.type === 'confirm' ? '确定' : '知道了' }}
-          </button>
-        </div>
-      </div>
-    </div>
+      <p class="modal-message">{{ state.message }}</p>
+
+      <template #footer>
+        <button
+          v-if="state.type === 'confirm'"
+          class="message-box-btn message-box-btn--cancel"
+          @click="onCancel"
+        >
+          取消
+        </button>
+        <button
+          class="message-box-btn message-box-btn--confirm"
+          @click="onConfirm"
+        >
+          {{ state.type === 'confirm' ? '确定' : '知道了' }}
+        </button>
+      </template>
+    </BaseModal>
 
     <!-- toast -->
     <Transition name="toast">
@@ -35,16 +41,9 @@
 
 <script setup>
 import { useMessageBox } from '@/composables/useMessageBox'
+import BaseModal from '@/components/common/BaseModal.vue'
 
 const { state, close } = useMessageBox()
-
-function onOverlayClick() {
-  if (state.type === 'alert') {
-    close(true)
-  } else if (state.type === 'confirm') {
-    close(false)
-  }
-}
 
 function onConfirm() {
   close(true)
@@ -56,21 +55,12 @@ function onCancel() {
 </script>
 
 <style scoped>
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+.message-box-modal :deep(.base-modal__overlay) {
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
 }
 
-.modal {
+.message-box-modal :deep(.base-modal__dialog) {
   min-width: 320px;
   max-width: 420px;
   padding: 24px;
@@ -84,28 +74,22 @@ function onCancel() {
   backdrop-filter: blur(16px);
 }
 
-.modal-title {
+.message-box-modal :deep(.base-modal__title) {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 18px;
   font-weight: 600;
   color: rgb(45, 90, 65);
-  margin: 0 0 12px;
+  margin: 0;
 }
 
 .modal-message {
   font-size: 14px;
   color: rgb(65, 110, 105);
   line-height: 1.6;
-  margin: 0 0 20px;
+  margin: 0;
 }
 
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.btn {
+.message-box-btn {
   padding: 8px 18px;
   border-radius: 8px;
   border: none;
@@ -115,21 +99,21 @@ function onCancel() {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
 }
 
-.btn-confirm {
+.message-box-btn--confirm {
   background: rgb(99, 149, 86);
   color: white;
 }
 
-.btn-confirm:hover {
+.message-box-btn--confirm:hover {
   background: rgb(79, 129, 66);
 }
 
-.btn-cancel {
+.message-box-btn--cancel {
   background: rgba(80, 140, 134, 0.12);
-  color: rgb(65, 110, 105);
+  color: rgb(65, 110, 65);
 }
 
-.btn-cancel:hover {
+.message-box-btn--cancel:hover {
   background: rgba(80, 140, 134, 0.22);
 }
 

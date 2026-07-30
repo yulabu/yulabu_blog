@@ -55,26 +55,25 @@
     </div>
 
     <!-- 新建分类弹窗 -->
-    <div v-if="tagModalVisible" class="modal-overlay" @click="closeTagModal">
-      <div class="modal" @click.stop>
-        <h3 class="modal-title">新建分类</h3>
-        <div class="form-row">
-          <label class="form-label">分类名</label>
-          <input
-            ref="tagInputRef"
-            v-model="newTagName"
-            class="form-input"
-            type="text"
-            placeholder="请输入分类名"
-            @keyup.enter="onCreateTag"
-          />
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeTagModal">取消</button>
-          <button class="btn btn-primary" @click="onCreateTag">确定</button>
-        </div>
+    <AdminModal
+      v-model:visible="tagModalVisible"
+      title="新建分类"
+      confirm-text="确定"
+      :confirm-loading="tagSaving"
+      @confirm="onCreateTag"
+    >
+      <div class="form-row">
+        <label class="form-label">分类名</label>
+        <input
+          ref="tagInputRef"
+          v-model="newTagName"
+          class="form-input"
+          type="text"
+          placeholder="请输入分类名"
+          @keyup.enter="onCreateTag"
+        />
       </div>
-    </div>
+    </AdminModal>
 
     <!-- 导入本地 Markdown 弹窗 -->
     <ImportMarkdownModal
@@ -101,6 +100,7 @@ import {
   matchImagesByFilename,
   buildMarkdownWithImageUrls
 } from '@/utils/importMarkdown'
+import AdminModal from '@/components/admin/AdminModal.vue'
 import ImportMarkdownModal from '@/components/admin/ImportMarkdownModal.vue'
 
 const route = useRoute()
@@ -122,6 +122,7 @@ const loading = ref(false)
 const tagModalVisible = ref(false)
 const newTagName = ref('')
 const tagInputRef = ref(null)
+const tagSaving = ref(false)
 const tempId = ref('')
 const importModalVisible = ref(false)
 const importModalRef = ref(null)
@@ -204,6 +205,7 @@ async function onCreateTag() {
     return
   }
 
+  tagSaving.value = true
   try {
     const newTag = await createTag(name)
     toast('分类创建成功')
@@ -213,6 +215,8 @@ async function onCreateTag() {
   } catch (e) {
     console.error(e)
     toast(e.message || '创建失败', 'error')
+  } finally {
+    tagSaving.value = false
   }
 }
 
@@ -509,72 +513,4 @@ onMounted(() => {
   background: rgb(79, 129, 66);
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.modal {
-  min-width: 360px;
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .85),
-      rgba(255, 255, 255, .65));
-  backdrop-filter: blur(16px);
-}
-
-.modal-title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0 0 20px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.modal-actions .btn {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.modal-actions .btn-primary {
-  background: rgb(99, 149, 86);
-  color: white;
-}
-
-.modal-actions .btn-primary:hover {
-  background: rgb(79, 129, 66);
-}
-
-.modal-actions .btn-secondary {
-  background: rgba(80, 140, 134, 0.12);
-  color: rgb(65, 110, 105);
-}
-
-.modal-actions .btn-secondary:hover {
-  background: rgba(80, 140, 134, 0.22);
-}
 </style>
