@@ -3,22 +3,22 @@ import { useAuthStore } from '@/stores/auth';
 
 // 首屏必须快的页面：静态导入
 import LoginView from '@/views/LoginView.vue';
-import HomeView from '@/views/HomeView.vue';
+import HomeView from '@/views/home/HomeView.vue';
 
 // 前台其他页面：懒加载
-const PostDetailView = () => import('@/views/PostDetailView.vue');
+const PostDetailView = () => import('@/views/home/PostDetailView.vue');
 
 // 后台所有组件：统一打包到 admin chunk，按需加载
 const AdminLayout = () => import(/* webpackChunkName: "admin" */ '@/components/admin/AdminLayout.vue');
-const AdminDashboard = () => import(/* webpackChunkName: "admin" */ '@/views/AdminDashboard.vue');
-const AdminPostList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminPostList.vue');
-const AdminPostEdit = () => import(/* webpackChunkName: "admin" */ '@/views/AdminPostEdit.vue');
-const AdminTagList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminTagList.vue');
-const AdminTrash = () => import(/* webpackChunkName: "admin" */ '@/views/AdminTrash.vue');
-const AdminNoticeList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminNoticeList.vue');
-const AdminNoticeEdit = () => import(/* webpackChunkName: "admin" */ '@/views/AdminNoticeEdit.vue');
-const AdminUserList = () => import(/* webpackChunkName: "admin" */ '@/views/AdminUserList.vue');
-const AdminSettings = () => import(/* webpackChunkName: "admin" */ '@/views/AdminSettings.vue');
+const AdminDashboard = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminDashboard.vue');
+const AdminPostList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminPostList.vue');
+const AdminPostEdit = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminPostEdit.vue');
+const AdminTagList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminTagList.vue');
+const AdminTrash = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminTrash.vue');
+const AdminNoticeList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminNoticeList.vue');
+const AdminNoticeEdit = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminNoticeEdit.vue');
+const AdminUserList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminUserList.vue');
+const AdminSettings = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminSettings.vue');
 
 const routes = [
   { path: '/', redirect: '/home' },           // 默认跳转到登录页
