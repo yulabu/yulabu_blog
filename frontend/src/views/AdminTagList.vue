@@ -1,35 +1,27 @@
 <template>
   <div class="tag-list-page">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="title">标签管理</h2>
+    <AdminPageCard
+      title="标签管理"
+      :loading="loading"
+      :empty="!loading && tags.length === 0"
+    >
+      <template #actions>
         <button class="btn-primary" @click="openModal()">新建标签</button>
-      </div>
+      </template>
 
-      <div v-if="loading" class="loading">加载中...</div>
+      <AdminDataTable :columns="columns" :data="tags">
+        <template #cell-name="{ row }">
+          <span class="td-name">{{ row.name }}</span>
+        </template>
 
-      <table v-else class="tag-table">
-        <thead>
-          <tr>
-            <th>标签名</th>
-            <th>文章数量</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="tag in tags" :key="tag.id">
-            <td class="td-name">{{ tag.name }}</td>
-            <td>{{ tag.count }}</td>
-            <td>
-              <div class="actions">
-                <button class="btn-text" @click="openModal(tag)">编辑</button>
-                <button class="btn-text danger" @click="onDelete(tag.id)">删除</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <template #cell-actions="{ row }">
+          <div class="actions">
+            <button class="btn-text" @click="openModal(row)">编辑</button>
+            <button class="btn-text danger" @click="onDelete(row.id)">删除</button>
+          </div>
+        </template>
+      </AdminDataTable>
+    </AdminPageCard>
 
     <!-- 弹窗 -->
     <div v-if="modalVisible" class="modal-overlay" @click="closeModal">
@@ -59,6 +51,8 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
+import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 
 const { confirm, toast } = useMessageBox()
 
@@ -68,6 +62,12 @@ const modalVisible = ref(false)
 const editingTag = ref(null)
 const form = ref({ name: '' })
 const inputRef = ref(null)
+
+const columns = [
+  { key: 'name', label: '标签名' },
+  { key: 'count', label: '文章数量', class: 'text-center' },
+  { key: 'actions', label: '操作', class: 'text-center' }
+]
 
 async function fetchTags() {
   loading.value = true
@@ -148,34 +148,6 @@ onMounted(() => {
   width: 100%;
 }
 
-.card {
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
-  backdrop-filter: blur(16px);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0;
-}
-
 .btn-primary {
   padding: 8px 18px;
   border-radius: 8px;
@@ -192,35 +164,6 @@ onMounted(() => {
   background: rgb(79, 129, 66);
 }
 
-.loading {
-  padding: 40px 0;
-  text-align: center;
-  color: rgb(65, 110, 105);
-}
-
-.tag-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.tag-table th,
-.tag-table td {
-  padding: 14px 12px;
-  text-align: left;
-  border-bottom: 1px dashed rgba(80, 140, 134, 0.2);
-}
-
-.tag-table th {
-  color: rgb(45, 90, 65);
-  font-weight: 600;
-  background: rgba(99, 149, 86, 0.08);
-}
-
-.tag-table tbody tr:hover {
-  background: rgba(99, 149, 86, 0.04);
-}
-
 .td-name {
   font-weight: 500;
   color: rgb(45, 90, 65);
@@ -229,6 +172,7 @@ onMounted(() => {
 .actions {
   display: flex;
   gap: 10px;
+  justify-content: center;
 }
 
 .btn-text {

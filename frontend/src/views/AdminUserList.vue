@@ -1,44 +1,40 @@
 <template>
   <div class="user-list-page">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="title">用户与权限</h2>
+    <AdminPageCard
+      title="用户与权限"
+      :loading="loading"
+      :empty="!loading && admins.length === 0"
+    >
+      <template #actions>
         <button class="btn-primary" @click="openCreate">新建管理员</button>
-      </div>
+      </template>
 
-      <div v-if="loading" class="loading">加载中...</div>
+      <AdminDataTable :columns="columns" :data="admins">
+        <template #cell-avatar="{ row }">
+          <img :src="avatarUrl(row.avatar)" alt="avatar" class="avatar" />
+        </template>
 
-      <table v-else class="user-table">
-        <thead>
-          <tr>
-            <th>头像</th>
-            <th>用户名</th>
-            <th>创建时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="admin in admins" :key="admin.id">
-            <td>
-              <img :src="avatarUrl(admin.avatar)" alt="avatar" class="avatar" />
-            </td>
-            <td class="td-name">
-              {{ admin.name }}
-              <span v-if="admin.id === currentAdmin.id" class="self-badge">当前</span>
-            </td>
-            <td class="text-muted">{{ formatDate(admin.created_at) }}</td>
-            <td>
-              <div class="actions">
-                <button class="btn-text" @click="openEdit(admin)">编辑</button>
-                <button class="btn-text danger" @click="onDelete(admin)">删除</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <template #cell-name="{ row }">
+          <span class="td-name">
+            {{ row.name }}
+            <span v-if="row.id === currentAdmin.id" class="self-badge">当前</span>
+          </span>
+        </template>
+
+        <template #cell-created_at="{ row }">
+          <span class="text-muted">{{ formatDate(row.created_at) }}</span>
+        </template>
+
+        <template #cell-actions="{ row }">
+          <div class="actions">
+            <button class="btn-text" @click="openEdit(row)">编辑</button>
+            <button class="btn-text danger" @click="onDelete(row)">删除</button>
+          </div>
+        </template>
+      </AdminDataTable>
 
       <Pagination v-if="!loading && totalPages > 1" v-model:page="page" :totalPages="totalPages" />
-    </div>
+    </AdminPageCard>
 
     <!-- 新增/编辑弹窗 -->
     <div v-if="formVisible" class="overlay" @click="closeForm">
@@ -108,6 +104,8 @@ import { useMessageBox } from '@/composables/useMessageBox'
 import { useAuthStore } from '@/stores/auth'
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
 import { formatDate } from '@/utils/date'
+import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const { confirm, toast } = useMessageBox()
@@ -119,6 +117,13 @@ const totalPages = ref(1)
 const loading = ref(false)
 
 const currentAdmin = computed(() => authStore.admin || {})
+
+const columns = [
+  { key: 'avatar', label: '头像', class: 'text-center' },
+  { key: 'name', label: '用户名' },
+  { key: 'created_at', label: '创建时间' },
+  { key: 'actions', label: '操作', class: 'text-center' }
+]
 
 function avatarUrl(src) {
   return src || new URL('@/assets/img/Personal_img.jpg', import.meta.url).href
@@ -266,34 +271,6 @@ async function submitPassword() {
   width: 100%;
 }
 
-.card {
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
-  backdrop-filter: blur(16px);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0;
-}
-
 .btn-primary {
   padding: 8px 18px;
   border-radius: 8px;
@@ -308,35 +285,6 @@ async function submitPassword() {
 
 .btn-primary:hover {
   background: rgb(79, 129, 66);
-}
-
-.loading {
-  padding: 40px 0;
-  text-align: center;
-  color: rgb(65, 110, 105);
-}
-
-.user-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.user-table th,
-.user-table td {
-  padding: 14px 12px;
-  text-align: left;
-  border-bottom: 1px dashed rgba(80, 140, 134, 0.2);
-}
-
-.user-table th {
-  color: rgb(45, 90, 65);
-  font-weight: 600;
-  background: rgba(99, 149, 86, 0.08);
-}
-
-.user-table tbody tr:hover {
-  background: rgba(99, 149, 86, 0.04);
 }
 
 .avatar {
@@ -367,6 +315,7 @@ async function submitPassword() {
 .actions {
   display: flex;
   gap: 10px;
+  justify-content: center;
 }
 
 .btn-text {

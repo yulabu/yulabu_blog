@@ -1,54 +1,50 @@
 <template>
   <div class="notice-list-page">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="title">公告管理</h2>
+    <AdminPageCard
+      title="公告管理"
+      :loading="loading"
+      :empty="!loading && notices.length === 0"
+      empty-text="暂无公告"
+    >
+      <template #actions>
         <button class="btn-primary" @click="goNew">新建公告</button>
-      </div>
+      </template>
 
-      <div v-if="loading" class="loading">加载中...</div>
-      <div v-else-if="notices.length === 0" class="empty">暂无公告</div>
+      <AdminDataTable :columns="columns" :data="notices" row-key="notice_id">
+        <template #cell-notice_title="{ row }">
+          <span class="td-title">{{ row.notice_title }}</span>
+        </template>
 
-      <table v-else class="notice-table">
-        <thead>
-          <tr>
-            <th>标题</th>
-            <th>状态</th>
-            <th>置顶</th>
-            <th>创建时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="notice in notices" :key="notice.notice_id">
-            <td class="td-title">{{ notice.notice_title }}</td>
-            <td>
-              <span class="status" :class="notice.notice_status">
-                {{ statusText(notice.notice_status) }}
-              </span>
-            </td>
-            <td>
-              <span class="pin" :class="{ active: notice.notice_is_pinned }">
-                {{ notice.notice_is_pinned ? '置顶' : '普通' }}
-              </span>
-            </td>
-            <td class="text-muted">{{ formatDate(notice.notice_created_at) }}</td>
-            <td>
-              <div class="actions">
-                <button class="btn-text" @click="goEdit(notice.notice_id)">编辑</button>
-                <button class="btn-text" @click="onTogglePin(notice)">
-                  {{ notice.notice_is_pinned ? '取消置顶' : '置顶' }}
-                </button>
-                <button class="btn-text" @click="onToggleStatus(notice)">
-                  {{ notice.notice_status === 'show' ? '隐藏' : '显示' }}
-                </button>
-                <button class="btn-text danger" @click="onDelete(notice.notice_id)">删除</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <template #cell-notice_status="{ row }">
+          <span class="status" :class="row.notice_status">
+            {{ statusText(row.notice_status) }}
+          </span>
+        </template>
+
+        <template #cell-notice_is_pinned="{ row }">
+          <span class="pin" :class="{ active: row.notice_is_pinned }">
+            {{ row.notice_is_pinned ? '置顶' : '普通' }}
+          </span>
+        </template>
+
+        <template #cell-notice_created_at="{ row }">
+          <span class="text-muted">{{ formatDate(row.notice_created_at) }}</span>
+        </template>
+
+        <template #cell-actions="{ row }">
+          <div class="actions">
+            <button class="btn-text" @click="goEdit(row.notice_id)">编辑</button>
+            <button class="btn-text" @click="onTogglePin(row)">
+              {{ row.notice_is_pinned ? '取消置顶' : '置顶' }}
+            </button>
+            <button class="btn-text" @click="onToggleStatus(row)">
+              {{ row.notice_status === 'show' ? '隐藏' : '显示' }}
+            </button>
+            <button class="btn-text danger" @click="onDelete(row.notice_id)">删除</button>
+          </div>
+        </template>
+      </AdminDataTable>
+    </AdminPageCard>
   </div>
 </template>
 
@@ -58,12 +54,22 @@ import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getAdminNotices, togglePin, updateNotice, deleteNotice } from '@/api/notice'
 import { formatDate } from '@/utils/date'
+import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 
 const router = useRouter()
 const { confirm, toast } = useMessageBox()
 
 const notices = ref([])
 const loading = ref(false)
+
+const columns = [
+  { key: 'notice_title', label: '标题' },
+  { key: 'notice_status', label: '状态', class: 'text-center' },
+  { key: 'notice_is_pinned', label: '置顶', class: 'text-center' },
+  { key: 'notice_created_at', label: '创建时间' },
+  { key: 'actions', label: '操作', class: 'text-center' }
+]
 
 async function fetchNotices() {
   loading.value = true
@@ -135,34 +141,6 @@ onMounted(fetchNotices)
   width: 100%;
 }
 
-.card {
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
-  backdrop-filter: blur(16px);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0;
-}
-
 .btn-primary {
   padding: 8px 18px;
   border-radius: 8px;
@@ -177,42 +155,6 @@ onMounted(fetchNotices)
 
 .btn-primary:hover {
   background: rgb(79, 129, 66);
-}
-
-.loading {
-  padding: 40px 0;
-  text-align: center;
-  color: rgb(65, 110, 105);
-}
-
-.empty {
-  padding: 60px 0;
-  text-align: center;
-  color: rgb(120, 140, 125);
-  font-size: 14px;
-}
-
-.notice-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.notice-table th,
-.notice-table td {
-  padding: 14px 12px;
-  text-align: left;
-  border-bottom: 1px dashed rgba(80, 140, 134, 0.2);
-}
-
-.notice-table th {
-  color: rgb(45, 90, 65);
-  font-weight: 600;
-  background: rgba(99, 149, 86, 0.08);
-}
-
-.notice-table tbody tr:hover {
-  background: rgba(99, 149, 86, 0.04);
 }
 
 .td-title {
@@ -257,6 +199,7 @@ onMounted(fetchNotices)
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .btn-text {
