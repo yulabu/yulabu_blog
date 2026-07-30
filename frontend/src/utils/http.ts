@@ -20,9 +20,9 @@ instance.interceptors.request.use((config) => {
   return config
 })
 
-// 响应拦截器：业务错误统一抛出
+// 响应拦截器：透传完整 response，错误统一抛出
 instance.interceptors.response.use(
-  (response) => response.data,
+  (response) => response,
   (error: AxiosError<{ message?: string }>) => {
     const status = error.response?.status
     const msg = error.response?.data?.message || error.message || '请求失败'

@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import Navbar from '@/components/Navbar.vue'
 import MessageBox from '@/components/MessageBox.vue'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+
+onMounted(() => {
+  authStore.hydrate()
+  if (isAdminRoute.value && authStore.isLoggedIn) {
+    authStore.refreshProfile().catch(() => {})
+  }
+})
 </script>
 
 <template>

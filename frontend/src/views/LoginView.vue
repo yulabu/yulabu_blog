@@ -417,12 +417,13 @@ section .color3::before{
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const admin_name = ref('')
 const admin_password = ref('')
 const loginError = ref('')
 const router = useRouter()
+const authStore = useAuthStore()
 
 async function handleLogin() {
   loginError.value = ''
@@ -431,12 +432,10 @@ async function handleLogin() {
     return
   }
   try {
-    const data = await login({
+    await authStore.login({
       admin_name: admin_name.value,
       admin_password: admin_password.value
     })
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('admin', JSON.stringify(data.admin))
     router.push('/admin')
   } catch (e) {
     loginError.value = e.message || '登录失败'

@@ -18,21 +18,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
-const currentAdmin = ref({})
-
-onMounted(() => {
-  try {
-    currentAdmin.value = JSON.parse(localStorage.getItem('admin') || '{}')
-  } catch {
-    currentAdmin.value = {}
-  }
-})
+const currentAdmin = computed(() => authStore.admin || {})
 
 const avatarUrl = computed(() => {
   return currentAdmin.value.avatar || new URL('@/assets/img/Personal_img.jpg', import.meta.url).href
@@ -49,8 +43,7 @@ function closeDropdown() {
 }
 
 function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('admin')
+  authStore.logout()
   router.push('/login')
 }
 

@@ -104,17 +104,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import { useAuthStore } from '@/stores/auth'
 import { getDashboard } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import Calendar from '@/components/Calendar.vue'
 import DashboardWelcomeCard from '@/components/DashboardWelcomeCard.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
-const adminName = ref('管理员')
+const adminName = computed(() => authStore.admin?.name || '管理员')
 const loading = ref(false)
 const stats = ref({
   todayCount: 0,
@@ -125,13 +127,6 @@ const stats = ref({
 const recentPosts = ref([])
 
 onMounted(() => {
-  try {
-    const admin = JSON.parse(localStorage.getItem('admin') || '{}')
-    adminName.value = admin.name || '管理员'
-  } catch {
-    adminName.value = '管理员'
-  }
-
   fetchDashboard()
 })
 

@@ -55,7 +55,7 @@ export interface Tag {
 export interface Admin {
   id: number
   name: string
-  avatar: string
+  avatar: string | null
   created_at: string
   updated_at: string
 }
@@ -75,11 +75,7 @@ export interface LoginForm {
 
 export interface LoginResult {
   token: string
-  admin: {
-    id: number
-    name: string
-    avatar: string | null
-  }
+  admin: Admin
 }
 
 export interface DashboardStats {

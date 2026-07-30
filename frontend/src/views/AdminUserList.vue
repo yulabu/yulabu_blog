@@ -105,24 +105,20 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { useAuthStore } from '@/stores/auth'
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import Pagination from '@/components/Pagination.vue'
 
 const { confirm, toast } = useMessageBox()
+const authStore = useAuthStore()
 
 const admins = ref([])
 const page = ref(1)
 const totalPages = ref(1)
 const loading = ref(false)
 
-const currentAdmin = computed(() => {
-  try {
-    return JSON.parse(localStorage.getItem('admin') || '{}')
-  } catch {
-    return {}
-  }
-})
+const currentAdmin = computed(() => authStore.admin || {})
 
 function avatarUrl(src) {
   return src || new URL('@/assets/img/Personal_img.jpg', import.meta.url).href
@@ -187,7 +183,10 @@ async function submitForm() {
     }
 
     if (isEditing.value) {
-      await updateAdmin(form.value.id, payload)
+      const updated = await updateAdmin(form.value.id, payload)
+      if (form.value.id === currentAdmin.value.id) {
+        authStore.updateProfile(updated)
+      }
     } else {
       await createAdmin(payload)
     }

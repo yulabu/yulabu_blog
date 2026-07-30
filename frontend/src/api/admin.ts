@@ -27,6 +27,10 @@ export function forceDeletePost(id: number) {
   return http.delete<{ message: string }>(`/admin/posts/${id}/force`)
 }
 
+export function getCurrentAdmin() {
+  return http.get<Admin>('/admin/admins/me')
+}
+
 export function getAdmins(page = 1, limit = 10) {
   return http.get<PaginatedAdmins>('/admin/admins', { params: { page, limit } })
 }

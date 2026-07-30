@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 // 首屏必须快的页面：静态导入
 import LoginView from '@/views/LoginView.vue';
@@ -52,8 +53,10 @@ const router = createRouter({
 
 // 路由守卫：保护需要登录的页面，并设置页面标题
 router.beforeEach((to, from, next) => {
-  const isLoggedIn = !!localStorage.getItem('token');
-  if (to.meta.requiresAuth && !isLoggedIn) {
+  const authStore = useAuthStore();
+  authStore.hydrate();
+
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
     next('/login');
     return;
   }
