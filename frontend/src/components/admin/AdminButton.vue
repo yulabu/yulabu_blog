@@ -17,7 +17,7 @@ defineProps({
   variant: {
     type: String,
     default: 'text',
-    validator: (value) => ['primary', 'text', 'danger'].includes(value)
+    validator: (value) => ['primary', 'secondary', 'text', 'danger'].includes(value)
   },
   loading: {
     type: Boolean,
@@ -61,6 +61,19 @@ defineProps({
 
 .admin-button--primary:hover:not(:disabled) {
   background: rgb(79, 129, 66);
+}
+
+.admin-button--secondary {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(80, 140, 134, 0.12);
+  color: rgb(65, 110, 105);
+  font-size: 13px;
+}
+
+.admin-button--secondary:hover:not(:disabled) {
+  background: rgba(80, 140, 134, 0.22);
 }
 
 .admin-button--text,

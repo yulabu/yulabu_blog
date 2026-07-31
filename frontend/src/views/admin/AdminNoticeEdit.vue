@@ -4,8 +4,8 @@
       <div class="card-header">
         <h2 class="title">{{ isEdit ? '编辑公告' : '新建公告' }}</h2>
         <div class="actions">
-          <button class="btn-secondary" @click="goBack">返回</button>
-          <button class="btn-primary" @click="onSave">保存</button>
+          <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
+          <AdminButton variant="primary" @click="onSave">保存</AdminButton>
         </div>
       </div>
 
@@ -55,6 +55,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useMessageBox } from '@/composables/useMessageBox'
+import AdminButton from '@/components/admin/AdminButton.vue'
 import { getNotice, createNotice, updateNotice } from '@/api/notice'
 
 const route = useRoute()
@@ -197,35 +198,6 @@ onMounted(fetchNotice)
 .actions {
   display: flex;
   gap: 10px;
-}
-
-.btn-primary,
-.btn-secondary {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-primary {
-  background: rgb(99, 149, 86);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: rgb(79, 129, 66);
-}
-
-.btn-secondary {
-  background: rgba(80, 140, 134, 0.12);
-  color: rgb(65, 110, 105);
-}
-
-.btn-secondary:hover {
-  background: rgba(80, 140, 134, 0.22);
 }
 
 .form {

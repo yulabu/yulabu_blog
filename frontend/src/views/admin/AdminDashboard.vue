@@ -53,7 +53,7 @@
             <Icon icon="material-symbols:schedule-outline" class="title-icon" />
             最近文章
           </h2>
-          <button class="btn-text" @click="router.push('/admin/posts')">查看全部</button>
+          <AdminButton variant="text" @click="router.push('/admin/posts')">查看全部</AdminButton>
         </div>
 
         <div v-if="loading" class="loading">加载中...</div>
@@ -112,6 +112,7 @@ import { getDashboard } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import Calendar from '@/components/admin/Calendar.vue'
 import DashboardWelcomeCard from '@/components/admin/DashboardWelcomeCard.vue'
+import AdminButton from '@/components/admin/AdminButton.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -262,22 +263,6 @@ function onDateSelect(date) {
 
 .title-icon {
   font-size: 22px;
-}
-
-.btn-text {
-  padding: 4px 10px;
-  border: none;
-  background: transparent;
-  color: rgb(99, 149, 86);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-text:hover {
-  background: rgba(99, 149, 86, 0.1);
 }
 
 .loading,
