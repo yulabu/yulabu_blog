@@ -1,58 +1,47 @@
 <template>
   <div class="post-edit-page">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="title">{{ isEdit ? '编辑文章' : '新建文章' }}</h2>
-        <div class="actions">
-          <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
-          <AdminButton variant="secondary" @click="openImportModal">导入附图片Markdown文章</AdminButton>
-          <AdminButton variant="primary" @click="onSave">保存</AdminButton>
-        </div>
-      </div>
+    <AdminPageCard :title="isEdit ? '编辑文章' : '新建文章'">
+      <template #actions>
+        <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
+        <AdminButton variant="secondary" @click="openImportModal">导入附图片Markdown文章</AdminButton>
+        <AdminButton variant="primary" @click="onSave">保存</AdminButton>
+      </template>
 
-      <div class="form">
-        <div class="form-row">
-          <label class="form-label">标题</label>
-          <input v-model="form.title" class="form-input" type="text" placeholder="请输入标题" />
-        </div>
+      <AdminForm>
+        <AdminFormField label="标题">
+          <AdminFormInput v-model="form.title" placeholder="请输入标题" />
+        </AdminFormField>
 
-        <div class="form-row">
-          <label class="form-label">摘要</label>
-          <input v-model="form.summary" class="form-input" type="text" placeholder="请输入摘要" />
-        </div>
+        <AdminFormField label="摘要">
+          <AdminFormInput v-model="form.summary" placeholder="请输入摘要" />
+        </AdminFormField>
 
-        <div class="form-row inline">
-          <div class="form-group category-group">
-            <label class="form-label">分类</label>
-            <div class="category-select-row">
-              <select v-model="form.categoryId" class="form-select">
-                <option value="">无分类</option>
-                <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
-              </select>
-              <button class="btn-add" @click="openTagModal" title="新建分类">+</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">作者</label>
-            <input v-model="form.author" class="form-input" type="text" placeholder="作者" />
-          </div>
-        </div>
+        <AdminFormRow inline>
+          <AdminFormGroup>
+            <AdminFormField label="分类">
+              <AdminFormSelect
+                v-model="form.categoryId"
+                placeholder="无分类"
+                :options="tagOptions"
+              >
+                <template #append>
+                  <button class="btn-add" @click="openTagModal" title="新建分类">+</button>
+                </template>
+              </AdminFormSelect>
+            </AdminFormField>
+          </AdminFormGroup>
+          <AdminFormGroup>
+            <AdminFormField label="作者">
+              <AdminFormInput v-model="form.author" placeholder="作者" />
+            </AdminFormField>
+          </AdminFormGroup>
+        </AdminFormRow>
 
-        <div class="form-row editor-row">
-          <label class="form-label">正文</label>
-          <MdEditor
-            v-model="form.content"
-            theme="light"
-            previewTheme="github"
-            codeTheme="github"
-            :showCodeRowNumber="true"
-            :toolbars="toolbars"
-            class="md-editor"
-            @onUploadImg="onUploadImg"
-          />
-        </div>
-      </div>
-    </div>
+        <AdminFormField label="正文">
+          <AdminMarkdownField v-model="form.content" :upload-images="uploadImagesForEditor" />
+        </AdminFormField>
+      </AdminForm>
+    </AdminPageCard>
 
     <!-- 新建分类弹窗 -->
     <AdminModal
@@ -62,17 +51,14 @@
       :confirm-loading="tagSaving"
       @confirm="onCreateTag"
     >
-      <div class="form-row">
-        <label class="form-label">分类名</label>
-        <input
+      <AdminFormField label="分类名">
+        <AdminFormInput
           ref="tagInputRef"
           v-model="newTagName"
-          class="form-input"
-          type="text"
           placeholder="请输入分类名"
           @keyup.enter="onCreateTag"
         />
-      </div>
+      </AdminFormField>
     </AdminModal>
 
     <!-- 导入本地 Markdown 弹窗 -->
@@ -89,8 +75,6 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { MdEditor } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getTags, createTag } from '@/api/tag'
 import { getPost, createPost, updatePost } from '@/api/post'
@@ -103,6 +87,14 @@ import {
 import AdminModal from '@/components/admin/AdminModal.vue'
 import ImportMarkdownModal from '@/components/admin/ImportMarkdownModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminForm from '@/components/admin/forms/AdminForm.vue'
+import AdminFormRow from '@/components/admin/forms/AdminFormRow.vue'
+import AdminFormGroup from '@/components/admin/forms/AdminFormGroup.vue'
+import AdminFormField from '@/components/admin/forms/AdminFormField.vue'
+import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
+import AdminFormSelect from '@/components/admin/forms/AdminFormSelect.vue'
+import AdminMarkdownField from '@/components/admin/forms/AdminMarkdownField.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -128,33 +120,9 @@ const tempId = ref('')
 const importModalVisible = ref(false)
 const importModalRef = ref(null)
 
-const toolbars = [
-  'bold',
-  'underline',
-  'italic',
-  '-',
-  'title',
-  'strikeThrough',
-  'quote',
-  'unorderedList',
-  'orderedList',
-  'task',
-  '-',
-  'codeRow',
-  'code',
-  'link',
-  'image',
-  'table',
-  'mermaid',
-  'katex',
-  '-',
-  'revoke',
-  'next',
-  'preview',
-  'previewOnly',
-  'catalog',
-  'github'
-]
+const tagOptions = computed(() =>
+  tags.value.map((tag) => ({ value: tag.id, label: tag.name }))
+)
 
 async function fetchTags() {
   try {
@@ -230,14 +198,8 @@ async function handleUploadImages(files) {
   return urls
 }
 
-async function onUploadImg(files, callback) {
-  try {
-    const urls = await handleUploadImages(Array.from(files))
-    callback(urls)
-  } catch (e) {
-    console.error(e)
-    toast(e.message || '图片上传失败', 'error')
-  }
+async function uploadImagesForEditor(files) {
+  return await handleUploadImages(Array.from(files))
 }
 
 async function handleImport({ markdown, files }) {
@@ -361,110 +323,6 @@ onMounted(() => {
   width: 100%;
 }
 
-.card {
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
-  backdrop-filter: blur(16px);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-row.inline {
-  flex-direction: row;
-  gap: 16px;
-}
-
-.form-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-label {
-  font-size: 13px;
-  color: rgb(65, 110, 105);
-  font-weight: 500;
-}
-
-.form-input,
-.form-select {
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(80, 140, 134, 0.25);
-  background: rgba(255, 255, 255, 0.5);
-  color: rgb(45, 90, 65);
-  font-size: 14px;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.form-input:focus,
-.form-select:focus {
-  border-color: rgb(99, 149, 86);
-}
-
-.form-input::placeholder {
-  color: rgba(65, 110, 105, 0.5);
-}
-
-.editor-row {
-  min-height: 500px;
-}
-
-.md-editor {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.category-select-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.category-select-row .form-select {
-  flex: 1;
-}
-
 .btn-add {
   width: 36px;
   height: 36px;
@@ -484,5 +342,4 @@ onMounted(() => {
 .btn-add:hover {
   background: rgb(79, 129, 66);
 }
-
 </style>

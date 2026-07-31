@@ -44,26 +44,23 @@
       :confirm-loading="saving"
       @confirm="submitForm"
     >
-      <div class="form-group">
-        <label>用户名</label>
-        <input v-model.trim="form.name" type="text" placeholder="至少 6 位" />
-      </div>
+      <AdminFormField label="用户名">
+        <AdminFormInput v-model="form.name" placeholder="至少 6 位" />
+      </AdminFormField>
 
-      <div v-if="!isEditing" class="form-group">
-        <label>密码</label>
-        <input v-model="form.password" type="password" placeholder="至少 8 位" />
-      </div>
+      <AdminFormField v-if="!isEditing" label="密码">
+        <AdminFormInput v-model="form.password" type="password" placeholder="至少 8 位" />
+      </AdminFormField>
 
-      <div class="form-group">
-        <label>头像 URL（可选）</label>
-        <input v-model.trim="form.avatar" type="text" placeholder="留空使用默认头像" />
-      </div>
+      <AdminFormField label="头像 URL（可选）">
+        <AdminFormInput v-model="form.avatar" placeholder="留空使用默认头像" />
+      </AdminFormField>
 
-      <div v-if="isEditing && form.id === currentAdmin.id" class="form-group">
+      <AdminFormField v-if="isEditing && form.id === currentAdmin.id">
         <AdminButton variant="text" @click="openPasswordChange">
           修改密码
         </AdminButton>
-      </div>
+      </AdminFormField>
     </AdminModal>
 
     <!-- 修改密码弹窗 -->
@@ -74,20 +71,17 @@
       :confirm-loading="passwordSaving"
       @confirm="submitPassword"
     >
-      <div class="form-group">
-        <label>旧密码</label>
-        <input v-model="passwordForm.oldPassword" type="password" />
-      </div>
+      <AdminFormField label="旧密码">
+        <AdminFormInput v-model="passwordForm.oldPassword" type="password" />
+      </AdminFormField>
 
-      <div class="form-group">
-        <label>新密码</label>
-        <input v-model="passwordForm.newPassword" type="password" placeholder="至少 8 位" />
-      </div>
+      <AdminFormField label="新密码">
+        <AdminFormInput v-model="passwordForm.newPassword" type="password" placeholder="至少 8 位" />
+      </AdminFormField>
 
-      <div class="form-group">
-        <label>确认新密码</label>
-        <input v-model="passwordForm.confirmPassword" type="password" />
-      </div>
+      <AdminFormField label="确认新密码">
+        <AdminFormInput v-model="passwordForm.confirmPassword" type="password" />
+      </AdminFormField>
     </AdminModal>
   </div>
 </template>
@@ -104,6 +98,8 @@ import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminModal from '@/components/admin/AdminModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminFormField from '@/components/admin/forms/AdminFormField.vue'
+import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const { toast } = useMessageBox()
@@ -150,7 +146,8 @@ function closeForm() {
 }
 
 function validateForm() {
-  if (!form.value.name || form.value.name.length < 6) {
+  const name = form.value.name.trim()
+  if (!name || name.length < 6) {
     toast('用户名至少需要 6 位', 'error')
     return false
   }
@@ -167,8 +164,8 @@ async function submitForm() {
   saving.value = true
   try {
     const payload = {
-      name: form.value.name,
-      avatar: form.value.avatar || null,
+      name: form.value.name.trim(),
+      avatar: form.value.avatar.trim() || null,
       password: form.value.password || null
     }
 
@@ -293,30 +290,4 @@ async function submitPassword() {
   color: rgb(120, 140, 125);
 }
 
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 13px;
-  color: rgb(65, 110, 105);
-  margin-bottom: 6px;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(80, 140, 134, 0.3);
-  background: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
-  color: rgb(45, 90, 65);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.form-group input:focus {
-  border-color: rgb(99, 149, 86);
-}
 </style>

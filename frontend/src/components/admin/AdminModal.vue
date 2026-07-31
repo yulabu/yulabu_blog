@@ -6,14 +6,38 @@
     @confirm="emit('confirm')"
     @cancel="emit('cancel')"
   >
-    <template v-for="(_, name) in $slots" #[name]="slotData">
-      <slot :name="name" v-bind="slotData || {}" />
+    <template #default>
+      <slot />
+    </template>
+
+    <template #title>
+      <slot name="title" />
+    </template>
+
+    <template #footer>
+      <slot name="footer">
+        <AdminButton
+          variant="secondary"
+          :disabled="confirmLoading"
+          @click="onCancel"
+        >
+          {{ cancelText }}
+        </AdminButton>
+        <AdminButton
+          variant="primary"
+          :disabled="confirmDisabled || confirmLoading"
+          @click="onConfirm"
+        >
+          {{ confirmLoading ? '处理中...' : confirmText }}
+        </AdminButton>
+      </slot>
     </template>
   </BaseModal>
 </template>
 
 <script setup>
 import BaseModal from '@/components/common/BaseModal.vue'
+import AdminButton from '@/components/admin/AdminButton.vue'
 
 const props = defineProps({
   visible: { type: Boolean, required: true },
@@ -31,6 +55,16 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:visible', 'confirm', 'cancel'])
+
+function onCancel() {
+  emit('update:visible', false)
+  emit('cancel')
+}
+
+function onConfirm() {
+  if (props.confirmDisabled || props.confirmLoading) return
+  emit('confirm')
+}
 </script>
 
 <style scoped>
@@ -59,38 +93,5 @@ const emit = defineEmits(['update:visible', 'confirm', 'cancel'])
   font-weight: 600;
   color: rgb(45, 90, 65);
   margin: 0;
-}
-
-.admin-modal :deep(.base-modal__btn) {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.admin-modal :deep(.base-modal__btn:disabled) {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.admin-modal :deep(.base-modal__btn--confirm) {
-  background: rgb(99, 149, 86);
-  color: white;
-}
-
-.admin-modal :deep(.base-modal__btn--confirm:hover:not(:disabled)) {
-  background: rgb(79, 129, 66);
-}
-
-.admin-modal :deep(.base-modal__btn--cancel) {
-  background: rgba(80, 140, 134, 0.12);
-  color: rgb(65, 110, 65);
-}
-
-.admin-modal :deep(.base-modal__btn--cancel:hover:not(:disabled)) {
-  background: rgba(80, 140, 134, 0.22);
 }
 </style>

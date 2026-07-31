@@ -30,17 +30,14 @@
       confirm-text="确定"
       @confirm="onSave"
     >
-      <div class="form-row">
-        <label class="form-label">标签名</label>
-        <input
+      <AdminFormField label="标签名">
+        <AdminFormInput
           ref="inputRef"
           v-model="form.name"
-          class="form-input"
-          type="text"
           placeholder="请输入标签名"
           @keyup.enter="onSave"
         />
-      </div>
+      </AdminFormField>
     </AdminModal>
   </div>
 </template>
@@ -55,6 +52,8 @@ import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminModal from '@/components/admin/AdminModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminFormField from '@/components/admin/forms/AdminFormField.vue'
+import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
 
 const { toast } = useMessageBox()
 
@@ -140,32 +139,4 @@ const { confirmDelete: onDelete } = useConfirmDelete(deleteTag, {
   justify-content: center;
 }
 
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 20px;
-}
-
-.form-label {
-  font-size: 13px;
-  color: rgb(65, 110, 105);
-  font-weight: 500;
-}
-
-.form-input {
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(80, 140, 134, 0.25);
-  background: rgba(255, 255, 255, 0.5);
-  color: rgb(45, 90, 65);
-  font-size: 14px;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.form-input:focus {
-  border-color: rgb(99, 149, 86);
-}
 </style>

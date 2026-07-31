@@ -1,61 +1,51 @@
 <template>
   <div class="notice-edit-page">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="title">{{ isEdit ? '编辑公告' : '新建公告' }}</h2>
-        <div class="actions">
-          <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
-          <AdminButton variant="primary" @click="onSave">保存</AdminButton>
-        </div>
-      </div>
+    <AdminPageCard :title="isEdit ? '编辑公告' : '新建公告'">
+      <template #actions>
+        <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
+        <AdminButton variant="primary" @click="onSave">保存</AdminButton>
+      </template>
 
-      <div class="form">
-        <div class="form-row">
-          <label class="form-label">标题</label>
-          <input v-model="form.title" class="form-input" type="text" placeholder="请输入公告标题" />
-        </div>
+      <AdminForm>
+        <AdminFormField label="标题">
+          <AdminFormInput v-model="form.title" placeholder="请输入公告标题" />
+        </AdminFormField>
 
-        <div class="form-row inline">
-          <div class="form-group">
-            <label class="form-label">状态</label>
-            <select v-model="form.status" class="form-select">
-              <option value="show">显示</option>
-              <option value="hide">隐藏</option>
-            </select>
-          </div>
-          <div class="form-group checkbox-group">
-            <label class="form-label">置顶</label>
-            <label class="checkbox-wrap">
-              <input v-model="form.isPinned" type="checkbox" />
-              <span>置顶公告</span>
-            </label>
-          </div>
-        </div>
+        <AdminFormRow inline>
+          <AdminFormGroup>
+            <AdminFormField label="状态">
+              <AdminFormSelect v-model="form.status" :options="statusOptions" />
+            </AdminFormField>
+          </AdminFormGroup>
+          <AdminFormGroup>
+            <AdminFormField label="置顶">
+              <AdminFormCheckbox v-model="form.isPinned" label="置顶公告" />
+            </AdminFormField>
+          </AdminFormGroup>
+        </AdminFormRow>
 
-        <div class="form-row editor-row">
-          <label class="form-label">内容</label>
-          <MdEditor
-            v-model="form.content"
-            theme="light"
-            previewTheme="github"
-            codeTheme="github"
-            :showCodeRowNumber="true"
-            :toolbars="toolbars"
-            class="md-editor"
-          />
-        </div>
-      </div>
-    </div>
+        <AdminFormField label="内容">
+          <AdminMarkdownField v-model="form.content" min-height="400px" />
+        </AdminFormField>
+      </AdminForm>
+    </AdminPageCard>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { MdEditor } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
 import { useMessageBox } from '@/composables/useMessageBox'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminForm from '@/components/admin/forms/AdminForm.vue'
+import AdminFormRow from '@/components/admin/forms/AdminFormRow.vue'
+import AdminFormGroup from '@/components/admin/forms/AdminFormGroup.vue'
+import AdminFormField from '@/components/admin/forms/AdminFormField.vue'
+import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
+import AdminFormSelect from '@/components/admin/forms/AdminFormSelect.vue'
+import AdminFormCheckbox from '@/components/admin/forms/AdminFormCheckbox.vue'
+import AdminMarkdownField from '@/components/admin/forms/AdminMarkdownField.vue'
 import { getNotice, createNotice, updateNotice } from '@/api/notice'
 
 const route = useRoute()
@@ -73,32 +63,9 @@ const form = ref({
 
 const loading = ref(false)
 
-const toolbars = [
-  'bold',
-  'underline',
-  'italic',
-  '-',
-  'title',
-  'strikeThrough',
-  'quote',
-  'unorderedList',
-  'orderedList',
-  'task',
-  '-',
-  'codeRow',
-  'code',
-  'link',
-  'image',
-  'table',
-  'mermaid',
-  'katex',
-  '-',
-  'revoke',
-  'next',
-  'preview',
-  'previewOnly',
-  'catalog',
-  'github'
+const statusOptions = [
+  { value: 'show', label: '显示' },
+  { value: 'hide', label: '隐藏' }
 ]
 
 async function fetchNotice() {
@@ -165,116 +132,5 @@ onMounted(fetchNotice)
 <style scoped>
 .notice-edit-page {
   width: 100%;
-}
-
-.card {
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
-  backdrop-filter: blur(16px);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: rgb(45, 90, 65);
-  margin: 0;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-row.inline {
-  flex-direction: row;
-  gap: 16px;
-}
-
-.form-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-label {
-  font-size: 13px;
-  color: rgb(65, 110, 105);
-  font-weight: 500;
-}
-
-.form-input,
-.form-select {
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(80, 140, 134, 0.25);
-  background: rgba(255, 255, 255, 0.5);
-  color: rgb(45, 90, 65);
-  font-size: 14px;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.form-input:focus,
-.form-select:focus {
-  border-color: rgb(99, 149, 86);
-}
-
-.checkbox-group {
-  justify-content: flex-start;
-}
-
-.checkbox-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 0;
-  color: rgb(45, 90, 65);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.checkbox-wrap input {
-  width: 16px;
-  height: 16px;
-  accent-color: rgb(99, 149, 86);
-  cursor: pointer;
-}
-
-.editor-row {
-  min-height: 400px;
-}
-
-.md-editor {
-  border-radius: 8px;
-  overflow: hidden;
 }
 </style>
