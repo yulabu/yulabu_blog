@@ -6,7 +6,7 @@
       :empty="!loading && tags.length === 0"
     >
       <template #actions>
-        <button class="btn-primary" @click="openModal()">新建标签</button>
+        <AdminButton variant="primary" @click="openModal()">新建标签</AdminButton>
       </template>
 
       <AdminDataTable :columns="columns" :data="tags">
@@ -16,8 +16,8 @@
 
         <template #cell-actions="{ row }">
           <div class="actions">
-            <button class="btn-text" @click="openModal(row)">编辑</button>
-            <button class="btn-text danger" @click="onDelete(row.id)">删除</button>
+            <AdminButton variant="text" @click="openModal(row)">编辑</AdminButton>
+            <AdminButton variant="danger" @click="onDelete(row.id)">删除</AdminButton>
           </div>
         </template>
       </AdminDataTable>
@@ -46,17 +46,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { useAdminList } from '@/composables/useAdminList'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
 import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminModal from '@/components/admin/AdminModal.vue'
+import AdminButton from '@/components/admin/AdminButton.vue'
 
-const { confirm, toast } = useMessageBox()
+const { toast } = useMessageBox()
 
-const tags = ref([])
-const loading = ref(false)
+const { items: tags, loading, refresh } = useAdminList(getTags, {
+  paginated: false,
+  errorMessage: '获取标签失败'
+})
+
 const modalVisible = ref(false)
 const editingTag = ref(null)
 const form = ref({ name: '' })
@@ -67,18 +73,6 @@ const columns = [
   { key: 'count', label: '文章数量', class: 'text-center' },
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
-
-async function fetchTags() {
-  loading.value = true
-  try {
-    tags.value = await getTags()
-  } catch (e) {
-    console.error(e)
-    toast('获取标签失败', 'error')
-  } finally {
-    loading.value = false
-  }
-}
 
 function openModal(tag = null) {
   editingTag.value = tag
@@ -116,51 +110,23 @@ async function onSave() {
 
     toast(editingTag.value ? '保存成功' : '创建成功')
     closeModal()
-    fetchTags()
+    refresh()
   } catch (e) {
     console.error(e)
     toast(e.message || '保存失败', 'error')
   }
 }
 
-async function onDelete(id) {
-  const ok = await confirm('删除确认', '确定要删除这个标签吗？')
-  if (!ok) return
-
-  try {
-    await deleteTag(id)
-    toast('删除成功')
-    fetchTags()
-  } catch (e) {
-    console.error(e)
-    toast(e.message || '删除失败', 'error')
-  }
-}
-
-onMounted(() => {
-  fetchTags()
+const { confirmDelete: onDelete } = useConfirmDelete(deleteTag, {
+  message: '确定要删除这个标签吗？',
+  successMessage: '删除成功',
+  onSuccess: refresh
 })
 </script>
 
 <style scoped>
 .tag-list-page {
   width: 100%;
-}
-
-.btn-primary {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  background: rgb(99, 149, 86);
-  color: white;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-primary:hover {
-  background: rgb(79, 129, 66);
 }
 
 .td-name {
@@ -172,30 +138,6 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   justify-content: center;
-}
-
-.btn-text {
-  padding: 4px 10px;
-  border: none;
-  background: transparent;
-  color: rgb(99, 149, 86);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-text:hover {
-  background: rgba(99, 149, 86, 0.1);
-}
-
-.btn-text.danger {
-  color: rgb(200, 80, 80);
-}
-
-.btn-text.danger:hover {
-  background: rgba(200, 80, 80, 0.1);
 }
 
 .form-row {

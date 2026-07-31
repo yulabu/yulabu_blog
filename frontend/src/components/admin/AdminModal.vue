@@ -1,5 +1,11 @@
 <template>
-  <BaseModal class="admin-modal">
+  <BaseModal
+    class="admin-modal"
+    v-bind="props"
+    @update:visible="emit('update:visible', $event)"
+    @confirm="emit('confirm')"
+    @cancel="emit('cancel')"
+  >
     <template v-for="(_, name) in $slots" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}" />
     </template>
@@ -9,8 +15,22 @@
 <script setup>
 import BaseModal from '@/components/common/BaseModal.vue'
 
-// AdminModal 是 BaseModal 的皮肤包装层。
-// 所有 props、slots、events 都直接透传给 BaseModal。
+const props = defineProps({
+  visible: { type: Boolean, required: true },
+  title: { type: String, default: '' },
+  width: { type: String, default: '360px' },
+  maxWidth: { type: String, default: '90vw' },
+  maxHeight: { type: String, default: '90vh' },
+  closeOnOverlay: { type: Boolean, default: true },
+  closeOnEsc: { type: Boolean, default: true },
+  showFooter: { type: Boolean, default: true },
+  confirmText: { type: String, default: '确定' },
+  cancelText: { type: String, default: '取消' },
+  confirmLoading: { type: Boolean, default: false },
+  confirmDisabled: { type: Boolean, default: false }
+})
+
+const emit = defineEmits(['update:visible', 'confirm', 'cancel'])
 </script>
 
 <style scoped>

@@ -6,7 +6,7 @@
       :empty="!loading && admins.length === 0"
     >
       <template #actions>
-        <button class="btn-primary" @click="openCreate">新建管理员</button>
+        <AdminButton variant="primary" @click="openCreate">新建管理员</AdminButton>
       </template>
 
       <AdminDataTable :columns="columns" :data="admins">
@@ -27,8 +27,8 @@
 
         <template #cell-actions="{ row }">
           <div class="actions">
-            <button class="btn-text" @click="openEdit(row)">编辑</button>
-            <button class="btn-text danger" @click="onDelete(row)">删除</button>
+            <AdminButton variant="text" @click="openEdit(row)">编辑</AdminButton>
+            <AdminButton variant="danger" @click="onDelete(row)">删除</AdminButton>
           </div>
         </template>
       </AdminDataTable>
@@ -60,9 +60,9 @@
       </div>
 
       <div v-if="isEditing && form.id === currentAdmin.id" class="form-group">
-        <button class="btn-text" @click="openPasswordChange">
+        <AdminButton variant="text" @click="openPasswordChange">
           修改密码
-        </button>
+        </AdminButton>
       </div>
     </AdminModal>
 
@@ -93,23 +93,27 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { useAdminList } from '@/composables/useAdminList'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
 import { useAuthStore } from '@/stores/auth'
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminModal from '@/components/admin/AdminModal.vue'
+import AdminButton from '@/components/admin/AdminButton.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
-const { confirm, toast } = useMessageBox()
+const { toast } = useMessageBox()
 const authStore = useAuthStore()
 
-const admins = ref([])
-const page = ref(1)
-const totalPages = ref(1)
-const loading = ref(false)
+const { items: admins, loading, page, totalPages, refresh } = useAdminList(getAdmins, {
+  errorMessage: '获取管理员列表失败',
+  extractList: data => data.admins || [],
+  extractTotalPages: data => data.totalPages || 1
+})
 
 const currentAdmin = computed(() => authStore.admin || {})
 
@@ -123,22 +127,6 @@ const columns = [
 function avatarUrl(src) {
   return src || new URL('@/assets/img/Personal_img.jpg', import.meta.url).href
 }
-
-async function fetchAdmins() {
-  loading.value = true
-  try {
-    const data = await getAdmins(page.value, 10)
-    admins.value = data.admins || []
-    totalPages.value = data.totalPages || 1
-  } catch (e) {
-    console.error(e)
-    toast('获取管理员列表失败', 'error')
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(page, fetchAdmins, { immediate: true })
 
 const formVisible = ref(false)
 const isEditing = ref(false)
@@ -195,7 +183,7 @@ async function submitForm() {
 
     toast(isEditing.value ? '修改成功' : '创建成功')
     closeForm()
-    fetchAdmins()
+    refresh()
   } catch (e) {
     toast(e.message, 'error')
   } finally {
@@ -203,23 +191,19 @@ async function submitForm() {
   }
 }
 
-async function onDelete(admin) {
-  if (admin.id === currentAdmin.value.id) {
-    toast('不能删除自己', 'error')
-    return
-  }
-
-  const ok = await confirm('删除确认', `确定要删除管理员「${admin.name}」吗？`)
-  if (!ok) return
-
-  try {
+const { confirmDelete: onDelete } = useConfirmDelete(
+  async (admin) => {
+    if (admin.id === currentAdmin.value.id) {
+      throw new Error('不能删除自己')
+    }
     await deleteAdmin(admin.id)
-    toast('删除成功')
-    fetchAdmins()
-  } catch (e) {
-    toast(e.message, 'error')
+  },
+  {
+    message: admin => `确定要删除管理员「${admin.name}」吗？`,
+    successMessage: '删除成功',
+    onSuccess: refresh
   }
-}
+)
 
 const passwordVisible = ref(false)
 const passwordForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
@@ -274,22 +258,6 @@ async function submitPassword() {
   width: 100%;
 }
 
-.btn-primary {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  background: rgb(99, 149, 86);
-  color: white;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-primary:hover {
-  background: rgb(79, 129, 66);
-}
-
 .avatar {
   width: 40px;
   height: 40px;
@@ -319,30 +287,6 @@ async function submitPassword() {
   display: flex;
   gap: 10px;
   justify-content: center;
-}
-
-.btn-text {
-  padding: 4px 10px;
-  border: none;
-  background: transparent;
-  color: rgb(99, 149, 86);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-text:hover {
-  background: rgba(99, 149, 86, 0.1);
-}
-
-.btn-text.danger {
-  color: rgb(200, 80, 80);
-}
-
-.btn-text.danger:hover {
-  background: rgba(200, 80, 80, 0.1);
 }
 
 .text-muted {

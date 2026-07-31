@@ -8,7 +8,7 @@
       empty-text="回收站是空的"
     >
       <template #actions>
-        <button class="btn-text" @click="router.push('/admin/posts')">返回文章列表</button>
+        <AdminButton variant="text" @click="router.push('/admin/posts')">返回文章列表</AdminButton>
       </template>
 
       <AdminDataTable :columns="columns" :data="posts">
@@ -27,8 +27,8 @@
 
         <template #cell-actions="{ row }">
           <div class="actions">
-            <button class="btn-text" @click="onRestore(row.id)">恢复</button>
-            <button class="btn-text danger" @click="onForceDelete(row.id)">彻底删除</button>
+            <AdminButton variant="text" @click="onRestore(row.id)">恢复</AdminButton>
+            <AdminButton variant="danger" @click="onForceDelete(row.id)">彻底删除</AdminButton>
           </div>
         </template>
       </AdminDataTable>
@@ -39,23 +39,36 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { useAdminList } from '@/composables/useAdminList'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 import { getTrashPosts, restorePost, forceDeletePost } from '@/api/admin'
 import { formatDateTime } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
+import AdminButton from '@/components/admin/AdminButton.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
-const { confirm, toast } = useMessageBox()
+const { confirm } = useMessageBox()
 
-const posts = ref([])
-const page = ref(1)
-const totalPages = ref(1)
 const total = ref(0)
-const loading = ref(false)
+
+const { items: posts, loading, page, totalPages, refresh } = useAdminList(
+  async (page, pageSize) => {
+    const data = await getTrashPosts(page, pageSize)
+    total.value = data.total || 0
+    return data
+  },
+  {
+    errorMessage: '获取回收站列表失败',
+    extractList: data => data.posts,
+    extractTotalPages: data => data.totalPages || 1
+  }
+)
 
 const columns = [
   { key: 'title', label: '标题' },
@@ -65,50 +78,23 @@ const columns = [
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
 
-async function fetchTrash() {
-  loading.value = true
-  try {
-    const data = await getTrashPosts(page.value, 10)
-    posts.value = data.posts
-    total.value = data.total || 0
-    totalPages.value = data.totalPages || 1
-  } catch (e) {
-    console.error(e)
-    toast('获取回收站列表失败', 'error')
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(page, fetchTrash, { immediate: true })
+const { run: doRestore } = useAsyncAction(restorePost, {
+  successMessage: '恢复成功',
+  onSuccess: refresh
+})
 
 async function onRestore(id) {
   const ok = await confirm('恢复确认', '确定要恢复这篇文章吗？恢复后将回到文章列表。')
   if (!ok) return
-
-  try {
-    await restorePost(id)
-    toast('恢复成功')
-    fetchTrash()
-  } catch (e) {
-    console.error(e)
-    toast('恢复失败', 'error')
-  }
+  doRestore(id)
 }
 
-async function onForceDelete(id) {
-  const ok = await confirm('彻底删除确认', '彻底删除后无法恢复，确定要删除这篇文章吗？')
-  if (!ok) return
-
-  try {
-    await forceDeletePost(id)
-    toast('已彻底删除')
-    fetchTrash()
-  } catch (e) {
-    console.error(e)
-    toast('删除失败', 'error')
-  }
-}
+const { confirmDelete: onForceDelete } = useConfirmDelete(forceDeletePost, {
+  title: '彻底删除确认',
+  message: '彻底删除后无法恢复，确定要删除这篇文章吗？',
+  successMessage: '已彻底删除',
+  onSuccess: refresh
+})
 </script>
 
 <style scoped>
@@ -137,30 +123,6 @@ async function onForceDelete(id) {
   display: flex;
   gap: 10px;
   justify-content: center;
-}
-
-.btn-text {
-  padding: 4px 10px;
-  border: none;
-  background: transparent;
-  color: rgb(99, 149, 86);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-text:hover {
-  background: rgba(99, 149, 86, 0.1);
-}
-
-.btn-text.danger {
-  color: rgb(200, 80, 80);
-}
-
-.btn-text.danger:hover {
-  background: rgba(200, 80, 80, 0.1);
 }
 
 .text-muted {

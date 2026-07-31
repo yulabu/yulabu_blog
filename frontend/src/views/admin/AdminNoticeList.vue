@@ -7,7 +7,7 @@
       empty-text="暂无公告"
     >
       <template #actions>
-        <button class="btn-primary" @click="goNew">新建公告</button>
+        <AdminButton variant="primary" @click="goNew">新建公告</AdminButton>
       </template>
 
       <AdminDataTable :columns="columns" :data="notices" row-key="notice_id">
@@ -29,14 +29,14 @@
 
         <template #cell-actions="{ row }">
           <div class="actions">
-            <button class="btn-text" @click="goEdit(row.notice_id)">编辑</button>
-            <button class="btn-text" @click="onTogglePin(row)">
+            <AdminButton variant="text" @click="goEdit(row.notice_id)">编辑</AdminButton>
+            <AdminButton variant="text" @click="onTogglePin(row)">
               {{ row.notice_is_pinned ? '取消置顶' : '置顶' }}
-            </button>
-            <button class="btn-text" @click="onToggleStatus(row)">
+            </AdminButton>
+            <AdminButton variant="text" @click="onToggleStatus(row)">
               {{ row.notice_status === 'show' ? '隐藏' : '显示' }}
-            </button>
-            <button class="btn-text danger" @click="onDelete(row.notice_id)">删除</button>
+            </AdminButton>
+            <AdminButton variant="danger" @click="onDelete(row.notice_id)">删除</AdminButton>
           </div>
         </template>
       </AdminDataTable>
@@ -45,20 +45,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessageBox } from '@/composables/useMessageBox'
+import { useAdminList } from '@/composables/useAdminList'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 import { getAdminNotices, togglePin, updateNotice, deleteNotice } from '@/api/notice'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
+import AdminButton from '@/components/admin/AdminButton.vue'
 
 const router = useRouter()
-const { confirm, toast } = useMessageBox()
 
-const notices = ref([])
-const loading = ref(false)
+const { items: notices, loading, refresh } = useAdminList(getAdminNotices, {
+  paginated: false,
+  errorMessage: '获取公告列表失败',
+  extractList: data => data.notices
+})
 
 const columns = [
   { key: 'notice_title', label: '标题' },
@@ -68,19 +72,6 @@ const columns = [
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
 
-async function fetchNotices() {
-  loading.value = true
-  try {
-    const data = await getAdminNotices()
-    notices.value = data.notices
-  } catch (e) {
-    console.error(e)
-    toast('获取公告列表失败', 'error')
-  } finally {
-    loading.value = false
-  }
-}
-
 function goNew() {
   router.push('/admin/notices/new')
 }
@@ -89,65 +80,40 @@ function goEdit(id) {
   router.push(`/admin/notices/${id}/edit`)
 }
 
-async function onTogglePin(notice) {
-  try {
-    await togglePin(notice.notice_id)
-    toast(notice.notice_is_pinned ? '已取消置顶' : '已置顶')
-    fetchNotices()
-  } catch (e) {
-    console.error(e)
-    toast('操作失败', 'error')
+const { run: doTogglePin } = useAsyncAction(
+  (notice) => togglePin(notice.notice_id),
+  {
+    successMessage: (result, notice) => notice.notice_is_pinned ? '已取消置顶' : '已置顶',
+    onSuccess: refresh
   }
+)
+
+function onTogglePin(notice) {
+  doTogglePin(notice)
 }
 
-async function onToggleStatus(notice) {
-  const newStatus = notice.notice_status === 'show' ? 'hide' : 'show'
-  try {
-    await updateNotice(notice.notice_id, { status: newStatus })
-    toast(newStatus === 'show' ? '已显示' : '已隐藏')
-    fetchNotices()
-  } catch (e) {
-    console.error(e)
-    toast('操作失败', 'error')
+const { run: doToggleStatus } = useAsyncAction(
+  (notice) => updateNotice(notice.notice_id, { status: notice.notice_status === 'show' ? 'hide' : 'show' }),
+  {
+    successMessage: (result, notice) => notice.notice_status === 'show' ? '已隐藏' : '已显示',
+    onSuccess: refresh
   }
+)
+
+function onToggleStatus(notice) {
+  doToggleStatus(notice)
 }
 
-async function onDelete(id) {
-  const ok = await confirm('删除确认', '确定要删除这条公告吗？')
-  if (!ok) return
-
-  try {
-    await deleteNotice(id)
-    toast('删除成功')
-    fetchNotices()
-  } catch (e) {
-    console.error(e)
-    toast('删除失败', 'error')
-  }
-}
-
-onMounted(fetchNotices)
+const { confirmDelete: onDelete } = useConfirmDelete(deleteNotice, {
+  message: '确定要删除这条公告吗？',
+  successMessage: '删除成功',
+  onSuccess: refresh
+})
 </script>
 
 <style scoped>
 .notice-list-page {
   width: 100%;
-}
-
-.btn-primary {
-  padding: 8px 18px;
-  border-radius: 8px;
-  border: none;
-  background: rgb(99, 149, 86);
-  color: white;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-primary:hover {
-  background: rgb(79, 129, 66);
 }
 
 .td-title {
@@ -164,30 +130,6 @@ onMounted(fetchNotices)
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
-}
-
-.btn-text {
-  padding: 4px 10px;
-  border: none;
-  background: transparent;
-  color: rgb(99, 149, 86);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-}
-
-.btn-text:hover {
-  background: rgba(99, 149, 86, 0.1);
-}
-
-.btn-text.danger {
-  color: rgb(200, 80, 80);
-}
-
-.btn-text.danger:hover {
-  background: rgba(200, 80, 80, 0.1);
 }
 
 .text-muted {
