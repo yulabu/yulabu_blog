@@ -38,39 +38,65 @@ frontend/
 ├── public/
 ├── src/
 │   ├── assets/                 # 图片、音乐、图标等静态资源
-│   ├── components/             # 公共组件
-│   │   ├── AdminLayout.vue
-│   │   ├── AdminHeader.vue
-│   │   ├── AdminSidebar.vue
-│   │   ├── AnnouncementBoard.vue
-│   │   ├── Calendar.vue
-│   │   ├── ImportMarkdownModal.vue
-│   │   ├── MessageBox.vue
-│   │   ├── MusicPlayer.vue
-│   │   ├── Pagination.vue
-│   │   ├── PersonalCard.vue
-│   │   ├── PostList.vue
-│   │   ├── TagBox.vue
-│   │   └── WelcomeBanner.vue
+│   ├── components/
+│   │   ├── common/             # 通用行为组件
+│   │   │   ├── BaseModal.vue
+│   │   │   ├── MessageBox.vue
+│   │   │   ├── Navbar.vue
+│   │   │   └── Pagination.vue
+│   │   ├── home/               # 前台页面组件
+│   │   │   ├── AnnouncementBoard.vue
+│   │   │   ├── MusicPlayer.vue
+│   │   │   ├── PersonalCard.vue
+│   │   │   ├── PostList.vue
+│   │   │   ├── TagBox.vue
+│   │   │   └── WelcomeBanner.vue
+│   │   └── admin/              # 后台 UI 组件
+│   │       ├── AdminButton.vue
+│   │       ├── AdminDataTable.vue
+│   │       ├── AdminHeader.vue
+│   │       ├── AdminLayout.vue
+│   │       ├── AdminModal.vue
+│   │       ├── AdminPageCard.vue
+│   │       ├── AdminSidebar.vue
+│   │       ├── AdminStatusBadge.vue
+│   │       ├── Calendar.vue
+│   │       ├── DashboardWelcomeCard.vue
+│   │       ├── ImportMarkdownModal.vue
+│   │       └── forms/          # 表单原子组件
+│   │           ├── AdminForm.vue
+│   │           ├── AdminFormCheckbox.vue
+│   │           ├── AdminFormField.vue
+│   │           ├── AdminFormFile.vue
+│   │           ├── AdminFormGroup.vue
+│   │           ├── AdminFormInput.vue
+│   │           ├── AdminFormRow.vue
+│   │           ├── AdminFormSelect.vue
+│   │           └── AdminMarkdownField.vue
 │   ├── composables/
+│   │   ├── useAdminList.ts     # 后台分页列表通用逻辑
+│   │   ├── useAsyncAction.ts   # 异步操作 loading / 错误处理
+│   │   ├── useConfirmDelete.ts # 删除二次确认
 │   │   └── useMessageBox.ts    # alert / confirm / toast
 │   ├── utils/
 │   │   ├── request.ts          # 带 token 的请求封装
 │   │   ├── date.ts             # 日期格式化
 │   │   └── importMarkdown.ts   # 本地 Markdown 导入
 │   ├── views/
-│   │   ├── HomeView.vue
-│   │   ├── PostDetailView.vue
-│   │   ├── LoginView.vue
-│   │   ├── AdminDashboard.vue
-│   │   ├── AdminPostList.vue
-│   │   ├── AdminPostEdit.vue
-│   │   ├── AdminTagList.vue
-│   │   ├── AdminNoticeList.vue
-│   │   ├── AdminNoticeEdit.vue
-│   │   ├── AdminTrash.vue
-│   │   ├── AdminUserList.vue
-│   │   └── AdminSettings.vue
+│   │   ├── home/
+│   │   │   ├── HomeView.vue
+│   │   │   ├── LoginView.vue
+│   │   │   └── PostDetailView.vue
+│   │   └── admin/
+│   │       ├── AdminDashboard.vue
+│   │       ├── AdminNoticeEdit.vue
+│   │       ├── AdminNoticeList.vue
+│   │       ├── AdminPostEdit.vue
+│   │       ├── AdminPostList.vue
+│   │       ├── AdminSettings.vue
+│   │       ├── AdminTagList.vue
+│   │       ├── AdminTrash.vue
+│   │       └── AdminUserList.vue
 │   ├── router/
 │   │   └── index.ts            # 路由配置与登录守卫
 │   ├── App.vue
@@ -80,6 +106,15 @@ frontend/
 ├── vite.config.ts
 └── package.json
 ```
+
+## 后台组件化说明
+
+后台页面按“行为组件 + 皮肤组件”分层，避免重复样式和逻辑：
+
+- **通用行为组件**（`common/`）：`BaseModal`、`Pagination`、`MessageBox` 等只负责交互行为。
+- **后台皮肤组件**（`admin/`）：`AdminButton`、`AdminDataTable`、`AdminPageCard`、`AdminModal`、`AdminStatusBadge`、`AdminForm*` 等统一后台视觉风格。
+- **列表逻辑复用**：`useAdminList`、`useConfirmDelete`、`useAsyncAction` 封装了后台列表的加载、分页、删除、异步操作。
+- **表单原子组件**：`admin/forms/` 提供统一的输入、选择、复选、文件、Markdown 编辑器封装，编辑页和弹窗共用。
 
 ## 开发环境要求
 
