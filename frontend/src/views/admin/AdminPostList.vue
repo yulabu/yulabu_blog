@@ -13,12 +13,11 @@
 
       <AdminDataTable :columns="columns" :data="posts">
         <template #cell-title="{ row }">
-          <span class="td-title">{{ row.title }}</span>
+          <AdminDataTableCellTitle :title="row.title" />
         </template>
 
         <template #cell-category="{ row }">
-          <span v-if="row.category" class="category-tag">{{ row.category.name }}</span>
-          <span v-else class="text-muted">-</span>
+          <AdminDataTableCellCategory :name="row.category?.name" />
         </template>
 
         <template #cell-status="{ row }">
@@ -26,14 +25,14 @@
         </template>
 
         <template #cell-createdAt="{ row }">
-          <span class="text-muted">{{ formatDate(row.createdAt) }}</span>
+          <AdminDataTableCellText muted>{{ formatDate(row.createdAt) }}</AdminDataTableCellText>
         </template>
 
         <template #cell-actions="{ row }">
-          <div class="actions">
+          <AdminDataTableCellActions>
             <AdminButton variant="text" @click="goEdit(row.id)">编辑</AdminButton>
             <AdminButton variant="danger" @click="onDelete(row.id)">删除</AdminButton>
-          </div>
+          </AdminDataTableCellActions>
         </template>
       </AdminDataTable>
 
@@ -52,6 +51,10 @@ import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminDataTableCellTitle from '@/components/admin/data-table/AdminDataTableCellTitle.vue'
+import AdminDataTableCellCategory from '@/components/admin/data-table/AdminDataTableCellCategory.vue'
+import AdminDataTableCellActions from '@/components/admin/data-table/AdminDataTableCellActions.vue'
+import AdminDataTableCellText from '@/components/admin/data-table/AdminDataTableCellText.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
@@ -92,30 +95,4 @@ const { confirmDelete: onDelete } = useConfirmDelete(deletePost, {
   width: 100%;
 }
 
-.td-title {
-  font-weight: 500;
-  color: rgb(45, 90, 65);
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.category-tag {
-  padding: 2px 8px;
-  border-radius: 8px;
-  background: rgba(99, 149, 86, 0.85);
-  color: white;
-  font-size: 12px;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
-
-.text-muted {
-  color: rgb(120, 140, 125);
-}
 </style>

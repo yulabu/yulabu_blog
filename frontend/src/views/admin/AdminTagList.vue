@@ -11,14 +11,14 @@
 
       <AdminDataTable :columns="columns" :data="tags">
         <template #cell-name="{ row }">
-          <span class="td-name">{{ row.name }}</span>
+          <AdminDataTableCellTitle :title="row.name" :truncate="false" />
         </template>
 
         <template #cell-actions="{ row }">
-          <div class="actions">
+          <AdminDataTableCellActions>
             <AdminButton variant="text" @click="openModal(row)">编辑</AdminButton>
             <AdminButton variant="danger" @click="onDelete(row.id)">删除</AdminButton>
-          </div>
+          </AdminDataTableCellActions>
         </template>
       </AdminDataTable>
     </AdminPageCard>
@@ -52,6 +52,8 @@ import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminModal from '@/components/admin/AdminModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminDataTableCellTitle from '@/components/admin/data-table/AdminDataTableCellTitle.vue'
+import AdminDataTableCellActions from '@/components/admin/data-table/AdminDataTableCellActions.vue'
 import AdminFormField from '@/components/admin/forms/AdminFormField.vue'
 import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
 
@@ -126,17 +128,6 @@ const { confirmDelete: onDelete } = useConfirmDelete(deleteTag, {
 <style scoped>
 .tag-list-page {
   width: 100%;
-}
-
-.td-name {
-  font-weight: 500;
-  color: rgb(45, 90, 65);
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
 }
 
 </style>

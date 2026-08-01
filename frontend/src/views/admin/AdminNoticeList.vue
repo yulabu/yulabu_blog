@@ -12,7 +12,7 @@
 
       <AdminDataTable :columns="columns" :data="notices" row-key="notice_id">
         <template #cell-notice_title="{ row }">
-          <span class="td-title">{{ row.notice_title }}</span>
+          <AdminDataTableCellTitle :title="row.notice_title" />
         </template>
 
         <template #cell-notice_status="{ row }">
@@ -24,11 +24,11 @@
         </template>
 
         <template #cell-notice_created_at="{ row }">
-          <span class="text-muted">{{ formatDate(row.notice_created_at) }}</span>
+          <AdminDataTableCellText muted>{{ formatDate(row.notice_created_at) }}</AdminDataTableCellText>
         </template>
 
         <template #cell-actions="{ row }">
-          <div class="actions">
+          <AdminDataTableCellActions>
             <AdminButton variant="text" @click="goEdit(row.notice_id)">编辑</AdminButton>
             <AdminButton variant="text" @click="onTogglePin(row)">
               {{ row.notice_is_pinned ? '取消置顶' : '置顶' }}
@@ -37,7 +37,7 @@
               {{ row.notice_status === 'show' ? '隐藏' : '显示' }}
             </AdminButton>
             <AdminButton variant="danger" @click="onDelete(row.notice_id)">删除</AdminButton>
-          </div>
+          </AdminDataTableCellActions>
         </template>
       </AdminDataTable>
     </AdminPageCard>
@@ -55,6 +55,9 @@ import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminDataTableCellTitle from '@/components/admin/data-table/AdminDataTableCellTitle.vue'
+import AdminDataTableCellActions from '@/components/admin/data-table/AdminDataTableCellActions.vue'
+import AdminDataTableCellText from '@/components/admin/data-table/AdminDataTableCellText.vue'
 
 const router = useRouter()
 
@@ -116,23 +119,4 @@ const { confirmDelete: onDelete } = useConfirmDelete(deleteNotice, {
   width: 100%;
 }
 
-.td-title {
-  font-weight: 500;
-  color: rgb(45, 90, 65);
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.text-muted {
-  color: rgb(120, 140, 125);
-}
 </style>

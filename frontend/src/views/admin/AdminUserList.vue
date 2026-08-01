@@ -15,21 +15,21 @@
         </template>
 
         <template #cell-name="{ row }">
-          <span class="td-name">
+          <AdminDataTableCellTitle :truncate="false">
             {{ row.name }}
             <span v-if="row.id === currentAdmin.id" class="self-badge">当前</span>
-          </span>
+          </AdminDataTableCellTitle>
         </template>
 
         <template #cell-created_at="{ row }">
-          <span class="text-muted">{{ formatDate(row.created_at) }}</span>
+          <AdminDataTableCellText muted>{{ formatDate(row.created_at) }}</AdminDataTableCellText>
         </template>
 
         <template #cell-actions="{ row }">
-          <div class="actions">
+          <AdminDataTableCellActions>
             <AdminButton variant="text" @click="openEdit(row)">编辑</AdminButton>
             <AdminButton variant="danger" @click="onDelete(row)">删除</AdminButton>
-          </div>
+          </AdminDataTableCellActions>
         </template>
       </AdminDataTable>
 
@@ -98,6 +98,9 @@ import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminModal from '@/components/admin/AdminModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
+import AdminDataTableCellTitle from '@/components/admin/data-table/AdminDataTableCellTitle.vue'
+import AdminDataTableCellActions from '@/components/admin/data-table/AdminDataTableCellActions.vue'
+import AdminDataTableCellText from '@/components/admin/data-table/AdminDataTableCellText.vue'
 import AdminFormField from '@/components/admin/forms/AdminFormField.vue'
 import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -263,14 +266,6 @@ async function submitPassword() {
   border: 1px solid rgba(99, 149, 86, 0.2);
 }
 
-.td-name {
-  font-weight: 500;
-  color: rgb(45, 90, 65);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .self-badge {
   padding: 2px 6px;
   border-radius: 4px;
@@ -278,16 +273,6 @@ async function submitPassword() {
   color: rgb(45, 90, 65);
   font-size: 12px;
   font-weight: normal;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
-
-.text-muted {
-  color: rgb(120, 140, 125);
 }
 
 </style>

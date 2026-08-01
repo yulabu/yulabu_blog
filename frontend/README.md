@@ -63,7 +63,7 @@ frontend/
 │   │       ├── Calendar.vue
 │   │       ├── DashboardWelcomeCard.vue
 │   │       ├── ImportMarkdownModal.vue
-│   │       └── forms/          # 表单原子组件
+│   │       ├── forms/          # 表单原子组件
 │   │           ├── AdminForm.vue
 │   │           ├── AdminFormCheckbox.vue
 │   │           ├── AdminFormField.vue
@@ -73,6 +73,11 @@ frontend/
 │   │           ├── AdminFormRow.vue
 │   │           ├── AdminFormSelect.vue
 │   │           └── AdminMarkdownField.vue
+│   │       └── data-table/     # 表格单元格组件
+│   │           ├── AdminDataTableCellActions.vue
+│   │           ├── AdminDataTableCellCategory.vue
+│   │           ├── AdminDataTableCellText.vue
+│   │           └── AdminDataTableCellTitle.vue
 │   ├── composables/
 │   │   ├── useAdminList.ts     # 后台分页列表通用逻辑
 │   │   ├── useAsyncAction.ts   # 异步操作 loading / 错误处理
@@ -115,6 +120,7 @@ frontend/
 - **后台皮肤组件**（`admin/`）：`AdminButton`、`AdminDataTable`、`AdminPageCard`、`AdminModal`、`AdminStatusBadge`、`AdminForm*` 等统一后台视觉风格。
 - **列表逻辑复用**：`useAdminList`、`useConfirmDelete`、`useAsyncAction` 封装了后台列表的加载、分页、删除、异步操作。
 - **表单原子组件**：`admin/forms/` 提供统一的输入、选择、复选、文件、Markdown 编辑器封装，编辑页和弹窗共用。
+- **表格单元格组件**：`admin/data-table/` 提供标题、分类、操作按钮、普通文字等单元格封装，各列表页共用。
 
 ## 开发环境要求
 
