@@ -53,8 +53,10 @@ import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
 import { getPost } from '@/api/post'
+import { useMessageBox } from '@/composables/useMessageBox'
 
 const route = useRoute()
+const { toast } = useMessageBox()
 
 const post = ref({
   title: '',
@@ -70,7 +72,7 @@ async function fetchPost() {
   try {
     post.value = await getPost(Number(route.params.id))
   } catch (e) {
-    console.error('获取文章详情失败:', e)
+    toast('获取文章详情失败', 'error')
   }
 }
 

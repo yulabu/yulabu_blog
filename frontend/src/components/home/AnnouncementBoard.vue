@@ -30,15 +30,17 @@ import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { formatDate } from '@/utils/date'
 import { getPublicNotices } from '@/api/notice'
+import { useMessageBox } from '@/composables/useMessageBox'
 
 const notices = ref([])
+const { toast } = useMessageBox()
 
 async function fetchNotices() {
   try {
     const data = await getPublicNotices()
     notices.value = data.notices || []
   } catch (e) {
-    console.error(e)
+    toast('获取公告失败', 'error')
   }
 }
 

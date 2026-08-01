@@ -17,6 +17,7 @@
 import { computed } from 'vue'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
+import { useMessageBox } from '@/composables/useMessageBox'
 
 const props = defineProps({
   modelValue: {
@@ -39,6 +40,8 @@ const value = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v)
 })
+
+const { toast } = useMessageBox()
 
 const toolbars = [
   'bold',
@@ -74,7 +77,7 @@ async function handleUpload(files, callback) {
     const urls = await props.uploadImages(files)
     callback(urls)
   } catch (e) {
-    console.error(e)
+    toast('图片上传失败', 'error')
   }
 }
 </script>

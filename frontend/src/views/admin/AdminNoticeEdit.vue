@@ -79,7 +79,6 @@ async function fetchNotice() {
       isPinned: !!notice.notice_is_pinned
     }
   } catch (e) {
-    console.error(e)
     toast('获取公告失败', 'error')
   }
 }
@@ -115,7 +114,6 @@ async function onSave() {
     toast(isEdit.value ? '保存成功' : '创建成功')
     router.push('/admin/notices')
   } catch (e) {
-    console.error(e)
     toast(e.message || '保存失败', 'error')
   } finally {
     loading.value = false

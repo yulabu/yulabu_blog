@@ -128,7 +128,7 @@ async function fetchTags() {
   try {
     tags.value = await getTags()
   } catch (e) {
-    console.error(e)
+    toast('获取标签失败', 'error')
   }
 }
 
@@ -182,7 +182,6 @@ async function onCreateTag() {
     await fetchTags()
     form.value.categoryId = String(newTag.id)
   } catch (e) {
-    console.error(e)
     toast(e.message || '创建失败', 'error')
   } finally {
     tagSaving.value = false
@@ -245,7 +244,6 @@ async function handleImport({ markdown, files }) {
 
     closeImportModal()
   } catch (e) {
-    console.error(e)
     toast(e.message || '导入失败', 'error')
   } finally {
     loading.value = false
@@ -264,7 +262,6 @@ async function fetchPost() {
       content: post.content || ''
     }
   } catch (e) {
-    console.error(e)
     toast('获取文章失败', 'error')
   }
 }
@@ -298,7 +295,6 @@ async function onSave() {
       router.push(`/admin/posts/${data.id}/edit`)
     }
   } catch (e) {
-    console.error(e)
     toast(e.message || '保存失败', 'error')
   } finally {
     loading.value = false

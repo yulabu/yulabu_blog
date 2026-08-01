@@ -108,6 +108,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAuthStore } from '@/stores/auth'
+import { useMessageBox } from '@/composables/useMessageBox'
 import { getDashboard } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import Calendar from '@/components/admin/Calendar.vue'
@@ -116,6 +117,7 @@ import AdminButton from '@/components/admin/AdminButton.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { toast } = useMessageBox()
 
 const adminName = computed(() => authStore.admin?.name || '管理员')
 const loading = ref(false)
@@ -143,7 +145,7 @@ async function fetchDashboard() {
     }
     recentPosts.value = data.recentPosts || []
   } catch (e) {
-    console.error(e)
+    toast('获取工作台数据失败', 'error')
   } finally {
     loading.value = false
   }
@@ -151,7 +153,7 @@ async function fetchDashboard() {
 
 function onDateSelect(date) {
   // 预留：后续可按日期筛选文章
-  console.log('selected date:', date)
+  void date
 }
 </script>
 

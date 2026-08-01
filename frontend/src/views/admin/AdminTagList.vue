@@ -113,7 +113,6 @@ async function onSave() {
     closeModal()
     refresh()
   } catch (e) {
-    console.error(e)
     toast(e.message || '保存失败', 'error')
   }
 }
