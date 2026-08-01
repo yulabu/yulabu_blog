@@ -198,7 +198,8 @@ async function handleUploadImages(files) {
 }
 
 async function uploadImagesForEditor(files) {
-  return await handleUploadImages(Array.from(files))
+  const result = await handleUploadImages(Array.from(files))
+  return result.urls
 }
 
 async function handleImport({ markdown, files }) {
