@@ -3,7 +3,7 @@ const AppError = require('@middleware/AppError');
 const { parseId, paginate } = require('@dto/common.dto');
 const { Admin } = require('@models');
 const { createAdminDTO, updateAdminDTO, changePasswordDTO } = require('@dto/admin.dto');
-const { adminProfile, adminListItem } = require('@vo/admin.vo');
+const { adminProfile } = require('@vo/admin.vo');
 
 // GET /api/admin/admins
 exports.getAdminList = async (req, res) => {
@@ -17,7 +17,7 @@ exports.getAdminList = async (req, res) => {
   });
 
   res.json({
-    admins: admins.map(adminListItem),
+    admins: admins.map(adminProfile),
     total,
     page,
     totalPages: Math.ceil(total / limit)
@@ -42,7 +42,7 @@ exports.createAdmin = async (req, res) => {
   const exists = await Admin.findOne({ where: { admin_name } });
   if (exists) throw new AppError(409, '用户名已存在');
 
-  const hash = await bcrypt.hash(admin_password, 10);
+  const hash = await bcrypt.hash(admin_password, 12);
 
   const admin = await Admin.create({
     admin_name,
@@ -85,7 +85,7 @@ exports.updateAdmin = async (req, res) => {
     const valid = await bcrypt.compare(old_password, admin.admin_password);
     if (!valid) throw new AppError(400, '旧密码错误');
 
-    changedFields.admin_password = await bcrypt.hash(new_password, 10);
+    changedFields.admin_password = await bcrypt.hash(new_password, 12);
   }
 
   if (Object.keys(changedFields).length === 0) {

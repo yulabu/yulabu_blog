@@ -7,7 +7,7 @@ async function seed() {
   await sequelize.sync();
   const name = process.env.SEED_ADMIN_NAME || 'yulabu';
   const password = process.env.SEED_ADMIN_PASSWORD || 'yulabu123';
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await bcrypt.hash(password, 12);
   await Admin.create({
     admin_name: name,
     admin_password: hash,

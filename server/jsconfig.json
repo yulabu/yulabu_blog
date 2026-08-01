@@ -9,7 +9,8 @@
       "@models/*": ["./models/*"],
       "@dto/*": ["./dto/*"],
       "@vo/*": ["./vo/*"],
-      "@routes/*": ["./routes/*"]
+      "@routes/*": ["./routes/*"],
+      "@utils/*": ["./utils/*"]
     }
   },
   "exclude": ["node_modules"]

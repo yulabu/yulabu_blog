@@ -176,5 +176,6 @@ module.exports = {
   syncPostImages,
   deletePostImages,
   sanitizeFilename,
-  cleanupOldTempDirs
+  cleanupOldTempDirs,
+  ONE_DAY_MS
 }

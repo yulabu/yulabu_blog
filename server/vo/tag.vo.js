@@ -6,8 +6,8 @@ function tagDetail(tag) {
   };
 }
 
-function taglist(tags) {
+function tagList(tags) {
   return tags.map(tag => tagDetail(tag));
 }
 
-module.exports = { tagDetail, taglist };
+module.exports = { tagDetail, tagList };

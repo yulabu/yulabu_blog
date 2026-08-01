@@ -35,7 +35,7 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
   index: false
 }));
 // 图片清理
-const { cleanupOldTempDirs } = require('@utils/image');
+const { cleanupOldTempDirs, ONE_DAY_MS } = require('@utils/image');
 // 导入模型
 const { Post, Tag, Admin, Notice } = require('@models');
 
@@ -77,4 +77,4 @@ setInterval(() => {
   cleanupOldTempDirs().catch(err => {
     console.error('定时清理临时目录失败:', err);
   });
-}, 24 * 60 * 60 * 1000);
+}, ONE_DAY_MS);

@@ -8,11 +8,4 @@ function adminProfile(admin) {
   };
 }
 
-function adminListItem(admin) {
-  return adminProfile(admin);
-}
-
-module.exports = {
-  adminProfile,
-  adminListItem
-};
+module.exports = { adminProfile };
