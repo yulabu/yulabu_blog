@@ -6,7 +6,12 @@ const { saveImage } = require('@utils/image')
 // 处理新建文章和编辑原文章之间的逻辑
 function resolveTargetDir(postId, tempId) {
   if (postId) return path.join(UPLOAD_DIR, String(postId))
-  if (tempId) return path.join(UPLOAD_DIR, 'temp', tempId)
+  if (tempId) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(tempId)) {
+      throw new AppError(400, '无效的临时标识')
+    }
+    return path.join(UPLOAD_DIR, 'temp', tempId)
+  }
   throw new AppError(400, '缺少 post_id 或 temp_id')
 }
 
