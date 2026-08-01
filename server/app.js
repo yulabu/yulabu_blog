@@ -4,6 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('@config/database');
+const { publicLimiter, staticLimiter, adminLimiter } = require('@middleware/rateLimiter');
 
 const app = express();
 // 中间件
@@ -11,25 +12,25 @@ app.use(cors());
 app.use(express.json());
 // post路由
 const postRoutes = require('@routes/postRoutes');
-app.use('/api/posts', postRoutes);
+app.use('/api/posts', publicLimiter, postRoutes);
 // auth路由
 const authRoutes = require('@routes/authRoutes');
 app.use('/api/auth', authRoutes);
 // tag路由
 const tagRoutes = require('@routes/tagRoutes');
-app.use('/api/tags', tagRoutes);
+app.use('/api/tags', publicLimiter, tagRoutes);
 // notice路由
 const noticeRoutes = require('@routes/noticeRoutes');
-app.use('/api/notices', noticeRoutes);
+app.use('/api/notices', publicLimiter, noticeRoutes);
 // admin路由
 const adminRoutes = require('@routes/adminRoutes');
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminLimiter, adminRoutes);
 // 上传路由
 const uploadRoutes = require('@routes/uploadRoutes');
+app.use('/api/upload', adminLimiter, uploadRoutes);
 const { UPLOAD_DIR } = require('@config/upload');
-app.use('/api/upload', uploadRoutes);
 // 静态图片服务
-app.use('/uploads', express.static(UPLOAD_DIR, {
+app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
   dotfiles: 'deny',
   index: false
 }));
