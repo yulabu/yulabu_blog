@@ -142,24 +142,31 @@
   const progress = ref(0);
   const volume = ref(16);
 
+  function onTimeUpdate() {
+    const audio = audioRef.value
+    if (!audio) return
+    currentTime.value = audio.currentTime
+    progress.value = (audio.currentTime / audio.duration) * 100 || 0
+  }
+
+  function onLoadedMetadata() {
+    const audio = audioRef.value
+    if (audio) duration.value = audio.duration
+  }
+
+  function onEnded() {
+    isPlaying.value = false
+  }
+
   onMounted(() => {
     const audio = audioRef.value
     if (!audio) return
 
     audio.volume = volume.value / 100
 
-    audio.addEventListener('timeupdate', () => {
-      currentTime.value = audio.currentTime
-      progress.value = (audio.currentTime / audio.duration) * 100 || 0
-    })
-
-    audio.addEventListener('loadedmetadata', () => {
-      duration.value = audio.duration
-    })
-
-    audio.addEventListener('ended', () => {
-      isPlaying.value = false
-    })
+    audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('loadedmetadata', onLoadedMetadata)
+    audio.addEventListener('ended', onEnded)
   })
   function togglePlay() {
     const audio = audioRef.value
@@ -195,6 +202,9 @@
     if (audio) {
       audio.pause()
       audio.src = ''
+      audio.removeEventListener('timeupdate', onTimeUpdate)
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata)
+      audio.removeEventListener('ended', onEnded)
     }
   })
 </script>
