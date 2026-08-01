@@ -12,7 +12,7 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 onMounted(() => {
   authStore.hydrate()
   if (isAdminRoute.value && authStore.isLoggedIn) {
-    authStore.refreshProfile().catch(() => {})
+    authStore.refreshProfile().catch((e) => console.error('刷新管理员信息失败', e))
   }
 })
 </script>
