@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const AppError = require('@middleware/AppError');
+const { parseId } = require('@dto/common.dto');
 const { Admin } = require('@models');
 const { createAdminDTO, updateAdminDTO, changePasswordDTO } = require('@dto/admin.dto');
 const { adminProfile, adminListItem } = require('@vo/admin.vo');
@@ -56,8 +57,7 @@ exports.createAdmin = async (req, res) => {
 
 // PUT /api/admin/admins/:id
 exports.updateAdmin = async (req, res) => {
-  const adminId = Number(req.params.id);
-  if (!adminId || adminId < 1) throw new AppError(400, '无效的管理员ID');
+  const adminId = parseId(req.params, '管理员');
 
   const admin = await Admin.findByPk(adminId);
   if (!admin) throw new AppError(404, '管理员不存在');
@@ -106,8 +106,7 @@ exports.updateAdmin = async (req, res) => {
 
 // DELETE /api/admin/admins/:id
 exports.deleteAdmin = async (req, res) => {
-  const adminId = Number(req.params.id);
-  if (!adminId || adminId < 1) throw new AppError(400, '无效的管理员ID');
+  const adminId = parseId(req.params, '管理员');
 
   const admin = await Admin.findByPk(adminId);
   if (!admin) throw new AppError(404, '管理员不存在');

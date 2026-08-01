@@ -1,9 +1,8 @@
 const AppError = require('@middleware/AppError');
+const { parseId } = require('./common.dto');
 
 function noticeIdDTO(params) {
-  const id = Number(params.id);
-  if (!id || id < 1) throw new AppError(400, '无效的公告ID');
-  return id;
+  return parseId(params, '公告');
 }
 
 function createNoticeDTO(body) {

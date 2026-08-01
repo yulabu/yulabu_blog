@@ -1,4 +1,5 @@
 const AppError = require('@middleware/AppError');
+const { parseId } = require('./common.dto');
 
 function createTagDTO(body) {
   const name = body.tag_name?.trim();
@@ -28,9 +29,7 @@ function updateTagDTO(body) {
 }
 
 function tagIdDTO(params) {
-  const id = Number(params.id);
-  if (!id || id < 1) throw new AppError(400, '无效的标签ID');
-  return id;
+  return parseId(params, '标签');
 }
 
 module.exports = { createTagDTO, updateTagDTO, tagIdDTO };

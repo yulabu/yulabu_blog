@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const AppError = require('@middleware/AppError');
+const { parseId } = require('@dto/common.dto');
 const { Post, Tag } = require('@models');
 const { postSummary } = require('@vo/post.vo');
 const { deletePostImages } = require('@utils/image');
@@ -59,8 +60,7 @@ exports.getTrashPosts = async (req, res) => {
 
 // 恢复文章
 exports.restorePost = async (req, res) => {
-  const postId = Number(req.params.id);
-  if (!postId || postId < 1) throw new AppError(400, '无效的文章ID');
+  const postId = parseId(req.params, '文章');
 
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
@@ -72,8 +72,7 @@ exports.restorePost = async (req, res) => {
 
 // 彻底删除文章
 exports.forceDeletePost = async (req, res) => {
-  const postId = Number(req.params.id);
-  if (!postId || postId < 1) throw new AppError(400, '无效的文章ID');
+  const postId = parseId(req.params, '文章');
 
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');

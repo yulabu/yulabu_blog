@@ -1,4 +1,5 @@
 const AppError = require('@middleware/AppError');
+const { parseId } = require('./common.dto');
 
 // ========== 创建文章 ==========
 function createPostDTO(body) {
@@ -65,9 +66,7 @@ function listPostsDTO(query) {
 
 // ========== 文章ID ==========
 function postIdDTO(params) {
-  const id = Number(params.id);
-  if (!id || id < 1) throw new AppError(400, '无效的文章ID');
-  return id;
+  return parseId(params, '文章');
 }
 
 module.exports = { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO };
