@@ -37,6 +37,13 @@
 frontend/
 ├── public/
 ├── src/
+│   ├── api/                    # 后端接口封装
+│   │   ├── admin.ts
+│   │   ├── auth.ts
+│   │   ├── notice.ts
+│   │   ├── post.ts
+│   │   ├── tag.ts
+│   │   └── upload.ts
 │   ├── assets/                 # 图片、音乐、图标等静态资源
 │   ├── components/
 │   │   ├── common/             # 通用行为组件
@@ -64,33 +71,39 @@ frontend/
 │   │       ├── DashboardWelcomeCard.vue
 │   │       ├── ImportMarkdownModal.vue
 │   │       ├── forms/          # 表单原子组件
-│   │           ├── AdminForm.vue
-│   │           ├── AdminFormCheckbox.vue
-│   │           ├── AdminFormField.vue
-│   │           ├── AdminFormFile.vue
-│   │           ├── AdminFormGroup.vue
-│   │           ├── AdminFormInput.vue
-│   │           ├── AdminFormRow.vue
-│   │           ├── AdminFormSelect.vue
-│   │           └── AdminMarkdownField.vue
+│   │       │   ├── AdminForm.vue
+│   │       │   ├── AdminFormCheckbox.vue
+│   │       │   ├── AdminFormField.vue
+│   │       │   ├── AdminFormFile.vue
+│   │       │   ├── AdminFormGroup.vue
+│   │       │   ├── AdminFormInput.vue
+│   │       │   ├── AdminFormRow.vue
+│   │       │   ├── AdminFormSelect.vue
+│   │       │   └── AdminMarkdownField.vue
 │   │       └── data-table/     # 表格单元格组件
 │   │           ├── AdminDataTableCellActions.vue
 │   │           ├── AdminDataTableCellCategory.vue
 │   │           ├── AdminDataTableCellText.vue
 │   │           └── AdminDataTableCellTitle.vue
 │   ├── composables/
-│   │   ├── useAdminList.ts     # 后台分页列表通用逻辑
-│   │   ├── useAsyncAction.ts   # 异步操作 loading / 错误处理
-│   │   ├── useConfirmDelete.ts # 删除二次确认
-│   │   └── useMessageBox.ts    # alert / confirm / toast
+│   │   ├── useAdminList.ts
+│   │   ├── useAsyncAction.ts
+│   │   ├── useConfirmDelete.ts
+│   │   └── useMessageBox.ts
+│   ├── router/
+│   │   └── index.ts            # 路由配置与登录守卫
+│   ├── stores/
+│   │   └── auth.ts             # Pinia 认证状态管理
+│   ├── types/
+│   │   └── api.ts              # 接口类型定义
 │   ├── utils/
-│   │   ├── request.ts          # 带 token 的请求封装
 │   │   ├── date.ts             # 日期格式化
+│   │   ├── http.ts             # 带 token 的请求封装
 │   │   └── importMarkdown.ts   # 本地 Markdown 导入
 │   ├── views/
+│   │   ├── LoginView.vue
 │   │   ├── home/
 │   │   │   ├── HomeView.vue
-│   │   │   ├── LoginView.vue
 │   │   │   └── PostDetailView.vue
 │   │   └── admin/
 │   │       ├── AdminDashboard.vue
@@ -102,11 +115,9 @@ frontend/
 │   │       ├── AdminTagList.vue
 │   │       ├── AdminTrash.vue
 │   │       └── AdminUserList.vue
-│   ├── router/
-│   │   └── index.ts            # 路由配置与登录守卫
 │   ├── App.vue
 │   ├── main.ts
-│   └── main.css
+│   └── main.css                # 全局样式与 CSS 主题变量
 ├── index.html
 ├── vite.config.ts
 └── package.json
@@ -121,6 +132,7 @@ frontend/
 - **列表逻辑复用**：`useAdminList`、`useConfirmDelete`、`useAsyncAction` 封装了后台列表的加载、分页、删除、异步操作。
 - **表单原子组件**：`admin/forms/` 提供统一的输入、选择、复选、文件、Markdown 编辑器封装，编辑页和弹窗共用。
 - **表格单元格组件**：`admin/data-table/` 提供标题、分类、操作按钮、普通文字等单元格封装，各列表页共用。
+- **主题色变量**：`main.css` 中以 `--color-*` 定义统一主题色（primary / heading / text / muted / accent / danger 等），所有组件通过 `var()` 引用，避免硬编码色值。
 
 ## 开发环境要求
 
@@ -155,7 +167,7 @@ npm run preview
 
 ## 认证说明
 
-管理后台通过 `localStorage` 中的 `token` 与 `admin` 信息鉴权。登录由后端 `/api/auth/login` 提供，`request.ts` 会自动在请求头附加：
+管理后台通过 `localStorage` 中的 `token` 与 `admin` 信息鉴权。登录由后端 `/api/auth/login` 提供，`http.ts` 会自动在请求头附加：
 
 ```
 Authorization: Bearer <token>
