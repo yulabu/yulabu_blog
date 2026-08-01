@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const AppError = require('@middleware/AppError');
-const { parseId } = require('@dto/common.dto');
+const { parseId, paginate } = require('@dto/common.dto');
 const { Post, Tag } = require('@models');
 const { postSummary } = require('@vo/post.vo');
 const { deletePostImages } = require('@utils/image');
@@ -38,9 +38,7 @@ exports.getDashboard = async (req, res) => {
 
 // 获取回收站文章列表
 exports.getTrashPosts = async (req, res) => {
-  const page = Math.max(parseInt(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
-  const offset = (page - 1) * limit;
+  const { page, limit, offset } = paginate(req.query);
 
   const { rows: posts, count: total } = await Post.findAndCountAll({
     where: { post_status: 'trash' },

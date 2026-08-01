@@ -7,8 +7,7 @@ const { finalizeTempImages, syncPostImages } = require('@utils/image');
 // 获取文章列表（带分类 + 分页）
 exports.getPosts = async (req, res) => {
 
-  const { page, limit, category_id } = listPostsDTO(req.query);
-  const offset = (page - 1) * limit;
+  const { page, limit, offset, category_id } = listPostsDTO(req.query);
 
   const where = { post_status: 'published' };
   if (category_id) {

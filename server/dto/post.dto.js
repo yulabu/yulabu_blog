@@ -1,5 +1,5 @@
 const AppError = require('@middleware/AppError');
-const { parseId } = require('./common.dto');
+const { parseId, paginate } = require('./common.dto');
 
 // ========== 创建文章 ==========
 function createPostDTO(body) {
@@ -57,11 +57,10 @@ function updatePostDTO(body) {
 
 // ========== 列表分页 ==========
 function listPostsDTO(query) {
-  const page = Math.min(1000, Math.max(parseInt(query.page) || 1, 1));
-  const limit = Math.min(50, Math.max(1, parseInt(query.limit) || 10));
-  const category_id = query.category_id ? Number(query.category_id) : null; // 查询是否有分类ID
+  const { page, limit, offset } = paginate(query);
+  const category_id = query.category_id ? Number(query.category_id) : null;
   if (category_id !== null && category_id < 1) throw new AppError(400, '无效的分类ID');
-  return { page, limit, category_id };
+  return { page, limit, offset, category_id };
 }
 
 // ========== 文章ID ==========

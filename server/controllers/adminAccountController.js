@@ -1,15 +1,13 @@
 const bcrypt = require('bcrypt');
 const AppError = require('@middleware/AppError');
-const { parseId } = require('@dto/common.dto');
+const { parseId, paginate } = require('@dto/common.dto');
 const { Admin } = require('@models');
 const { createAdminDTO, updateAdminDTO, changePasswordDTO } = require('@dto/admin.dto');
 const { adminProfile, adminListItem } = require('@vo/admin.vo');
 
 // GET /api/admin/admins
 exports.getAdminList = async (req, res) => {
-  const page = Math.max(parseInt(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
-  const offset = (page - 1) * limit;
+  const { page, limit, offset } = paginate(req.query);
 
   const { rows: admins, count: total } = await Admin.findAndCountAll({
     attributes: { exclude: ['admin_password'] },
