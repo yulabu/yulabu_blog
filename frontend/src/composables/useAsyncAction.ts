@@ -29,7 +29,6 @@ export function useAsyncAction<TArgs extends any[] = any[], TResult = any>(
       await options.onSuccess?.(result, ...args)
       return result
     } catch (e: any) {
-      console.error(e)
       toast(e.message || options.errorMessage || '操作失败', 'error')
       options.onError?.(e, ...args)
     } finally {

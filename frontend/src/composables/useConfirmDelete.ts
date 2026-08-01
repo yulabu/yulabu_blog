@@ -32,7 +32,6 @@ export function useConfirmDelete<T = any>(
       toast(options.successMessage || '删除成功')
       await options.onSuccess?.()
     } catch (e: any) {
-      console.error(e)
       toast(e.message || options.errorMessage || '删除失败', 'error')
     } finally {
       loading.value = false

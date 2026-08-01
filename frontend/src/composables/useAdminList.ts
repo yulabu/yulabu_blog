@@ -36,7 +36,6 @@ export function useAdminList<T = any>(
       items.value = extractList(data) ?? []
       totalPages.value = paginated ? extractTotalPages(data) : 1
     } catch (e) {
-      console.error(e)
       toast(errorMessage, 'error')
     } finally {
       loading.value = false
