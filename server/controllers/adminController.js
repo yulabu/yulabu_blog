@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const AppError = require('@middleware/AppError');
 const { Post, Tag } = require('@models');
 const { postSummary } = require('@vo/post.vo');
@@ -11,7 +12,6 @@ exports.getDashboard = async (req, res) => {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const { Op } = require('sequelize');
   const todayCount = await Post.count({
     where: {
       post_status: 'published',
