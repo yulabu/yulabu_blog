@@ -13,7 +13,7 @@ async function seed() {
     admin_password: hash,
     admin_avatar: null
   });
-  console.log(`管理员创建成功: ${name} / ${password}`);
+  console.log(`管理员创建成功: ${name}`);
   process.exit(0);
 }
 
