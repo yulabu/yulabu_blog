@@ -3,7 +3,7 @@
     <AdminPageCard :title="isEdit ? '编辑公告' : '新建公告'">
       <template #actions>
         <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
-        <AdminButton variant="primary" @click="onSave">保存</AdminButton>
+        <AdminButton variant="primary" :loading="loading" @click="onSave">保存</AdminButton>
       </template>
 
       <AdminForm>
@@ -84,6 +84,8 @@ async function fetchNotice() {
 }
 
 async function onSave() {
+  if (loading.value) return
+
   const title = form.value.title.trim()
   const content = form.value.content.trim()
 

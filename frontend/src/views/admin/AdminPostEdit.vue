@@ -4,7 +4,7 @@
       <template #actions>
         <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
         <AdminButton variant="secondary" @click="openImportModal">导入附图片Markdown文章</AdminButton>
-        <AdminButton variant="primary" @click="onSave">保存</AdminButton>
+        <AdminButton variant="primary" :loading="loading" @click="onSave">保存</AdminButton>
       </template>
 
       <AdminForm>
@@ -268,6 +268,8 @@ async function fetchPost() {
 }
 
 async function onSave() {
+  if (loading.value) return
+
   if (!form.value.title.trim()) {
     toast('标题不能为空', 'error')
     return
@@ -289,12 +291,11 @@ async function onSave() {
 
     if (isEdit.value) {
       await updatePost(Number(route.params.id), postForm)
-      toast('保存成功')
     } else {
-      const data = await createPost(postForm, tempId.value)
-      toast('创建成功')
-      router.push(`/admin/posts/${data.id}/edit`)
+      await createPost(postForm, tempId.value)
     }
+    toast(isEdit.value ? '保存成功' : '创建成功')
+    router.push('/admin/posts')
   } catch (e) {
     toast(e.message || '保存失败', 'error')
   } finally {
