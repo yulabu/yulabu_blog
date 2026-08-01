@@ -143,7 +143,6 @@
   const volume = ref(16);
 
   onMounted(() => {
-    // console.log('audioRef:', audioRef.value)
     const audio = audioRef.value
     if (!audio) return
 

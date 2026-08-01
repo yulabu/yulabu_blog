@@ -16,9 +16,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Icon } from '@iconify/vue'
 
-const props = defineProps({
+defineProps({
   adminName: {
     type: String,
     default: '管理员'

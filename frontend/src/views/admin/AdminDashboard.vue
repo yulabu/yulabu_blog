@@ -78,7 +78,7 @@
 
       <aside class="right-column">
         <div class="calendar-wrapper">
-          <Calendar @select="onDateSelect" />
+          <Calendar />
         </div>
 
         <div class="card quick-actions">
@@ -151,10 +151,6 @@ async function fetchDashboard() {
   }
 }
 
-function onDateSelect(date) {
-  // 预留：后续可按日期筛选文章
-  void date
-}
 </script>
 
 <style scoped>

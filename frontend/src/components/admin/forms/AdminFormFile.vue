@@ -18,7 +18,7 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   modelValue: {
-    type: [Object, Array, null],
+    type: [Object, Array],
     default: null
   },
   accept: {

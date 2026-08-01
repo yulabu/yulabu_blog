@@ -21,7 +21,7 @@ const AdminUserList = () => import(/* webpackChunkName: "admin" */ '@/views/admi
 const AdminSettings = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminSettings.vue');
 
 const routes = [
-  { path: '/', redirect: '/home' },           // 默认跳转到登录页
+  { path: '/', redirect: '/home' },           // 默认跳转到首页
   { path: '/login', name: 'Login', component: LoginView },
   { path: '/home', name: 'Home', component: HomeView },
   { path: '/post/:id', name: 'PostDetail', component: PostDetailView },

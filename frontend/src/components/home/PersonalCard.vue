@@ -17,7 +17,6 @@
   </div>
 </template>
 <style scoped>
-/* 调试暂用大小，后面记得改成相对 */
 .card{
   position: relative;
   width: 300px;

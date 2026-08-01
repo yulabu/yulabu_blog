@@ -39,7 +39,7 @@ import AdminFormField from '@/components/admin/forms/AdminFormField.vue'
 import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
 import AdminFormFile from '@/components/admin/forms/AdminFormFile.vue'
 
-const props = defineProps({
+defineProps({
   visible: { type: Boolean, default: false },
   loading: { type: Boolean, default: false }
 })
