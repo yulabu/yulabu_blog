@@ -76,7 +76,7 @@ defineExpose({ reset })
   border-radius: 8px;
   border: 1px solid rgba(80, 140, 134, 0.25);
   background: rgba(255, 255, 255, 0.5);
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   font-size: 14px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   outline: none;
@@ -86,19 +86,19 @@ defineExpose({ reset })
 }
 
 .admin-form-file__input:focus {
-  border-color: rgb(99, 149, 86);
+  border-color: var(--color-primary);
 }
 
 .admin-form-file__hint {
   margin: 4px 0 0;
   font-size: 12px;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
 }
 
 .admin-form-file__selected {
   margin: 8px 0 0;
   font-size: 13px;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   word-break: break-all;
 }
 </style>

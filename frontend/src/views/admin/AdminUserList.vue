@@ -263,14 +263,14 @@ async function submitPassword() {
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(99, 149, 86, 0.2);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
 }
 
 .self-badge {
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(99, 149, 86, 0.15);
-  color: rgb(45, 90, 65);
+  background: rgba(var(--color-primary-rgb), 0.15);
+  color: var(--color-heading);
   font-size: 12px;
   font-weight: normal;
 }

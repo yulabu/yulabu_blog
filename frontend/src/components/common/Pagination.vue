@@ -68,7 +68,7 @@ function goTo(p) {
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.6);
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -80,12 +80,12 @@ function goTo(p) {
 }
 
 .page-btn:hover:not(:disabled) {
-  background: rgba(99, 149, 86, 0.15);
-  color: rgb(45, 90, 65);
+  background: rgba(var(--color-primary-rgb), 0.15);
+  color: var(--color-heading);
 }
 
 .page-btn.active {
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   color: white;
   box-shadow: 0 2px 8px rgba(99, 149, 86, 0.3);
 }

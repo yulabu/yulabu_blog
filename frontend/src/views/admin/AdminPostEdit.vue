@@ -324,7 +324,7 @@ onMounted(() => {
   height: 36px;
   border-radius: 8px;
   border: none;
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   color: white;
   font-size: 20px;
   cursor: pointer;
@@ -336,6 +336,6 @@ onMounted(() => {
 }
 
 .btn-add:hover {
-  background: rgb(79, 129, 66);
+  background: var(--color-primary-hover);
 }
 </style>

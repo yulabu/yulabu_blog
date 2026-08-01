@@ -1,4 +1,18 @@
 
+:root {
+  --color-primary: rgb(99, 149, 86);
+  --color-primary-rgb: 99, 149, 86;
+  --color-primary-hover: rgb(79, 129, 66);
+  --color-heading: rgb(45, 90, 65);
+  --color-text: rgb(65, 110, 105);
+  --color-muted: rgb(120, 140, 125);
+  --color-accent: rgb(80, 140, 134);
+  --color-accent-rgb: 80, 140, 134;
+  --color-danger: rgb(200, 80, 80);
+  --color-danger-rgb: 200, 80, 80;
+  --color-danger-hover: rgb(220, 90, 90);
+}
+
 *{
     margin: 0;
     padding: 0;

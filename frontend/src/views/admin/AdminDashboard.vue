@@ -201,24 +201,24 @@ async function fetchDashboard() {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(99, 149, 86, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
 }
 
 .stat-label {
   font-size: 13px;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
   margin-bottom: 4px;
 }
 
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
 }
 
 .main-grid {
@@ -267,7 +267,7 @@ async function fetchDashboard() {
 .empty {
   padding: 40px 0;
   text-align: center;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
   font-size: 14px;
 }
 
@@ -293,7 +293,7 @@ async function fetchDashboard() {
 }
 
 .post-item:hover .post-title {
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
 }
 
 .post-main {
@@ -317,7 +317,7 @@ async function fetchDashboard() {
   flex-shrink: 0;
   padding: 2px 8px;
   border-radius: 8px;
-  background: rgba(99, 149, 86, 0.85);
+  background: rgba(var(--color-primary-rgb), 0.85);
   color: white;
   font-size: 12px;
 }
@@ -325,7 +325,7 @@ async function fetchDashboard() {
 .post-date {
   flex-shrink: 0;
   font-size: 13px;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
 }
 
 .right-column {
@@ -354,8 +354,8 @@ async function fetchDashboard() {
   padding: 12px 16px;
   border: none;
   border-radius: 10px;
-  background: rgba(99, 149, 86, 0.1);
-  color: rgb(45, 90, 65);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-heading);
   font-size: 14px;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -363,7 +363,7 @@ async function fetchDashboard() {
 }
 
 .action-btn:hover {
-  background: rgba(99, 149, 86, 0.2);
+  background: rgba(var(--color-primary-rgb), 0.2);
 }
 
 .action-btn span {

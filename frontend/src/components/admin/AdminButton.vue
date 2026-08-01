@@ -54,26 +54,26 @@ defineProps({
   padding: 8px 18px;
   border-radius: 8px;
   border: none;
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   color: white;
   font-size: 13px;
 }
 
 .admin-button--primary:hover:not(:disabled) {
-  background: rgb(79, 129, 66);
+  background: var(--color-primary-hover);
 }
 
 .admin-button--secondary {
   padding: 8px 18px;
   border-radius: 8px;
   border: none;
-  background: rgba(80, 140, 134, 0.12);
-  color: rgb(65, 110, 105);
+  background: rgba(var(--color-accent-rgb), 0.12);
+  color: var(--color-text);
   font-size: 13px;
 }
 
 .admin-button--secondary:hover:not(:disabled) {
-  background: rgba(80, 140, 134, 0.22);
+  background: rgba(var(--color-accent-rgb), 0.22);
 }
 
 .admin-button--text,
@@ -86,18 +86,18 @@ defineProps({
 }
 
 .admin-button--text {
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
 }
 
 .admin-button--text:hover:not(:disabled) {
-  background: rgba(99, 149, 86, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
 }
 
 .admin-button--danger {
-  color: rgb(200, 80, 80);
+  color: var(--color-danger);
 }
 
 .admin-button--danger:hover:not(:disabled) {
-  background: rgba(200, 80, 80, 0.1);
+  background: rgba(var(--color-danger-rgb), 0.1);
 }
 </style>

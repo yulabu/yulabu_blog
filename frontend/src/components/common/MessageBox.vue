@@ -78,13 +78,13 @@ function onCancel() {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 18px;
   font-weight: 600;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   margin: 0;
 }
 
 .modal-message {
   font-size: 14px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   line-height: 1.6;
   margin: 0;
 }
@@ -100,21 +100,21 @@ function onCancel() {
 }
 
 .message-box-btn--confirm {
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   color: white;
 }
 
 .message-box-btn--confirm:hover {
-  background: rgb(79, 129, 66);
+  background: var(--color-primary-hover);
 }
 
 .message-box-btn--cancel {
-  background: rgba(80, 140, 134, 0.12);
+  background: rgba(var(--color-accent-rgb), 0.12);
   color: rgb(65, 110, 65);
 }
 
 .message-box-btn--cancel:hover {
-  background: rgba(80, 140, 134, 0.22);
+  background: rgba(var(--color-accent-rgb), 0.22);
 }
 
 .toast {
@@ -131,15 +131,15 @@ function onCancel() {
 }
 
 .toast-success {
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
 }
 
 .toast-error {
-  background: rgb(220, 90, 90);
+  background: var(--color-danger-hover);
 }
 
 .toast-info {
-  background: rgb(80, 140, 134);
+  background: var(--color-accent);
 }
 
 .toast-enter-active,

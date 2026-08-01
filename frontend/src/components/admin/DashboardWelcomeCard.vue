@@ -89,7 +89,7 @@ onUnmounted(() => {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 24px;
   font-weight: 600;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
 }
 
 .user {
@@ -100,7 +100,7 @@ onUnmounted(() => {
 
 .user-name {
   font-size: 16px;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-weight: 500;
 }
 
@@ -117,14 +117,14 @@ onUnmounted(() => {
   font-family: 'Courier New', 'Microsoft YaHei', monospace;
   font-size: 36px;
   font-weight: 600;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   line-height: 1;
   letter-spacing: 2px;
 }
 
 .date {
   font-size: 14px;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
 }
 
 @media (max-width: 600px) {

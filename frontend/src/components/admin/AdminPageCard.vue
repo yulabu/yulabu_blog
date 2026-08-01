@@ -72,13 +72,13 @@ defineProps({
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 20px;
   font-weight: 600;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   margin: 0;
 }
 
 .admin-page-card__subtitle {
   font-size: 13px;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
   margin-top: 4px;
 }
 
@@ -92,6 +92,6 @@ defineProps({
 .admin-page-card__empty {
   padding: 40px 0;
   text-align: center;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
 }
 </style>

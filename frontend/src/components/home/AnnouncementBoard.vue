@@ -71,14 +71,14 @@ onMounted(fetchNotices)
 }
 
 .icon {
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-size: 22px;
 }
 
 .title {
   font-family: '华文琥珀', 'STHupo', sans-serif;
   font-weight: 400;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-size: 20px;
   margin: 0;
   letter-spacing: 2px;
@@ -87,7 +87,7 @@ onMounted(fetchNotices)
 .count {
   margin-left: auto;
   font-size: 12px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   background: rgba(80, 140, 134, .12);
   padding: 2px 8px;
   border-radius: 10px;
@@ -120,7 +120,7 @@ onMounted(fetchNotices)
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   box-shadow: 0 0 6px rgba(99, 149, 86, .4);
 }
 
@@ -140,13 +140,13 @@ onMounted(fetchNotices)
   font-family: '微软雅黑', sans-serif;
   font-weight: 900;
   font-size: 14px;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
 }
 
 .notice-date {
   margin-left: auto;
   font-size: 11px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   opacity: .65;
   white-space: nowrap;
   flex-shrink: 0;
@@ -171,7 +171,7 @@ onMounted(fetchNotices)
   align-items: center;
   justify-content: center;
   padding: 20px 0;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   opacity: .45;
   font-size: 13px;
   gap: 8px;

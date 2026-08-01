@@ -91,7 +91,7 @@ function onConfirm() {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 18px;
   font-weight: 600;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   margin: 0;
 }
 </style>

@@ -90,7 +90,7 @@
     margin-top: 16px;
   }
   .info .title {
-    color: rgb(99, 149, 86);
+    color: var(--color-primary);
     font-family: '华文琥珀';
     font-weight: 60;
     font-size: 24px;
@@ -112,7 +112,7 @@
   .current-time,
   .duration {
     font-size: 12px;
-    color: rgb(65, 110, 105);
+    color: var(--color-text);
     min-width: 36px;
     text-align: center;
     font-variant-numeric: tabular-nums;
@@ -120,7 +120,7 @@
   .seekbar, .volume-range {
     height: 2px;
     border-radius: 3px;
-    accent-color: rgb(65, 110, 105);
+    accent-color: var(--color-text);
     outline: none;
   }
   .seekbar {

@@ -20,6 +20,6 @@ defineProps({
 
 <style scoped>
 .cell-text.is-muted {
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
 }
 </style>

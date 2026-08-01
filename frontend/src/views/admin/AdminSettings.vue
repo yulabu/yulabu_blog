@@ -29,7 +29,7 @@ import { Icon } from '@iconify/vue'
 
 .icon {
   font-size: 48px;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   margin-bottom: 16px;
 }
 

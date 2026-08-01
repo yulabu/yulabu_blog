@@ -160,7 +160,7 @@ onUnmounted(() => {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 28px;
   font-weight: 700;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   margin: 0 0 14px;
   line-height: 1.4;
 }
@@ -170,7 +170,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
 }
 
 .category-tag {
@@ -232,14 +232,14 @@ onUnmounted(() => {
 .toc-header .line {
   width: 4px;
   height: 18px;
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   border-radius: 2px;
 }
 
 .toc-header h4 {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-weight: 600;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-size: 16px;
   margin: 0;
 }
@@ -257,7 +257,7 @@ onUnmounted(() => {
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 13px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   cursor: pointer;
   transition: all 0.2s ease;
   line-height: 1.4;
@@ -265,12 +265,12 @@ onUnmounted(() => {
 
 .toc-item:hover {
   background: rgba(99, 149, 86, 0.12);
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
 }
 
 .toc-item.active {
   background: rgba(99, 149, 86, 0.2);
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   font-weight: 600;
 }
 
@@ -298,7 +298,7 @@ onUnmounted(() => {
   padding: 12px 0;
   text-align: center;
   font-size: 12px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   opacity: 0.5;
 }
 

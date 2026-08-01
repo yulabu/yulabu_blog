@@ -31,7 +31,7 @@ const emit = defineEmits(['update:modelValue'])
   align-items: center;
   gap: 8px;
   padding: 9px 0;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   font-size: 14px;
   cursor: pointer;
 }
@@ -39,7 +39,7 @@ const emit = defineEmits(['update:modelValue'])
 .admin-form-checkbox__input {
   width: 16px;
   height: 16px;
-  accent-color: rgb(99, 149, 86);
+  accent-color: var(--color-primary);
   cursor: pointer;
 }
 

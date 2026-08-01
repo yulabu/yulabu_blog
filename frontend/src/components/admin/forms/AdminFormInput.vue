@@ -79,7 +79,7 @@ defineExpose({ focus, inputRef })
   border-radius: 8px;
   border: 1px solid rgba(80, 140, 134, 0.25);
   background: rgba(255, 255, 255, 0.5);
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   font-size: 14px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   outline: none;
@@ -88,7 +88,7 @@ defineExpose({ focus, inputRef })
 }
 
 .admin-form-input:focus {
-  border-color: rgb(99, 149, 86);
+  border-color: var(--color-primary);
 }
 
 .admin-form-input::placeholder {

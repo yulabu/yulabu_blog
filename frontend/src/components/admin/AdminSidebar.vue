@@ -74,7 +74,7 @@ import { Icon } from '@iconify/vue'
 .logo {
   font-family: '华文琥珀', 'STHupo', sans-serif;
   font-size: 24px;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   letter-spacing: 2px;
 }
 
@@ -110,13 +110,13 @@ import { Icon } from '@iconify/vue'
 }
 
 .menu-item:hover {
-  background: rgba(99, 149, 86, 0.06);
-  color: rgb(45, 90, 65);
+  background: rgba(var(--color-primary-rgb), 0.06);
+  color: var(--color-heading);
 }
 
 .menu-item.active {
-  background: rgba(99, 149, 86, 0.1);
-  color: rgb(45, 90, 65);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-heading);
   position: relative;
 }
 
@@ -128,7 +128,7 @@ import { Icon } from '@iconify/vue'
   transform: translateY(-50%);
   width: 4px;
   height: 20px;
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   border-radius: 0 2px 2px 0;
 }
 

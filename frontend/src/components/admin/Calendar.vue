@@ -189,7 +189,7 @@ header {
   width: 100%;
   min-height: 140px;
   background-color: rgb(167, 233, 186);
-  color: rgb(80, 140, 134);
+  color: var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -233,7 +233,7 @@ header {
   border: none;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.6);
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   font-size: 18px;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -263,7 +263,7 @@ header {
 
 .calendar thead {
   font-size: clamp(12px, 2.5vw, 14px);
-  color: rgb(80, 140, 134);
+  color: var(--color-accent);
 }
 
 .calendar th,
@@ -282,30 +282,30 @@ header {
   border-radius: 50%;
   font-size: clamp(14px, 3vw, 18px);
   font-weight: 500;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   cursor: pointer;
   transition: all 0.2s ease;
   aspect-ratio: 1 / 1;
 }
 
 .calendar td:hover {
-  color: rgb(80, 140, 134);
+  color: var(--color-accent);
   background-color: rgb(181, 199, 186);
 }
 
 .today {
-  color: rgb(80, 140, 134);
+  color: var(--color-accent);
   font-weight: 700;
   background-color: rgba(130, 226, 216, 0.3);
 }
 
 .selected {
   color: #fff;
-  background-color: rgb(99, 149, 86);
+  background-color: var(--color-primary);
 }
 
 .selected:hover {
-  background-color: rgb(79, 129, 66);
+  background-color: var(--color-primary-hover);
 }
 
 .other-month {

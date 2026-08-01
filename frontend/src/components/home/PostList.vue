@@ -68,14 +68,14 @@ function goToDetail(id) {
 }
 
 .icon {
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-size: 22px;
 }
 
 .section-title {
   font-family: '华文琥珀', 'STHupo', sans-serif;
   font-weight: 400;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-size: 20px;
   margin: 0;
   letter-spacing: 2px;
@@ -84,7 +84,7 @@ function goToDetail(id) {
 .count {
   margin-left: auto;
   font-size: 12px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   background: rgba(80, 140, 134, .12);
   padding: 2px 8px;
   border-radius: 10px;
@@ -122,7 +122,7 @@ function goToDetail(id) {
   font-family: '华文琥珀', 'STHupo', sans-serif;
   font-weight: 400;
   font-size: 18px;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   margin: 0;
   line-height: 1.4;
   transition: color .2s;
@@ -165,13 +165,13 @@ function goToDetail(id) {
 }
 
 .date {
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   opacity: .6;
   font-size: 11px;
 }
 
 .author {
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   opacity: .65;
 }
 
@@ -181,7 +181,7 @@ function goToDetail(id) {
   align-items: center;
   justify-content: center;
   padding: 20px 0;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   opacity: .45;
   font-size: 13px;
   gap: 8px;

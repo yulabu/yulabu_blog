@@ -65,7 +65,7 @@ onUnmounted(() => {
 .logo {
   font-family: '华文琥珀', 'STHupo', sans-serif;
   font-size: 24px;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   letter-spacing: 2px;
   cursor: pointer;
   transition: color .2s;
@@ -84,7 +84,7 @@ onUnmounted(() => {
 .nav-link {
   font-family: '微软雅黑', sans-serif;
   font-size: 14px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   text-decoration: none;
   padding: 6px 0;
   position: relative;
@@ -92,11 +92,11 @@ onUnmounted(() => {
 }
 
 .nav-link:hover {
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
 }
 
 .nav-link.router-link-active {
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-weight: 900;
 }
 

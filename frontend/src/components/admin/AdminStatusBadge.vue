@@ -39,8 +39,8 @@ const badgeClass = computed(() => badge.value.class)
 
 .admin-status-badge.published,
 .admin-status-badge.show {
-  background: rgba(99, 149, 86, 0.15);
-  color: rgb(45, 90, 65);
+  background: rgba(var(--color-primary-rgb), 0.15);
+  color: var(--color-heading);
 }
 
 .admin-status-badge.trash,

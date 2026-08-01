@@ -28,7 +28,7 @@ defineProps({
   align-items: center;
   gap: 8px;
   font-weight: 500;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
 }
 
 .cell-title.is-truncated .cell-title__text {

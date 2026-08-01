@@ -42,7 +42,7 @@ defineProps({
 
 .admin-form-field__label {
   font-size: 13px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -54,7 +54,7 @@ defineProps({
 .admin-form-field__hint {
   margin: 0;
   font-size: 12px;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
 }
 
 .admin-form-field__error {

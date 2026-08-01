@@ -94,7 +94,7 @@ const vClickOutside = {
 }
 
 .user-info:hover {
-  background: rgba(99, 149, 86, 0.06);
+  background: rgba(var(--color-primary-rgb), 0.06);
 }
 
 .user-avatar {
@@ -102,18 +102,18 @@ const vClickOutside = {
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(99, 149, 86, 0.2);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
 }
 
 .user-name {
   font-size: 14px;
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   font-weight: 500;
 }
 
 .dropdown-icon {
   font-size: 18px;
-  color: rgb(120, 140, 125);
+  color: var(--color-muted);
 }
 
 .dropdown-menu {
@@ -139,14 +139,14 @@ const vClickOutside = {
   background: transparent;
   border-radius: 6px;
   font-size: 13px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   cursor: pointer;
   transition: background 0.2s ease;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
 }
 
 .dropdown-item:hover {
-  background: rgba(99, 149, 86, 0.08);
-  color: rgb(45, 90, 65);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  color: var(--color-heading);
 }
 </style>

@@ -71,13 +71,13 @@ function resolveKey(row) {
 }
 
 .admin-data-table th {
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
   font-weight: 600;
-  background: rgba(99, 149, 86, 0.08);
+  background: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .admin-data-table tbody tr:hover {
-  background: rgba(99, 149, 86, 0.04);
+  background: rgba(var(--color-primary-rgb), 0.04);
 }
 
 .admin-data-table :deep(.text-center) {

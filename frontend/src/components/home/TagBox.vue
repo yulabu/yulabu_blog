@@ -76,14 +76,14 @@ onMounted(() => {
 .line {
   width: 4px;
   height: 20px;
-  background: rgb(99, 149, 86);
+  background: var(--color-primary);
   border-radius: 2px;
 }
 
 .title {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-weight: 600;
-  color: rgb(99, 149, 86);
+  color: var(--color-primary);
   font-size: 18px;
   margin: 0;
 }
@@ -91,7 +91,7 @@ onMounted(() => {
 .count {
   margin-left: auto;
   font-size: 12px;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   background: rgba(80, 140, 134, .12);
   padding: 2px 8px;
   border-radius: 10px;
@@ -113,7 +113,7 @@ onMounted(() => {
   padding: 6px 12px;
   border-radius: 8px;
   background: rgba(99, 149, 86, 0.12);
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   font-size: 13px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   transition: all 0.2s ease;
@@ -122,7 +122,7 @@ onMounted(() => {
 
 .tag:hover {
   background: rgba(99, 149, 86, 0.22);
-  color: rgb(45, 90, 65);
+  color: var(--color-heading);
 }
 
 .empty {
@@ -131,7 +131,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 20px 0;
-  color: rgb(65, 110, 105);
+  color: var(--color-text);
   opacity: .45;
   font-size: 13px;
   gap: 8px;
