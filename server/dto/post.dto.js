@@ -59,8 +59,9 @@ function updatePostDTO(body) {
 function listPostsDTO(query) {
   const { page, limit, offset } = paginate(query);
   const category_id = query.category_id ? Number(query.category_id) : null;
+  const q = (query.q || '').trim().slice(0, 32) || null;
   if (category_id !== null && category_id < 1) throw new AppError(400, '无效的分类ID');
-  return { page, limit, offset, category_id };
+  return { page, limit, offset, category_id, q };
 }
 
 // ========== 文章ID ==========

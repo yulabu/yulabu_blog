@@ -1,17 +1,21 @@
 const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { Post, Tag } = require('@models');
+const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { finalizeTempImages, syncPostImages } = require('@utils/image');
 
-// 获取文章列表（带分类 + 分页）
+// 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
 
-  const { page, limit, offset, category_id } = listPostsDTO(req.query);
+  const { page, limit, offset, category_id, q } = listPostsDTO(req.query);
 
   const where = { post_status: 'published' };
   if (category_id) {
     where.post_category_id = category_id;
+  }
+  if (q) {
+    where.post_title = { [Op.like]: `%${q}%` };
   }
   const { rows: posts, count: total } = await Post.findAndCountAll({
     where,

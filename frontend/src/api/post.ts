@@ -1,9 +1,9 @@
 import http from '@/utils/http'
 import type { PaginatedPosts, Post, PostForm, IdResponse } from '@/types/api'
 
-export function getPosts(page = 1, limit = 10, categoryId?: number) {
+export function getPosts(page = 1, limit = 10, categoryId?: number, q?: string) {
   return http.get<PaginatedPosts>('/posts', {
-    params: { page, limit, category_id: categoryId }
+    params: { page, limit, category_id: categoryId, q }
   })
 }
 

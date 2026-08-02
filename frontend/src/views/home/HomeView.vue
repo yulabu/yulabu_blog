@@ -6,10 +6,10 @@
         <div class="home-layout">
             <aside class="left-sidebar">
                 <PersonalCard />
-                <TagBox />
+                <TagBox :active-id="activeCategoryId" @select="onTagSelect" />
             </aside>
             <main class="center">
-                <PostList />
+                <PostList :category-id="activeCategoryId" :search-query="searchQuery" @clear="onClear" />
             </main>
             <aside class="right-sidebar">
                 <AnnouncementBoard />
@@ -20,12 +20,31 @@
     
 </template>
 <script setup>
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PersonalCard from '@/components/home/PersonalCard.vue';
 import TagBox from '@/components/home/TagBox.vue';
 import WelcomeBanner from '@/components/home/WelcomeBanner.vue';
 import PostList from '@/components/home/PostList.vue';
 import MusicPlayer from '@/components/home/MusicPlayer.vue';
 import AnnouncementBoard from '@/components/home/AnnouncementBoard.vue';
+
+const route = useRoute()
+const router = useRouter()
+
+const activeCategoryId = ref(null)
+const searchQuery = computed(() => (route.query.q ? String(route.query.q) : ''))
+
+function onTagSelect(id) {
+  activeCategoryId.value = id
+}
+
+function onClear() {
+  activeCategoryId.value = null
+  if (route.query.q) {
+    router.push({ name: 'Home' })
+  }
+}
 </script>
 <style scoped>
     .page-bg{

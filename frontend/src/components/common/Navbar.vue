@@ -8,20 +8,51 @@
       <router-link to="/articles" class="nav-link">文章</router-link>
       <router-link to="/about" class="nav-link">关于</router-link>
     </div>
-
+    <div class="nav-search">
+      <input
+        v-model="searchInput"
+        type="text"
+        class="search-input"
+        placeholder="搜索文章..."
+        @keyup.enter="onSearch"
+      />
+      <button class="search-btn" @click="onSearch">
+        <Icon icon="material-symbols:search" class="search-icon" />
+      </button>
+    </div>
   </nav>
 </template>
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Icon } from '@iconify/vue'
 
 const isScrolled = ref(false)
 const BANNER_HEIGHT = 360
 const NAVBAR_HEIGHT = 56
 const THRESHOLD = BANNER_HEIGHT - NAVBAR_HEIGHT
 
+const route = useRoute()
+const router = useRouter()
+const searchInput = ref('')
+
 function handleScroll() {
   isScrolled.value = window.scrollY > THRESHOLD
 }
+
+function onSearch() {
+  const q = searchInput.value.trim().slice(0, 32)
+  if (q) {
+    router.push({ name: 'Home', query: { ...route.query, q } })
+  } else {
+    const { q: _, ...rest } = route.query
+    router.push({ name: 'Home', query: rest })
+  }
+}
+
+watch(() => route.query.q, (val) => {
+  searchInput.value = val ? String(val) : ''
+}, { immediate: true })
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
@@ -109,6 +140,57 @@ onUnmounted(() => {
   height: 2px;
   background: rgb(99, 149, 86);
   border-radius: 1px;
+}
+
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-input {
+  width: 160px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--color-text);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  width: 200px;
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(99, 149, 86, 0.4);
+}
+
+.search-input::placeholder {
+  color: rgba(80, 100, 90, 0.6);
+}
+
+.search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(99, 149, 86, 0.15);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0;
+}
+
+.search-btn:hover {
+  background: rgba(99, 149, 86, 0.3);
+}
+
+.search-icon {
+  font-size: 16px;
 }
 
 </style>

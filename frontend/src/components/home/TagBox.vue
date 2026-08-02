@@ -4,6 +4,7 @@
       <span class="line"></span>
       <h4 class="title">标签</h4>
       <span class="count" v-if="tags.length">共 {{ tags.length }} 个</span>
+      <button v-if="activeId" class="clear-tag" @click="onSelect(null)">全部</button>
     </div>
     <div class="body">
       <div v-if="loading" class="empty">
@@ -14,7 +15,13 @@
         <span>暂无标签</span>
       </div>
       <div v-else class="tag-list">
-        <span v-for="tag in tags" :key="tag.id" class="tag">
+        <span
+          v-for="tag in tags"
+          :key="tag.id"
+          class="tag"
+          :class="{ active: activeId === tag.id }"
+          @click="onSelect(tag.id)"
+        >
           {{ tag.name }} ({{ tag.count }})
         </span>
       </div>
@@ -27,6 +34,15 @@ import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { getTags } from '@/api/tag'
 import { useMessageBox } from '@/composables/useMessageBox'
+
+const props = defineProps({
+  activeId: {
+    type: Number,
+    default: null
+  }
+})
+
+const emit = defineEmits(['select'])
 
 const tags = ref([])
 const loading = ref(true)
@@ -42,6 +58,10 @@ async function fetchTags() {
   } finally {
     loading.value = false
   }
+}
+
+function onSelect(id) {
+  emit('select', id === props.activeId ? null : id)
 }
 
 onMounted(() => {
@@ -117,12 +137,30 @@ onMounted(() => {
   font-size: 13px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   transition: all 0.2s ease;
-  cursor: default;
+  cursor: pointer;
 }
 
 .tag:hover {
   background: rgba(99, 149, 86, 0.22);
   color: var(--color-heading);
+}
+
+.tag.active {
+  background: rgba(99, 149, 86, 0.85);
+  color: #fff;
+}
+
+.clear-tag {
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.clear-tag:hover {
+  text-decoration: underline;
 }
 
 .empty {
