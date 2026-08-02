@@ -75,7 +75,7 @@ exports.forceDeletePost = async (req, res) => {
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
-  await deletePostImages(postId);
   await post.destroy();
+  await deletePostImages(postId);
   res.json({ message: '已彻底删除' });
 };
