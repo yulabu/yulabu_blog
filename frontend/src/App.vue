@@ -7,7 +7,7 @@ import MessageBox from '@/components/common/MessageBox.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
-const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+const isAdminRoute = computed(() => route.path.startsWith('/admin') || route.name === 'Login')
 
 onMounted(() => {
   authStore.hydrate()
