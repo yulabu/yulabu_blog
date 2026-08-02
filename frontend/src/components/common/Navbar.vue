@@ -177,7 +177,8 @@ const vClickOutside = {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  width: auto;
+  width: 240px;
+  flex-shrink: 0;
 }
 
 .search-input {
