@@ -8,22 +8,24 @@
       <router-link to="/articles" class="nav-link">文章</router-link>
       <router-link to="/about" class="nav-link">关于</router-link>
     </div>
-    <div class="nav-search">
+    <div class="nav-search" v-click-outside="closeSearch">
       <input
+        ref="searchInputRef"
         v-model="searchInput"
         type="text"
         class="search-input"
+        :class="{ open: isSearchOpen }"
         placeholder="搜索文章..."
         @keyup.enter="onSearch"
       />
-      <button class="search-btn" @click="onSearch">
+      <button v-if="!isSearchOpen" class="search-btn" @click.stop="openSearch">
         <Icon icon="material-symbols:search" class="search-icon" />
       </button>
     </div>
   </nav>
 </template>
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 
@@ -35,9 +37,22 @@ const THRESHOLD = BANNER_HEIGHT - NAVBAR_HEIGHT
 const route = useRoute()
 const router = useRouter()
 const searchInput = ref('')
+const isSearchOpen = ref(false)
+const searchInputRef = ref(null)
 
 function handleScroll() {
   isScrolled.value = window.scrollY > THRESHOLD
+}
+
+function openSearch() {
+  isSearchOpen.value = true
+  nextTick(() => {
+    searchInputRef.value?.focus()
+  })
+}
+
+function closeSearch() {
+  isSearchOpen.value = false
 }
 
 function onSearch() {
@@ -48,6 +63,7 @@ function onSearch() {
     const { q: _, ...rest } = route.query
     router.push({ name: 'Home', query: rest })
   }
+  closeSearch()
 }
 
 watch(() => route.query.q, (val) => {
@@ -62,6 +78,20 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
+
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (e) => {
+      if (!(el === e.target || el.contains(e.target))) {
+        binding.value()
+      }
+    }
+    document.addEventListener('click', el._clickOutside)
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutside)
+  }
+}
 </script>
 <style scoped>
 .navbar {
@@ -145,22 +175,33 @@ onUnmounted(() => {
 .nav-search {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  width: auto;
 }
 
 .search-input {
-  width: 160px;
-  padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  width: 0;
+  padding: 0;
+  border: none;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.25);
   color: var(--color-text);
   font-size: 13px;
   outline: none;
-  transition: all 0.2s ease;
+  overflow: hidden;
+  opacity: 0;
+  transition: width 0.3s ease, opacity 0.3s ease, padding 0.3s ease, border-color 0.3s ease;
 }
 
-.search-input:focus {
+.search-input.open {
+  width: 160px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  opacity: 1;
+}
+
+.search-input.open:focus {
   width: 200px;
   background: rgba(255, 255, 255, 0.55);
   border-color: rgba(99, 149, 86, 0.4);
