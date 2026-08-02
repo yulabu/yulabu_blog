@@ -1,7 +1,7 @@
 <template>
   <header class="admin-header">
     <div class="header-right">
-      <div class="user-info" @click="toggleDropdown">
+      <div class="user-info" @click.stop="toggleDropdown">
         <img :src="avatarUrl" alt="avatar" class="user-avatar" />
         <span class="user-name">{{ currentAdmin.name || '管理员' }}</span>
         <Icon icon="material-symbols:expand-more" class="dropdown-icon" />
