@@ -8,11 +8,8 @@
       <span>记录学习，分享生活。</span>
     </div>
     <div class="card-bottom2">
-      <ul>
-        <li>QQ:1458661453</li>
-        <li>WX:yulabu_nxd</li>
-        <li>GitHub:yulabu</li>
-      </ul>
+      <div class="joker-image"></div>
+      <span class="joker-text">Hey？</span>
     </div>
   </div>
 </template>
@@ -95,18 +92,28 @@
 }
 .card-bottom2{
   top: 300px;
-  height: 30%;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
-.card-bottom2 li{
-  margin: 26px 0;
-  font: 800 24px 'OCR A Std';
-  text-align: center;
-  transition: .2s;
+
+.joker-image {
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-image: url('@/assets/img/personal_joker.jpg');
+  background-size: cover;
+  background-position: center;
 }
-ul{
-  list-style: none;
-  padding: 0;
-  margin: 0;
+
+.joker-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-heading);
 }
 /* 鼠标移入动画实现 */
 .card:hover .card-top{
@@ -124,11 +131,5 @@ ul{
 .card:hover .card-bottom2{
   top: 50px;
 }
-li {
-  cursor: default;
-}
-li:hover{
-  color: rgb(87, 228, 191);
-  transform: translateY(-10px);
-}
+
 </style>
