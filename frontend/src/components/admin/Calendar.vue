@@ -1,4 +1,5 @@
 <template>
+  <div class="calendar-shell">
   <div class="card">
     <header>
       <div class="day">{{ selectedDate.getDate() }}</div>
@@ -38,6 +39,7 @@
         </tr>
       </tbody>
     </table>
+  </div>
   </div>
 </template>
 
@@ -172,13 +174,19 @@ function nextMonth() {
 </script>
 
 <style scoped>
+.calendar-shell {
+  border-radius: 0 0 30px 30px;
+  background-color: rgb(218, 228, 222);
+  overflow: hidden;
+}
+
 .card {
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: auto;
-  background-color: rgb(234, 248, 236);
+  background-color: #fff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   border-radius: 0 0 30px 30px;
@@ -308,8 +316,8 @@ header {
   background-color: var(--color-primary-hover);
 }
 
-.other-month {
-  color: rgb(130, 226, 216);
+.calendar td.other-month {
+  color: #aaa;
 }
 
 .ring-left,

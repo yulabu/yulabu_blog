@@ -77,10 +77,6 @@
       </div>
 
       <aside class="right-column">
-        <div class="calendar-wrapper">
-          <Calendar />
-        </div>
-
         <div class="card quick-actions">
           <h2 class="card-title">快捷操作</h2>
           <div class="action-buttons">
@@ -97,6 +93,10 @@
               <span>用户权限</span>
             </button>
           </div>
+        </div>
+
+        <div class="calendar-wrapper">
+          <Calendar />
         </div>
       </aside>
     </section>

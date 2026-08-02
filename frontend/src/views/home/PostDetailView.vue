@@ -19,6 +19,7 @@
             previewTheme="github"
             codeTheme="github"
             :showCodeRowNumber="true"
+            :mdHeadingId="(h) => `heading-${h.index}`"
             @onGetCatalog="handleCatalog"
           />
         </div>
@@ -77,7 +78,7 @@ async function fetchPost() {
 }
 
 function handleCatalog(list) {
-  catalog.value = list || []
+  catalog.value = (list || []).map((item, index) => ({ ...item, id: `heading-${index + 1}` }))
 }
 
 function scrollToHeading(id) {
