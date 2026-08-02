@@ -6,6 +6,9 @@
       :loading="loading"
       :empty="!loading && posts.length === 0"
     >
+      <template #search>
+        <AdminSearchBar placeholder="搜索文章标题..." @search="onSearch" />
+      </template>
       <template #actions>
         <AdminButton variant="text" @click="router.push('/admin/trash')">回收站</AdminButton>
         <AdminButton variant="primary" @click="goNew">新建文章</AdminButton>
@@ -42,12 +45,14 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminList } from '@/composables/useAdminList'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
 import { getPosts, deletePost } from '@/api/post'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminSearchBar from '@/components/admin/AdminSearchBar.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
@@ -58,12 +63,16 @@ import AdminDataTableCellText from '@/components/admin/data-table/AdminDataTable
 import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
+const searchQuery = ref('')
 
-const { items: posts, loading, page, totalPages, refresh } = useAdminList(getPosts, {
-  errorMessage: '获取文章列表失败',
-  extractList: data => data.posts,
-  extractTotalPages: data => data.totalPages || 1
-})
+const { items: posts, loading, page, totalPages, fetch, refresh } = useAdminList(
+  (pageNum, pageSize) => getPosts(pageNum, pageSize, undefined, searchQuery.value),
+  {
+    errorMessage: '获取文章列表失败',
+    extractList: data => data.posts,
+    extractTotalPages: data => data.totalPages || 1
+  }
+)
 
 const columns = [
   { key: 'title', label: '标题' },
@@ -73,6 +82,12 @@ const columns = [
   { key: 'createdAt', label: '创建时间' },
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
+
+function onSearch(q) {
+  searchQuery.value = q
+  page.value = 1
+  fetch()
+}
 
 function goNew() {
   router.push('/admin/posts/new')

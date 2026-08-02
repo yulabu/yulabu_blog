@@ -5,6 +5,9 @@
         <h2 class="admin-page-card__title">{{ title }}</h2>
         <p v-if="subtitle" class="admin-page-card__subtitle">{{ subtitle }}</p>
       </div>
+      <div v-if="$slots.search" class="admin-page-card__search">
+        <slot name="search" />
+      </div>
       <div v-if="$slots.actions" class="admin-page-card__actions">
         <slot name="actions" />
       </div>
@@ -86,6 +89,12 @@ defineProps({
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.admin-page-card__search {
+  flex: 1;
+  max-width: 280px;
+  margin: 0 16px;
 }
 
 .admin-page-card__loading,

@@ -6,6 +6,9 @@
       :empty="!loading && notices.length === 0"
       empty-text="暂无公告"
     >
+      <template #search>
+        <AdminSearchBar placeholder="搜索公告标题..." @search="onSearch" />
+      </template>
       <template #actions>
         <AdminButton variant="primary" @click="goNew">新建公告</AdminButton>
       </template>
@@ -45,6 +48,7 @@
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminList } from '@/composables/useAdminList'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
@@ -52,6 +56,7 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { getAdminNotices, togglePin, updateNotice, deleteNotice } from '@/api/notice'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminSearchBar from '@/components/admin/AdminSearchBar.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
@@ -60,11 +65,18 @@ import AdminDataTableCellActions from '@/components/admin/data-table/AdminDataTa
 import AdminDataTableCellText from '@/components/admin/data-table/AdminDataTableCellText.vue'
 
 const router = useRouter()
+const searchQuery = ref('')
 
-const { items: notices, loading, refresh } = useAdminList(getAdminNotices, {
+const { items: allNotices, loading, refresh } = useAdminList(getAdminNotices, {
   paginated: false,
   errorMessage: '获取公告列表失败',
   extractList: data => data.notices
+})
+
+const notices = computed(() => {
+  if (!searchQuery.value) return allNotices.value
+  const q = searchQuery.value.toLowerCase()
+  return allNotices.value.filter(n => n.notice_title.toLowerCase().includes(q))
 })
 
 const columns = [
@@ -74,6 +86,10 @@ const columns = [
   { key: 'notice_created_at', label: '创建时间' },
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
+
+function onSearch(q) {
+  searchQuery.value = q
+}
 
 function goNew() {
   router.push('/admin/notices/new')

@@ -5,6 +5,9 @@
       :loading="loading"
       :empty="!loading && tags.length === 0"
     >
+      <template #search>
+        <AdminSearchBar placeholder="搜索标签..." @search="onSearch" />
+      </template>
       <template #actions>
         <AdminButton variant="primary" @click="openModal()">新建标签</AdminButton>
       </template>
@@ -43,12 +46,13 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useAdminList } from '@/composables/useAdminList'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
 import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
+import AdminSearchBar from '@/components/admin/AdminSearchBar.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminModal from '@/components/admin/AdminModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
@@ -59,9 +63,17 @@ import AdminFormInput from '@/components/admin/forms/AdminFormInput.vue'
 
 const { toast } = useMessageBox()
 
-const { items: tags, loading, refresh } = useAdminList(getTags, {
+const searchQuery = ref('')
+
+const { items: allTags, loading, refresh } = useAdminList(getTags, {
   paginated: false,
   errorMessage: '获取标签失败'
+})
+
+const tags = computed(() => {
+  if (!searchQuery.value) return allTags.value
+  const q = searchQuery.value.toLowerCase()
+  return allTags.value.filter(t => t.name.toLowerCase().includes(q))
 })
 
 const modalVisible = ref(false)
@@ -74,6 +86,10 @@ const columns = [
   { key: 'count', label: '文章数量', class: 'text-center' },
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
+
+function onSearch(q) {
+  searchQuery.value = q
+}
 
 function openModal(tag = null) {
   editingTag.value = tag
@@ -97,7 +113,7 @@ async function onSave() {
     return
   }
 
-  if (tags.value.some(t => t.name === name && t.id !== editingTag.value?.id)) {
+  if (allTags.value.some(t => t.name === name && t.id !== editingTag.value?.id)) {
     toast('该标签已存在', 'error')
     return
   }
