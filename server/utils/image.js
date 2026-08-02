@@ -98,6 +98,9 @@ async function deletePostImages(postId) {
 }
 
 async function finalizeTempImages(postId, tempId, content) {
+  if (tempId !== path.basename(tempId)) {
+    throw new AppError(400, '无效的临时标识');
+  }
   const tempDir = path.join(UPLOAD_DIR, 'temp', tempId)
   const postDir = path.join(UPLOAD_DIR, String(postId))
 

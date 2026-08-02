@@ -38,6 +38,9 @@ exports.getPostById = async (req, res) => {
 // 创建文章
 exports.createPost = async (req, res) => {
   const { temp_id } = req.body;
+  if (temp_id && !/^[a-zA-Z0-9_-]+$/.test(temp_id)) {
+    throw new AppError(400, '无效的临时标识');
+  }
   const data = createPostDTO(req.body);
   const post = await Post.create(data);
 
