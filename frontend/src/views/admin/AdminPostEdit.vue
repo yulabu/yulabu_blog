@@ -25,7 +25,7 @@
                 :options="tagOptions"
               >
                 <template #append>
-                  <button class="btn-add" @click="openTagModal" title="新建分类">+</button>
+                  <button type="button" class="btn-add" @click="openTagModal" title="新建分类">+</button>
                 </template>
               </AdminFormSelect>
             </AdminFormField>
@@ -189,12 +189,12 @@ async function onCreateTag() {
 }
 
 async function handleUploadImages(files) {
-  const urls = await uploadImages({
+  const result = await uploadImages({
     files,
     postId: isEdit.value ? Number(route.params.id) : undefined,
     tempId: isEdit.value ? undefined : tempId.value
   })
-  return urls
+  return result
 }
 
 async function uploadImagesForEditor(files) {
@@ -227,9 +227,9 @@ async function handleImport({ markdown, files }) {
       }
     }
 
-    const urls = await handleUploadImages(uniqueFiles)
+    const result = await handleUploadImages(uniqueFiles)
     const fileToUrl = new Map()
-    uniqueFiles.forEach((file, i) => fileToUrl.set(file, urls[i]))
+    uniqueFiles.forEach((file, i) => fileToUrl.set(file, result.urls[i]))
 
     const replacements = matched.map((m) => ({
       ref: m.ref,
