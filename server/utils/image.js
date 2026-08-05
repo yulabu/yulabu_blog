@@ -29,16 +29,14 @@ async function saveImage(buffer, targetDir, originalName) {
     throw new AppError(400, '只允许上传 jpg/png/webp 图片')
   }
 
-  const extMap = { jpeg: '.jpg', jpg: '.jpg', png: '.png', webp: '.webp' }
-  const ext = extMap[metadata.format] || '.png'
   const safeName = sanitizeFilename(originalName)
   const base = path.basename(safeName, path.extname(safeName))
-  const finalName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}${ext}`
+  const finalName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.webp`
 
   await fs.mkdir(targetDir, { recursive: true })
 
   const outputPath = path.join(targetDir, finalName)
-  await sharp(buffer).toFile(outputPath)
+  await sharp(buffer).webp({ quality: 85 }).toFile(outputPath)
 
   return finalName
 }
