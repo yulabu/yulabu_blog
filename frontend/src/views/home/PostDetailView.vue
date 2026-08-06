@@ -1,5 +1,8 @@
 <template>
   <div class="page-bg">
+    <header class="top-banner">
+      <WelcomeBanner />
+    </header>
     <div class="detail-container">
       <main class="main-content">
         <div class="meta-card">
@@ -55,6 +58,7 @@ import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
 import { getPost } from '@/api/post'
 import { useMessageBox } from '@/composables/useMessageBox'
+import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
 
 const route = useRoute()
 const { toast } = useMessageBox()
@@ -125,7 +129,6 @@ onUnmounted(() => {
   width: 100%;
   min-height: 100vh;
   background-color: rgb(202, 242, 203);
-  padding: 20px 24px 40px;
 }
 
 .detail-container {
@@ -134,7 +137,7 @@ onUnmounted(() => {
   gap: 24px;
   max-width: 1280px;
   margin: 0 auto;
-  padding-top: 76px;
+  padding: 20px 24px 40px;
 }
 
 .main-content {
