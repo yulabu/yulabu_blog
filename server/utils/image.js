@@ -50,12 +50,20 @@ function extractReferencedImages(content, postId) {
   const refs = new Set()
   if (!content) return refs
 
-  const prefix = `/uploads/${escapeRegExp(String(postId))}/`
-  const regex = new RegExp(`${prefix}([^)\\s"<>]+)`, 'g')
+  const prefix = `/uploads/${String(postId)}/`
+  const patterns = [
+    /!\[[^\]]*\]\(([^)]+)\)/g,
+    /<img\s+[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi
+  ]
 
-  let match
-  while ((match = regex.exec(content)) !== null) {
-    refs.add(decodeURIComponent(match[1]))
+  for (const regex of patterns) {
+    let match
+    while ((match = regex.exec(content)) !== null) {
+      const url = match[1]
+      if (url.startsWith(prefix)) {
+        refs.add(decodeURIComponent(url.slice(prefix.length)))
+      }
+    }
   }
 
   return refs

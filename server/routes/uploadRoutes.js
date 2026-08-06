@@ -5,9 +5,15 @@ const uploadController = require('@controllers/uploadController')
 
 router.post(
   '/batch',
-  auth, // 鉴权
-  upload.array('images', 50), // multer解析文件
-  uploadController.uploadBatch // 处理逻辑
+  auth,
+  upload.array('images', 50),
+  uploadController.uploadBatch
+)
+
+router.delete(
+  '/temp/:temp_id',
+  auth,
+  uploadController.deleteTemp
 )
 
 module.exports = router

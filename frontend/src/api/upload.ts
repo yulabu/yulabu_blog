@@ -20,3 +20,7 @@ export function uploadImages(options: UploadOptions) {
 
   return http.post<UploadResult>('/upload/batch', formData)
 }
+
+export function cleanupTemp(tempId: string) {
+  return http.delete<{ message: string }>(`/upload/temp/${encodeURIComponent(tempId)}`)
+}

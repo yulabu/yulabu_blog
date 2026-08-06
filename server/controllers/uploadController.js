@@ -1,4 +1,5 @@
 const path = require('path')
+const fs = require('fs').promises
 const AppError = require('@middleware/AppError')
 const { UPLOAD_DIR } = require('@config/upload')
 const { saveImage } = require('@utils/image')
@@ -34,4 +35,19 @@ exports.uploadBatch = async (req, res) => {
   }
 
   res.json({ urls })
+}
+
+// 清理临时上传目录
+exports.deleteTemp = async (req, res) => {
+  const tempId = req.params.temp_id
+  if (!/^[a-zA-Z0-9_-]+$/.test(tempId)) {
+    throw new AppError(400, '无效的临时标识')
+  }
+  const tempDir = path.join(UPLOAD_DIR, 'temp', tempId)
+  try {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  } catch (err) {
+    // 目录不存在则忽略
+  }
+  res.json({ message: '已清理' })
 }

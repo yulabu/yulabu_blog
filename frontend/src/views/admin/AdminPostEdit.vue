@@ -74,11 +74,11 @@
 
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getTags, createTag } from '@/api/tag'
 import { getPost, createPost, updatePost } from '@/api/post'
-import { uploadImages } from '@/api/upload'
+import { uploadImages, cleanupTemp } from '@/api/upload'
 import {
   extractLocalImageRefs,
   matchImagesByFilename,
@@ -306,6 +306,14 @@ async function onSave() {
 function goBack() {
   router.push('/admin')
 }
+
+onBeforeRouteLeave(async () => {
+  if (tempId.value) {
+    try {
+      await cleanupTemp(tempId.value)
+    } catch { /* 静默忽略 */ }
+  }
+})
 
 onMounted(() => {
   if (!isEdit.value) {
