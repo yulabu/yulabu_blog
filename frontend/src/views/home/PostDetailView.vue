@@ -20,7 +20,7 @@
             :modelValue="post.content"
             :theme="uiStore.theme"
             previewTheme="github"
-            codeTheme="github"
+            :codeTheme="uiStore.theme === 'dark' ? 'atomOneDark' : 'github'"
             :showCodeRowNumber="true"
             :mdHeadingId="(h) => `heading-${h.index}`"
             @onGetCatalog="handleCatalog"
@@ -203,6 +203,22 @@ onUnmounted(() => {
       var(--bg-glass-end));
   backdrop-filter: blur(16px);
   min-height: 400px;
+}
+
+.content-card :deep(.md-editor) {
+  --md-bk-color: transparent;
+  --md-color: var(--color-text);
+  --md-hover-color: var(--color-heading);
+  --md-bk-color-outstand: var(--bg-card-strong);
+  --md-bk-hover-color: rgba(var(--color-primary-rgb), 0.15);
+  --md-border-color: var(--border-light);
+  --md-border-hover-color: rgba(var(--color-primary-rgb), 0.5);
+  --md-border-active-color: var(--color-primary);
+  --md-scrollbar-bg-color: var(--bg-card);
+  --md-scrollbar-thumb-color: var(--border-divider);
+  --md-scrollbar-thumb-hover-color: rgba(var(--color-primary-rgb), 0.3);
+  --md-scrollbar-thumb-active-color: rgba(var(--color-primary-rgb), 0.4);
+  background-color: transparent;
 }
 
 .toc-sidebar {
