@@ -1,6 +1,9 @@
 <template>
   <div class="home-hero" :class="{ collapsed }">
     <WelcomeBanner />
+    <div class="scroll-hint" @click="scrollToContent">
+      <div class="chevron"></div>
+    </div>
   </div>
 </template>
 
@@ -22,6 +25,10 @@ function handleScroll() {
       listener = null
     }
   }
+}
+
+function scrollToContent() {
+  window.scrollTo({ top: 100, behavior: 'smooth' })
 }
 
 onMounted(() => {
@@ -68,7 +75,7 @@ onUnmounted(() => {
 }
 
 .home-hero :deep(.site-title) {
-  font-size: 72px;
+  font-size: 56px;
   transition: font-size 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -77,7 +84,7 @@ onUnmounted(() => {
 }
 
 .home-hero :deep(.subtitle) {
-  font-size: 48px;
+  font-size: 32px;
   transition: font-size 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -96,5 +103,38 @@ onUnmounted(() => {
 
 .home-hero:not(.collapsed) :deep(.bg) {
   background-position: top center;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  z-index: 5;
+  opacity: 1;
+  cursor: pointer;
+  transition: opacity 0.5s ease;
+  animation: bounce 1.5s ease-in-out infinite;
+}
+
+.scroll-hint:hover .chevron {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.home-hero.collapsed .scroll-hint {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chevron {
+  width: 24px;
+  height: 24px;
+  border-right: 3px solid white;
+  border-bottom: 3px solid white;
+  transform: rotate(45deg);
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, 12px); }
 }
 </style>

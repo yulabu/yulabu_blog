@@ -103,7 +103,9 @@ onUnmounted(() => {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 42px;
   color: white;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 20px rgba(255, 255, 255, 0.25);
+  text-shadow:
+    2px 0 4px rgba(255, 255, 255, 0.75),
+    0 1px 6px rgba(0, 0, 0, 0.35);
   margin: 0 0 12px;
   letter-spacing: 2px;
   text-align: center;
@@ -113,7 +115,9 @@ onUnmounted(() => {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 42px;
   color: white;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  text-shadow:
+    2px 0 4px rgba(255, 255, 255, 0.75),
+    0 1px 6px rgba(0, 0, 0, 0.35);
   margin: 0;
   letter-spacing: 4px;
   text-align: center;
