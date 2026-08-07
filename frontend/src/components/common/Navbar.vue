@@ -7,6 +7,9 @@
       <router-link to="/" class="nav-link">首页</router-link>
       <router-link to="/articles" class="nav-link">文章</router-link>
       <router-link to="/about" class="nav-link">关于</router-link>
+      <a href="#" class="nav-link" @click.prevent>友链</a>
+      <a href="#" class="nav-link" @click.prevent>归档</a>
+      <a href="#" class="nav-link" @click.prevent>碎碎念</a>
     </div>
     <div class="nav-search" v-click-outside="closeSearch">
       <input
@@ -143,9 +146,9 @@ const vClickOutside = {
 }
 
 .nav-link {
-  font-family: '微软雅黑', sans-serif;
-  font-size: 14px;
-  color: var(--color-text);
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 16px;
+  color: rgb(80, 90, 85);
   text-decoration: none;
   padding: 6px 0;
   position: relative;
