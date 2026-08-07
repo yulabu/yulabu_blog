@@ -1,7 +1,7 @@
 <template>
     <div class="page-bg">
         <header class="top-banner">
-            <WelcomeBanner /> 
+            <HomeHero /> 
         </header>
         <div class="home-layout">
             <aside class="left-sidebar">
@@ -24,7 +24,7 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PersonalCard from '@/components/home/PersonalCard.vue';
 import TagBox from '@/components/home/TagBox.vue';
-import WelcomeBanner from '@/components/home/WelcomeBanner.vue';
+import HomeHero from '@/components/home/HomeHero.vue';
 import PostList from '@/components/home/PostList.vue';
 import MusicPlayer from '@/components/home/MusicPlayer.vue';
 import AnnouncementBoard from '@/components/home/AnnouncementBoard.vue';
