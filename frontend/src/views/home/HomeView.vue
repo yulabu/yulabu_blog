@@ -69,6 +69,9 @@ function onClear() {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  position: sticky;
+  top: 96px;
+  align-self: start;
 }
 /* 移动端暂时不管，后面再说 */
 </style>
