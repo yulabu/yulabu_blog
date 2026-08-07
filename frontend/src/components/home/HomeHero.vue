@@ -32,9 +32,12 @@ function scrollToContent() {
 }
 
 onMounted(() => {
-  uiStore.setHomeHeroCollapsed(false)
-  listener = handleScroll
-  window.addEventListener('scroll', handleScroll, { passive: true })
+  if (uiStore.homeHeroCollapsed) {
+    collapsed.value = true
+  } else {
+    listener = handleScroll
+    window.addEventListener('scroll', handleScroll, { passive: true })
+  }
 })
 
 onUnmounted(() => {

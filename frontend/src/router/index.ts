@@ -48,7 +48,13 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),  // 使用 History 模式
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    }
+    return { top: 0 };
+  }
 });
 
 // 路由守卫：保护需要登录的页面，并设置页面标题
