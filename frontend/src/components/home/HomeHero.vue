@@ -68,7 +68,7 @@ onUnmounted(() => {
 }
 
 .home-hero :deep(.site-title) {
-  font-size: 72px;
+  font-size: 56px;
   transition: font-size 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -77,7 +77,7 @@ onUnmounted(() => {
 }
 
 .home-hero :deep(.subtitle) {
-  font-size: 48px;
+  font-size: 32px;
   transition: font-size 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
