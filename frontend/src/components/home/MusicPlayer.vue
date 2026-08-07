@@ -4,7 +4,6 @@
       <img :src="musicPlayerImg" alt="">
     </div>
     <div class="info">
-      <div class="title">我爱你</div>
       <div class="singer">纳西妲</div>
     </div>
     <div class="volume-box">
@@ -88,13 +87,6 @@
     letter-spacing: 1px;
     text-align: center;
     margin-top: 16px;
-  }
-  .info .title {
-    color: var(--color-primary);
-    font-family: '华文琥珀';
-    font-weight: 60;
-    font-size: 24px;
-    margin-bottom: 8px;
   }
   .info .singer {
     font-family: '微软雅黑';

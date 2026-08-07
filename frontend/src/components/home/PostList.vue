@@ -115,8 +115,8 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 }
 
 .section-title {
-  font-family: '华文琥珀', 'STHupo', sans-serif;
-  font-weight: 400;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-weight: 700;
   color: var(--color-primary);
   font-size: 20px;
   margin: 0;
@@ -190,8 +190,8 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 }
 
 .title {
-  font-family: '华文琥珀', 'STHupo', sans-serif;
-  font-weight: 400;
+  font-family: 'LXGW WenKai', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 500;
   font-size: 18px;
   color: var(--color-primary);
   margin: 0;
