@@ -51,13 +51,13 @@ onMounted(fetchNotices)
   width: 100%;
   padding: 24px 20px;
   border-radius: 5%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   backdrop-filter: blur(16px);
 }
 
@@ -66,7 +66,7 @@ onMounted(fetchNotices)
   align-items: center;
   gap: 6px;
   padding-bottom: 12px;
-  border-bottom: 1px dashed rgba(80, 140, 134, .25);
+  border-bottom: 1px dashed var(--border-divider);
   margin-bottom: 16px;
 }
 
@@ -88,7 +88,7 @@ onMounted(fetchNotices)
   margin-left: auto;
   font-size: 12px;
   color: var(--color-text);
-  background: rgba(80, 140, 134, .12);
+  background: rgba(var(--color-accent-rgb), .12);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -105,7 +105,7 @@ onMounted(fetchNotices)
 }
 
 .notice:not(:last-child) {
-  border-bottom: 1px dashed rgba(80, 140, 134, .15);
+  border-bottom: 1px dashed var(--border-divider);
 }
 
 .notice-left {
@@ -121,7 +121,7 @@ onMounted(fetchNotices)
   height: 8px;
   border-radius: 50%;
   background: var(--color-primary);
-  box-shadow: 0 0 6px rgba(99, 149, 86, .4);
+  box-shadow: 0 0 6px rgba(var(--color-primary-rgb), .4);
 }
 
 .notice-right {
@@ -137,7 +137,7 @@ onMounted(fetchNotices)
 }
 
 .notice-title {
-  font-family: '微软雅黑', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-weight: 900;
   font-size: 14px;
   color: var(--color-primary);
@@ -154,9 +154,9 @@ onMounted(fetchNotices)
 
 .notice-content {
   margin: 0;
-  font-family: '微软雅黑', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 12px;
-  color: rgb(99, 118, 94);
+  color: var(--color-text);
   line-height: 1.6;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -50,7 +50,7 @@ function onClear() {
     .page-bg{
         width: 100%;
         min-height: 100vh;
-        background-color: rgb(202, 242, 203);
+        background-color: var(--bg-page);
     }
     .top-banner{
         width: 100%;

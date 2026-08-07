@@ -24,13 +24,17 @@
       <button v-if="!isSearchOpen" class="search-btn" @click.stop="openSearch">
         <Icon icon="material-symbols:search" class="search-icon" />
       </button>
+      <button class="theme-btn" @click="uiStore.toggleTheme">
+        <Icon :icon="themeIcon" class="theme-icon" />
+      </button>
     </div>
   </nav>
 </template>
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import { useUiStore } from '@/stores/ui'
 
 const isScrolled = ref(false)
 const BANNER_HEIGHT = 360
@@ -39,9 +43,12 @@ const THRESHOLD = BANNER_HEIGHT - NAVBAR_HEIGHT
 
 const route = useRoute()
 const router = useRouter()
+const uiStore = useUiStore()
 const searchInput = ref('')
 const isSearchOpen = ref(false)
 const searchInputRef = ref(null)
+
+const themeIcon = computed(() => uiStore.theme === 'light' ? 'material-symbols:dark-mode' : 'material-symbols:light-mode')
 
 function handleScroll() {
   isScrolled.value = window.scrollY > THRESHOLD
@@ -115,10 +122,10 @@ const vClickOutside = {
 }
 
 .navbar.scrolled {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--navbar-bg);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--navbar-border);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .nav-brand {
@@ -189,7 +196,7 @@ const vClickOutside = {
   padding: 0;
   border: none;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--bg-card);
   color: var(--color-text);
   font-size: 13px;
   outline: none;
@@ -201,18 +208,18 @@ const vClickOutside = {
 .search-input.open {
   width: 160px;
   padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--border-light);
   opacity: 1;
 }
 
 .search-input.open:focus {
   width: 200px;
-  background: rgba(255, 255, 255, 0.55);
-  border-color: rgba(99, 149, 86, 0.4);
+  background: var(--bg-card-strong);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
 }
 
 .search-input::placeholder {
-  color: rgba(80, 100, 90, 0.6);
+  color: var(--color-muted);
 }
 
 .search-btn {
@@ -235,6 +242,29 @@ const vClickOutside = {
 }
 
 .search-icon {
+  font-size: 16px;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(99, 149, 86, 0.15);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0;
+}
+
+.theme-btn:hover {
+  background: rgba(99, 149, 86, 0.3);
+}
+
+.theme-icon {
   font-size: 16px;
 }
 

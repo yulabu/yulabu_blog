@@ -94,8 +94,8 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
   width: 100%;
   padding: 24px 20px;
   border-radius: 5%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  background: var(--bg-card);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -106,7 +106,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
   align-items: center;
   gap: 6px;
   padding-bottom: 12px;
-  border-bottom: 1px dashed rgba(80, 140, 134, .25);
+  border-bottom: 1px dashed var(--border-divider);
 }
 
 .icon {
@@ -133,7 +133,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 .count {
   font-size: 12px;
   color: var(--color-text);
-  background: rgba(80, 140, 134, .12);
+  background: rgba(var(--color-accent-rgb), .12);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -143,7 +143,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
   align-items: center;
   gap: 4px;
   border: none;
-  background: rgba(99, 149, 86, 0.12);
+  background: rgba(var(--color-primary-rgb), 0.12);
   color: var(--color-text);
   font-size: 12px;
   padding: 4px 10px;
@@ -153,7 +153,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 }
 
 .clear-btn:hover {
-  background: rgba(99, 149, 86, 0.25);
+  background: rgba(var(--color-primary-rgb), 0.25);
   color: var(--color-heading);
 }
 
@@ -164,13 +164,13 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 .post-card {
   padding: 16px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .48),
-      rgba(255, 255, 255, .24),
-      rgba(255, 255, 255, .16));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   backdrop-filter: blur(16px);
   transition: transform .2s, box-shadow .2s;
   cursor: pointer;
@@ -178,7 +178,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 
 .post-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 18px var(--shadow-color);
 }
 
 .post-head {
@@ -200,7 +200,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 }
 
 .post-card:hover .title {
-  color: rgb(71, 120, 65);
+  color: var(--color-primary-hover);
 }
 
 .tag {
@@ -211,14 +211,14 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
   letter-spacing: 1px;
   white-space: nowrap;
   flex-shrink: 0;
-  background: rgba(99, 149, 86, 0.85);
+  background: var(--color-primary);
 }
 
 .excerpt {
   margin: 0 0 10px 0;
-  font-family: '微软雅黑', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 13px;
-  color: rgb(99, 118, 94);
+  color: var(--color-text);
   line-height: 1.6;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -231,7 +231,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: '微软雅黑', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 12px;
 }
 

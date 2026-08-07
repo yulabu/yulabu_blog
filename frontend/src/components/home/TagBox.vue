@@ -74,13 +74,13 @@ onMounted(() => {
   width: 100%;
   padding: 20px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   backdrop-filter: blur(16px);
 }
 
@@ -89,7 +89,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding-bottom: 12px;
-  border-bottom: 1px dashed rgba(80, 140, 134, .25);
+  border-bottom: 1px dashed var(--border-divider);
   margin-bottom: 16px;
 }
 
@@ -112,7 +112,7 @@ onMounted(() => {
   margin-left: auto;
   font-size: 12px;
   color: var(--color-text);
-  background: rgba(80, 140, 134, .12);
+  background: rgba(var(--color-accent-rgb), .12);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -132,7 +132,7 @@ onMounted(() => {
   display: inline-block;
   padding: 6px 12px;
   border-radius: 8px;
-  background: rgba(99, 149, 86, 0.12);
+  background: rgba(var(--color-primary-rgb), 0.12);
   color: var(--color-text);
   font-size: 13px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
@@ -141,12 +141,12 @@ onMounted(() => {
 }
 
 .tag:hover {
-  background: rgba(99, 149, 86, 0.22);
+  background: rgba(var(--color-primary-rgb), 0.22);
   color: var(--color-heading);
 }
 
 .tag.active {
-  background: rgba(99, 149, 86, 0.85);
+  background: var(--color-primary);
   color: #fff;
 }
 

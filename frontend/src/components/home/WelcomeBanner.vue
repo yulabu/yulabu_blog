@@ -9,10 +9,22 @@
       </h2>
     </div>
     <div class="waves">
-      <div class="wave wave-1"></div>
-      <div class="wave wave-2"></div>
-      <div class="wave wave-3"></div>
-      <div class="wave wave-4"></div>
+      <svg class="wave wave-1" viewBox="0 0 2400 120" preserveAspectRatio="none">
+        <path d="M0,60 C150,120 350,0 600,60 C850,120 1050,0 1200,60 L1200,120 L0,120 Z" />
+        <path d="M1200,60 C1350,120 1550,0 1800,60 C2050,120 2250,0 2400,60 L2400,120 L1200,120 Z" />
+      </svg>
+      <svg class="wave wave-2" viewBox="0 0 2400 120" preserveAspectRatio="none">
+        <path d="M0,70 C200,10 400,130 600,70 C800,10 1000,130 1200,70 L1200,120 L0,120 Z" />
+        <path d="M1200,70 C1400,10 1600,130 1800,70 C2000,10 2200,130 2400,70 L2400,120 L1200,120 Z" />
+      </svg>
+      <svg class="wave wave-3" viewBox="0 0 2400 120" preserveAspectRatio="none">
+        <path d="M0,80 C250,140 450,20 600,80 C750,140 950,20 1200,80 L1200,120 L0,120 Z" />
+        <path d="M1200,80 C1450,140 1650,20 1800,80 C1950,140 2150,20 2400,80 L2400,120 L1200,120 Z" />
+      </svg>
+      <svg class="wave wave-4" viewBox="0 0 2400 120" preserveAspectRatio="none">
+        <path d="M0,90 C180,30 420,150 600,90 C780,30 1020,150 1200,90 L1200,120 L0,120 Z" />
+        <path d="M1200,90 C1380,30 1620,150 1800,90 C1980,30 2220,150 2400,90 L2400,120 L1200,120 Z" />
+      </svg>
     </div>
   </div>
 </template>
@@ -160,45 +172,46 @@ onUnmounted(() => {
   bottom: 0;
   width: 200%;
   height: 100%;
-  background-repeat: repeat-x;
-  background-position: 0 bottom;
-  background-size: 50% 100%;
   animation: waveMove linear infinite;
 }
 
+.wave path {
+  fill: var(--wave-color);
+}
+
 .wave-1 {
+  --wave-color: var(--wave-1-color);
   bottom: -20px;
   height: 140px;
   opacity: 0.35;
   animation-duration: 14s;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,60 C150,120 350,0 600,60 C850,120 1050,0 1200,60 L1200,120 L0,120 Z' fill='%232d5a27'/%3E%3C/svg%3E");
 }
 
 .wave-2 {
+  --wave-color: var(--wave-2-color);
   bottom: -10px;
   height: 120px;
   opacity: 0.45;
   animation-duration: 11s;
   animation-delay: -3s;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,70 C200,10 400,130 600,70 C800,10 1000,130 1200,70 L1200,120 L0,120 Z' fill='%234a8b3c'/%3E%3C/svg%3E");
 }
 
 .wave-3 {
+  --wave-color: var(--wave-3-color);
   bottom: 0;
   height: 100px;
   opacity: 0.55;
   animation-duration: 8s;
   animation-delay: -2s;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,80 C250,140 450,20 600,80 C750,140 950,20 1200,80 L1200,120 L0,120 Z' fill='%2376c06a'/%3E%3C/svg%3E");
 }
 
 .wave-4 {
+  --wave-color: var(--wave-4-color);
   bottom: 0;
   height: 80px;
   opacity: 1;
   animation-duration: 6s;
   animation-delay: -1s;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,90 C180,30 420,150 600,90 C780,30 1020,150 1200,90 L1200,120 L0,120 Z' fill='%23caf2cb'/%3E%3C/svg%3E");
 }
 
 @keyframes waveMove {

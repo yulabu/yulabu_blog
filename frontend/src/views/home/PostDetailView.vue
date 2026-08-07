@@ -18,7 +18,7 @@
         <div class="content-card">
           <MdPreview
             :modelValue="post.content"
-            theme="light"
+            :theme="uiStore.theme"
             previewTheme="github"
             codeTheme="github"
             :showCodeRowNumber="true"
@@ -58,10 +58,12 @@ import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
 import { getPost } from '@/api/post'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { useUiStore } from '@/stores/ui'
 import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
 
 const route = useRoute()
 const { toast } = useMessageBox()
+const uiStore = useUiStore()
 
 const post = ref({
   title: '',
@@ -128,7 +130,7 @@ onUnmounted(() => {
 .page-bg {
   width: 100%;
   min-height: 100vh;
-  background-color: rgb(202, 242, 203);
+  background-color: var(--bg-page);
 }
 
 .detail-container {
@@ -150,13 +152,13 @@ onUnmounted(() => {
 .meta-card {
   padding: 24px 28px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   backdrop-filter: blur(16px);
 }
 
@@ -180,7 +182,7 @@ onUnmounted(() => {
 .category-tag {
   padding: 3px 10px;
   border-radius: 10px;
-  background: rgba(99, 149, 86, 0.85);
+  background: var(--color-primary);
   color: white;
   font-size: 12px;
 }
@@ -192,13 +194,13 @@ onUnmounted(() => {
 .content-card {
   padding: 24px 28px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   backdrop-filter: blur(16px);
   min-height: 400px;
 }
@@ -212,13 +214,13 @@ onUnmounted(() => {
   top: 96px;
   padding: 20px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   backdrop-filter: blur(16px);
   max-height: calc(100vh - 116px);
   overflow-y: auto;
@@ -229,7 +231,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding-bottom: 12px;
-  border-bottom: 1px dashed rgba(80, 140, 134, .25);
+  border-bottom: 1px dashed var(--border-divider);
   margin-bottom: 12px;
 }
 
@@ -268,12 +270,12 @@ onUnmounted(() => {
 }
 
 .toc-item:hover {
-  background: rgba(99, 149, 86, 0.12);
+  background: rgba(var(--color-primary-rgb), 0.12);
   color: var(--color-heading);
 }
 
 .toc-item.active {
-  background: rgba(99, 149, 86, 0.2);
+  background: rgba(var(--color-primary-rgb), 0.2);
   color: var(--color-heading);
   font-weight: 600;
 }

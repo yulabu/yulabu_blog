@@ -18,14 +18,14 @@ defineProps<{ visible: boolean }>()
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(202, 242, 203, 0.6);
+  background: var(--overlay-bg);
   backdrop-filter: blur(4px);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(80, 140, 134, 0.2);
+  border: 4px solid rgba(var(--color-accent-rgb), 0.2);
   border-top-color: var(--color-primary, #4a8b3c);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

@@ -19,13 +19,13 @@
   width: 300px;
   height: 260px;
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, .6),
-      rgba(255, 255, 255, .3),
-      rgba(255, 255, 255, .2));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   backdrop-filter: blur(16px);
-  border-top: 1px solid white;
-  border-left: 1px solid white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
+  box-shadow: 0 4px 12px var(--shadow-color);
   overflow: hidden;
   border-radius: 0 0 30px 30px;
 }
@@ -33,7 +33,7 @@
   position: relative;
   width: 330px;
   height: 130px;
-  background-color: rgba(167, 233, 186, .85);
+  background-color: var(--bg-personal-top);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -45,7 +45,7 @@
   position: absolute;
   width: 40px;
   height: 40px;
-  background-color: rgba(167, 233, 186, .85);
+  background-color: var(--bg-personal-top);
   transition: translate(-50%);
   /* left: 50%; */
   bottom: -30%;
@@ -59,7 +59,7 @@
   height: 90px;
   background-image: url('@/assets/img/Personal_img.jpg');
   background-size: cover;
-  border: 5px solid rgb(139, 194, 155);;
+  border: 5px solid var(--image-border);
   transition: .5s;
 }
 .card-bottom, .card-bottom2{
@@ -74,18 +74,19 @@
   display: block;
   margin: 10px 0 10px 0;
   font: 800 28px "Hobo Std";
+  color: var(--color-heading);
 }
 .card-bottom span{
   /* display: block; */
   font-size: 400 24px 'Giddyup Std';
-  color: rgb(100, 100, 100);
+  color: var(--color-text);
 }
 .card-bottom h2::after{
   content: "";
   display: block;
   width: 200px;
   height: 2px;
-  background-color: black;
+  background-color: var(--border-divider);
   position: absolute;
   left: 50%;
   transform: translate(-50%, 4px);

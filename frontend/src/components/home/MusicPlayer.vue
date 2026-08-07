@@ -33,13 +33,13 @@
     height: auto;
     padding: 36px;
     border-radius: 5%;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border-top: 1px solid white;
-    border-left: 1px solid white;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    border-top: 1px solid var(--border-light);
+    border-left: 1px solid var(--border-light);
     background: linear-gradient(to right bottom,
-        rgba(255, 255, 255, .6),
-        rgba(255, 255, 255, .3),
-        rgba(255, 255, 255, .2));
+        var(--bg-glass-start),
+        var(--bg-glass-mid),
+        var(--bg-glass-end));
     backdrop-filter: blur(16px);
     overflow: hidden;
     display: flex;
@@ -69,7 +69,7 @@
     user-select: none;
     width: 50px;
     height: 50px;
-    background-color: rgb(71, 95, 65, .3);
+    background-color: rgba(var(--color-primary-rgb), .3);
     border-radius: 25px;
   }
   .play {
@@ -89,9 +89,9 @@
     margin-top: 16px;
   }
   .info .singer {
-    font-family: '微软雅黑';
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
     font-weight: 900;
-    color: rgb(99, 118, 94);
+    color: var(--color-text);
     margin-bottom: 8px;
   }
   .music-box, .volume-box {
