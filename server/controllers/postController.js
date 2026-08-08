@@ -39,6 +39,45 @@ exports.getPostById = async (req, res) => {
   res.json(postDetail(post));
 };
 
+// 获取文章归档：按年份和月份分组
+exports.getArchive = async (req, res) => {
+  const posts = await Post.findAll({
+    where: { post_status: 'published' },
+    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+    order: [['created_at', 'DESC']],
+  });
+
+  const grouped = {};
+  for (const post of posts) {
+    const date = new Date(post.createdAt);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+
+    if (!grouped[year]) grouped[year] = {};
+    if (!grouped[year][month]) grouped[year][month] = [];
+    grouped[year][month].push(postSummary(post));
+  }
+
+  const archives = Object.entries(grouped)
+    .sort(([yearA], [yearB]) => Number(yearB) - Number(yearA))
+    .map(([year, months]) => {
+      const yearPosts = Object.values(months).flat();
+      return {
+        year: Number(year),
+        count: yearPosts.length,
+        months: Object.entries(months)
+          .sort(([monthA], [monthB]) => Number(monthB) - Number(monthA))
+          .map(([month, monthPosts]) => ({
+            month: Number(month),
+            count: monthPosts.length,
+            posts: monthPosts,
+          })),
+      };
+    });
+
+  res.json({ archives });
+};
+
 // 创建文章
 exports.createPost = async (req, res) => {
   const { temp_id } = req.body;

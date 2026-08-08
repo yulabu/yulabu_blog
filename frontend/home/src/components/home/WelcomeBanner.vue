@@ -4,8 +4,13 @@
     <div class="content">
       <h1 class="site-title">yulabu's blog</h1>
       <h2 class="subtitle">
-        <span>{{ currentText }}</span>
-        <span class="cursor"></span>
+        <template v-if="showTyping">
+          <span>{{ currentText }}</span>
+          <span class="cursor"></span>
+        </template>
+        <template v-else>
+          <span>{{ subtitle }}</span>
+        </template>
       </h2>
     </div>
     <div class="waves">
@@ -30,6 +35,11 @@
 </template>
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+
+const props = defineProps({
+  subtitle: { type: String, default: '' },
+  showTyping: { type: Boolean, default: true }
+})
 
 const texts = [
   '欢迎来到鱼辣不的博客',
@@ -73,7 +83,9 @@ function tick() {
 }
 
 onMounted(() => {
-  timer = setTimeout(tick, 500)
+  if (props.showTyping) {
+    timer = setTimeout(tick, 500)
+  }
 })
 
 onUnmounted(() => {

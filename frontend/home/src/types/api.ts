@@ -22,6 +22,29 @@ export interface PaginatedPosts {
   totalPages: number
 }
 
+export interface ArchivePost {
+  id: number
+  title: string
+  summary: string | null
+  author: string
+  category: Category | null
+  status: 'published' | 'trash'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ArchiveMonth {
+  month: number
+  count: number
+  posts: ArchivePost[]
+}
+
+export interface ArchiveYear {
+  year: number
+  count: number
+  months: ArchiveMonth[]
+}
+
 export interface Notice {
   notice_id: number
   notice_title: string
