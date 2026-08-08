@@ -4,6 +4,7 @@ import HomeView from '@/views/HomeView.vue'
 
 const PostDetailView = () => import('@/views/PostDetailView.vue')
 const ArchiveView = () => import('@/views/ArchiveView.vue')
+const AboutView = () => import('@/views/AboutView.vue')
 
 const routes = [
   {
@@ -20,6 +21,11 @@ const routes = [
     path: '/archive',
     name: 'Archive',
     component: ArchiveView,
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: AboutView,
   },
 ]
 
