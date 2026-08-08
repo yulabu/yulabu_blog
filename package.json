@@ -2,14 +2,10 @@
   "name": "yulabu-blog",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n server,frontend -c blue,green \"cd server && npm run dev\" \"cd frontend && npm run dev\"",
     "dev:home": "concurrently -n server,home -c blue,green \"cd server && npm run dev\" \"cd frontend/home && npm run dev\"",
     "dev:admin": "concurrently -n server,admin -c blue,green \"cd server && npm run dev\" \"cd frontend/admin && npm run dev\""
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
-  },
-  "dependencies": {
-    "@iconify/vue": "^5.0.1"
   }
 }
