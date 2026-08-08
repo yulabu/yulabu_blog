@@ -264,8 +264,9 @@ onMounted(fetchArchive)
   padding: 16px;
   border-radius: 12px;
   background: linear-gradient(to right bottom,
-      rgba(255, 255, 255, 0.4),
-      rgba(255, 255, 255, 0.2));
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
   border-top: 1px solid var(--border-light);
   border-left: 1px solid var(--border-light);
   cursor: pointer;
