@@ -4,6 +4,7 @@ const auth = require('@middleware/auth');
 const adminController = require('@controllers/adminController');
 const adminAccountController = require('@controllers/adminAccountController');
 const noticeController = require('@controllers/noticeController');
+const friendLinkController = require('@controllers/friendLinkController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);
@@ -30,5 +31,12 @@ router.post('/notices', noticeController.createNotice);
 router.put('/notices/:id', noticeController.updateNotice);
 router.delete('/notices/:id', noticeController.deleteNotice);
 router.put('/notices/:id/pin', noticeController.togglePin);
+
+// 友链管理
+router.get('/friendlinks', friendLinkController.getAdminLinks);
+router.get('/friendlinks/:id', friendLinkController.getLinkById);
+router.post('/friendlinks', friendLinkController.createLink);
+router.put('/friendlinks/:id', friendLinkController.updateLink);
+router.delete('/friendlinks/:id', friendLinkController.deleteLink);
 
 module.exports = router;
