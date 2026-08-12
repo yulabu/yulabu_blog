@@ -25,6 +25,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: '简介'
     },
+    preview_image: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
+      comment: '预览图URL'
+    },
     sort_order: {
       type: DataTypes.INTEGER,
       defaultValue: 0,

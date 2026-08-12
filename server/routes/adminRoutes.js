@@ -37,6 +37,7 @@ router.get('/friendlinks', friendLinkController.getAdminLinks);
 router.get('/friendlinks/:id', friendLinkController.getLinkById);
 router.post('/friendlinks', friendLinkController.createLink);
 router.put('/friendlinks/:id', friendLinkController.updateLink);
+router.put('/friendlinks/:id/preview', friendLinkController.fetchPreview);
 router.delete('/friendlinks/:id', friendLinkController.deleteLink);
 
 module.exports = router;

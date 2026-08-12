@@ -20,12 +20,24 @@
         <template #cell-url="{ row }">
           <AdminDataTableCellText muted>{{ row.url }}</AdminDataTableCellText>
         </template>
+        <template #cell-preview_image="{ row }">
+          <img
+            v-if="row.preview_image"
+            :src="row.preview_image"
+            :alt="row.name"
+            class="preview-thumb"
+          />
+          <span v-else class="preview-empty">未抓取</span>
+        </template>
         <template #cell-status="{ row }">
           <AdminStatusBadge :type="row.status" />
         </template>
         <template #cell-actions="{ row }">
           <AdminDataTableCellActions>
             <AdminButton variant="text" @click="openModal(row)">编辑</AdminButton>
+            <AdminButton variant="text" :disabled="previewLoading" @click="onFetchPreview(row)">
+              {{ previewLoading ? '抓取中...' : '抓图' }}
+            </AdminButton>
             <AdminButton variant="danger" @click="onDelete(row.id)">删除</AdminButton>
           </AdminDataTableCellActions>
         </template>
@@ -93,7 +105,8 @@ import { ref, computed, nextTick } from 'vue'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useAdminList } from '@/composables/useAdminList'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
-import { getAdminFriendLinks, createFriendLink, updateFriendLink, deleteFriendLink } from '@/api/friendLink'
+import { useAsyncAction } from '@/composables/useAsyncAction'
+import { getAdminFriendLinks, createFriendLink, updateFriendLink, deleteFriendLink, fetchFriendLinkPreview } from '@/api/friendLink'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminSearchBar from '@/components/admin/AdminSearchBar.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
@@ -124,6 +137,7 @@ const links = computed(() => {
 const columns = [
   { key: 'name', label: '名称' },
   { key: 'url', label: '链接' },
+  { key: 'preview_image', label: '预览图' },
   { key: 'sort_order', label: '排序', class: 'text-center' },
   { key: 'status', label: '状态', class: 'text-center' },
   { key: 'actions', label: '操作', class: 'text-center' }
@@ -213,10 +227,29 @@ const { confirmDelete: onDelete } = useConfirmDelete(deleteFriendLink, {
   successMessage: '删除成功',
   onSuccess: refresh
 })
+
+const { run: onFetchPreview, loading: previewLoading } = useAsyncAction(fetchFriendLinkPreview, {
+  successMessage: (result) => result.message,
+  onSuccess: refresh
+})
 </script>
 
 <style scoped>
 .friend-link-list-page {
   width: 100%;
+}
+
+.preview-thumb {
+  width: 88px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(80, 140, 134, 0.25);
+  display: block;
+}
+
+.preview-empty {
+  font-size: 12px;
+  color: var(--color-muted);
 }
 </style>

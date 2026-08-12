@@ -33,3 +33,7 @@ export function updateFriendLink(
 export function deleteFriendLink(id: number) {
   return http.delete(`/admin/friendlinks/${id}`)
 }
+
+export function fetchFriendLinkPreview(id: number) {
+  return http.put<{ preview_image: string | null; message: string }>(`/admin/friendlinks/${id}/preview`)
+}
