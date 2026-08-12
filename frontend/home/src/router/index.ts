@@ -5,6 +5,7 @@ import HomeView from '@/views/HomeView.vue'
 const PostDetailView = () => import('@/views/PostDetailView.vue')
 const ArchiveView = () => import('@/views/ArchiveView.vue')
 const AboutView = () => import('@/views/AboutView.vue')
+const FriendsView = () => import('@/views/FriendsView.vue')
 
 const routes = [
   {
@@ -26,6 +27,11 @@ const routes = [
     path: '/about',
     name: 'About',
     component: AboutView,
+  },
+  {
+    path: '/friends',
+    name: 'Friends',
+    component: FriendsView,
   },
 ]
 

@@ -5,7 +5,7 @@
     </div>
     <div class="nav-links">
       <router-link to="/" class="nav-link">首页</router-link>
-      <a href="#" class="nav-link" @click.prevent>友链</a>
+      <router-link to="/friends" class="nav-link">友链</router-link>
       <router-link to="/archive" class="nav-link">归档</router-link>
       <a href="#" class="nav-link" @click.prevent>碎碎念</a>
       <router-link to="/about" class="nav-link">关于</router-link>

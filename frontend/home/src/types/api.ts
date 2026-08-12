@@ -60,6 +60,17 @@ export interface Tag {
   count: number
 }
 
+export interface FriendLink {
+  id: number
+  name: string
+  url: string
+  avatar: string | null
+  description: string | null
+  preview_image: string | null
+  sort_order: number
+  status: 'show' | 'hide'
+}
+
 export interface MessageResponse {
   message: string
 }
