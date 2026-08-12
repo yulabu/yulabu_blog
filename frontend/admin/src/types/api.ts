@@ -105,3 +105,15 @@ export interface IdResponse {
 export interface UploadResult {
   urls: string[]
 }
+
+export interface FriendLink {
+  id: number
+  name: string
+  url: string
+  avatar: string | null
+  description: string | null
+  sort_order: number
+  status: 'show' | 'hide'
+  created_at: string
+  updated_at: string
+}

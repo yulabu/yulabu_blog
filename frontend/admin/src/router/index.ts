@@ -13,6 +13,7 @@ const AdminNoticeList = () => import(/* webpackChunkName: "admin" */ '@/views/ad
 const AdminNoticeEdit = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminNoticeEdit.vue');
 const AdminUserList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminUserList.vue');
 const AdminSettings = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminSettings.vue');
+const AdminFriendLinkList = () => import('@/views/admin/AdminFriendLinkList.vue');
 
 const routes = [
   { path: '/', redirect: '/admin' },
@@ -33,6 +34,7 @@ const routes = [
       { path: 'notices/new', component: AdminNoticeEdit },
       { path: 'notices/:id/edit', component: AdminNoticeEdit },
       { path: 'users', component: AdminUserList },
+      { path: 'friendlinks', component: AdminFriendLinkList },
       { path: 'settings', component: AdminSettings }
     ]
   },
