@@ -6,9 +6,10 @@ const Post = require('./Post')(sequelize, DataTypes);
 const Admin = require('./Admin')(sequelize, DataTypes);
 const Notice = require('./Notice')(sequelize, DataTypes);
 const FriendLink = require('./FriendLink')(sequelize, DataTypes);
+const Moment = require('./Moment')(sequelize, DataTypes);
 
 // 关联：一个 Tag 下有多个 Post（外键 post_category_id → tag_id）
 Tag.hasMany(Post, { foreignKey: 'post_category_id', as: 'posts' });
 Post.belongsTo(Tag, { foreignKey: 'post_category_id', as: 'category' });
 
-module.exports = { sequelize, Post, Tag, Admin, Notice, FriendLink };
+module.exports = { sequelize, Post, Tag, Admin, Notice, FriendLink, Moment };

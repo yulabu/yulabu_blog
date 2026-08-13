@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('@middleware/auth');
+const upload = require('@middleware/upload');
 const adminController = require('@controllers/adminController');
 const adminAccountController = require('@controllers/adminAccountController');
 const noticeController = require('@controllers/noticeController');
 const friendLinkController = require('@controllers/friendLinkController');
+const momentController = require('@controllers/momentController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);
@@ -39,5 +41,14 @@ router.post('/friendlinks', friendLinkController.createLink);
 router.put('/friendlinks/:id', friendLinkController.updateLink);
 router.put('/friendlinks/:id/preview', friendLinkController.fetchPreview);
 router.delete('/friendlinks/:id', friendLinkController.deleteLink);
+
+// 碎碎念管理
+router.get('/moments', momentController.getAdminMoments);
+router.get('/moments/:id', momentController.getMomentById);
+router.post('/moments', momentController.createMoment);
+router.put('/moments/:id', momentController.updateMoment);
+router.delete('/moments/:id', momentController.deleteMoment);
+router.post('/moments/:id/image', upload.single('image'), momentController.uploadImage);
+router.delete('/moments/:id/image', momentController.removeImage);
 
 module.exports = router;
