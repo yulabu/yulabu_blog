@@ -1,5 +1,6 @@
 const path = require('path')
 const AppError = require('@middleware/AppError');
+const { Op } = require('sequelize');
 const { Moment } = require('@models');
 const { createMomentDTO, updateMomentDTO, momentIdDTO, listMomentsDTO } = require('@dto/moment.dto');
 const { momentDetail, momentList } = require('@vo/moment.vo');
@@ -20,9 +21,13 @@ exports.getPublicMoments = async (req, res) => {
 };
 
 exports.getAdminMoments = async (req, res) => {
-  const { page, limit, offset } = listMomentsDTO(req.query);
+  const { page, limit, offset, q } = listMomentsDTO(req.query);
+
+  const where = {};
+  if (q) where.moment_content = { [Op.like]: `%${q}%` };
 
   const { rows: moments, count: total } = await Moment.findAndCountAll({
+    where,
     order: [['created_at', 'DESC']],
     limit,
     offset

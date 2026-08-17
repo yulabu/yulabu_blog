@@ -48,7 +48,9 @@ function momentIdDTO(params) {
 }
 
 function listMomentsDTO(query) {
-  return paginate(query);
+  const { page, limit, offset } = paginate(query);
+  const q = query.q ? String(query.q).trim().slice(0, 32) : '';
+  return { page, limit, offset, q };
 }
 
 module.exports = { createMomentDTO, updateMomentDTO, momentIdDTO, listMomentsDTO };

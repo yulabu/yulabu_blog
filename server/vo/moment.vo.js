@@ -4,8 +4,8 @@ function momentDetail(moment) {
     content: moment.moment_content,
     image: moment.moment_image || null,
     status: moment.moment_status,
-    created_at: moment.created_at,
-    updated_at: moment.updated_at
+    created_at: moment.createdAt,
+    updated_at: moment.updatedAt
   };
 }
 

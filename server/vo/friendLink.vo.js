@@ -8,8 +8,8 @@ function friendLinkDetail(link) {
     preview_image: link.preview_image || null,
     sort_order: link.sort_order,
     status: link.status,
-    created_at: link.created_at,
-    updated_at: link.updated_at
+    created_at: link.createdAt,
+    updated_at: link.updatedAt
   };
 }
 
