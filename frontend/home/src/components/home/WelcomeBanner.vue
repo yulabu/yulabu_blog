@@ -125,7 +125,7 @@ onUnmounted(() => {
 
 .site-title {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 42px;
+  font-size: clamp(24px, 5vw, 42px);
   color: white;
   text-shadow:
     2px 0 4px rgba(255, 255, 255, 0.75),
@@ -137,7 +137,7 @@ onUnmounted(() => {
 
 .subtitle {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 42px;
+  font-size: clamp(18px, 4vw, 42px);
   color: white;
   text-shadow:
     2px 0 4px rgba(255, 255, 255, 0.75),

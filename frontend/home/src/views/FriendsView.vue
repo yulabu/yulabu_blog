@@ -80,7 +80,7 @@ onMounted(async () => {
 .friends-layout {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px 24px 60px;
+  padding: 20px var(--page-padding) 60px;
 }
 
 .state {
@@ -93,7 +93,7 @@ onMounted(async () => {
 
 .friends-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
 }
 
@@ -187,17 +187,5 @@ onMounted(async () => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-@media (max-width: 1024px) {
-  .friends-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .friends-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

@@ -139,7 +139,7 @@ onUnmounted(() => {
   gap: 24px;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 20px 24px 40px;
+  padding: 20px var(--page-padding) 40px;
 }
 
 .main-content {
@@ -331,6 +331,17 @@ onUnmounted(() => {
 
   .toc-sidebar {
     display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .meta-card,
+  .content-card {
+    padding: 16px;
+  }
+
+  .post-title {
+    font-size: 22px;
   }
 }
 </style>

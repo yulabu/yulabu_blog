@@ -61,7 +61,7 @@ function onClear() {
     gap: 20px;
     max-width: 1280px;
     margin: 0 auto;
-    padding: 20px 24px 40px;
+    padding: 20px var(--page-padding) 40px;
     min-height: 100vh;
     }
 .left-sidebar,
@@ -73,5 +73,27 @@ function onClear() {
   top: 96px;
   align-self: start;
 }
-/* 移动端暂时不管，后面再说 */
+/* 响应式降级
+ * @md 1024px  平板/窄屏：隐藏左栏，内容 + 右栏两列
+ * @sm 768px   手机：只保留中间的 PostList，两侧栏隐藏
+ */
+@media (max-width: 1024px) {
+  .home-layout {
+    grid-template-columns: 1fr 280px;
+  }
+
+  .left-sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .right-sidebar {
+    display: none;
+  }
+}
 </style>

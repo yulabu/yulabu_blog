@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar" :class="{ scrolled: isScrolled }">
+  <nav class="navbar" :class="{ scrolled: isScrolled }" v-click-outside="closeAll">
     <div class="nav-brand">
       <span class="logo">Yulabu</span>
     </div>
@@ -10,7 +10,7 @@
       <a href="#" class="nav-link" @click.prevent>碎碎念</a>
       <router-link to="/about" class="nav-link">关于</router-link>
     </div>
-    <div class="nav-search" v-click-outside="closeSearch">
+    <div class="nav-search">
       <input
         ref="searchInputRef"
         v-model="searchInput"
@@ -26,7 +26,19 @@
       <button class="theme-btn" @click="uiStore.toggleTheme">
         <Icon :icon="themeIcon" class="theme-icon" />
       </button>
+      <button class="menu-btn" :class="{ active: isMenuOpen }" @click.stop="toggleMenu" aria-label="菜单">
+        <Icon icon="material-symbols:menu" class="menu-icon" />
+      </button>
     </div>
+    <transition name="menu-fade">
+      <div v-if="isMenuOpen" class="mobile-menu">
+        <router-link to="/" class="mobile-link" @click="closeMenu">首页</router-link>
+        <router-link to="/friends" class="mobile-link" @click="closeMenu">友链</router-link>
+        <router-link to="/archive" class="mobile-link" @click="closeMenu">归档</router-link>
+        <a href="#" class="mobile-link" @click.prevent="closeMenu">碎碎念</a>
+        <router-link to="/about" class="mobile-link" @click="closeMenu">关于</router-link>
+      </div>
+    </transition>
   </nav>
 </template>
 <script setup>
@@ -45,6 +57,7 @@ const router = useRouter()
 const uiStore = useUiStore()
 const searchInput = ref('')
 const isSearchOpen = ref(false)
+const isMenuOpen = ref(false)
 const searchInputRef = ref(null)
 
 const themeIcon = computed(() => uiStore.theme === 'light' ? 'material-symbols:dark-mode' : 'material-symbols:light-mode')
@@ -64,6 +77,19 @@ function closeSearch() {
   isSearchOpen.value = false
 }
 
+function toggleMenu() {
+  isMenuOpen.value = !isMenuOpen.value
+}
+
+function closeMenu() {
+  isMenuOpen.value = false
+}
+
+function closeAll() {
+  closeMenu()
+  closeSearch()
+}
+
 function onSearch() {
   const q = searchInput.value.trim().slice(0, 32)
   if (q) {
@@ -78,6 +104,11 @@ function onSearch() {
 watch(() => route.query.q, (val) => {
   searchInput.value = val ? String(val) : ''
 }, { immediate: true })
+
+watch(() => route.path, () => {
+  closeMenu()
+  closeSearch()
+})
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
@@ -265,6 +296,103 @@ const vClickOutside = {
 
 .theme-icon {
   font-size: 16px;
+}
+
+.menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(99, 149, 86, 0.15);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0;
+}
+
+.menu-btn:hover,
+.menu-btn.active {
+  background: rgba(99, 149, 86, 0.3);
+}
+
+.menu-icon {
+  font-size: 18px;
+}
+
+.mobile-menu {
+  display: none;
+}
+
+.mobile-menu .mobile-link {
+  display: block;
+  padding: 14px 32px;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 16px;
+  color: rgb(80, 90, 85);
+  text-decoration: none;
+  transition: color 0.2s, background 0.2s;
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.mobile-menu .mobile-link:hover,
+.mobile-menu .mobile-link.router-link-active {
+  color: var(--color-primary);
+  background: rgba(99, 149, 86, 0.08);
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 16px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .nav-search {
+    width: auto;
+  }
+
+  .menu-btn {
+    display: flex;
+  }
+
+  .mobile-menu {
+    display: block;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: var(--navbar-bg);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--navbar-border);
+    box-shadow: 0 8px 20px var(--shadow-color);
+  }
+}
+
+@media (max-width: 480px) {
+  .search-input.open {
+    width: 130px;
+  }
+
+  .search-input.open:focus {
+    width: 150px;
+  }
+}
+
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 </style>

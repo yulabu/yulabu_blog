@@ -140,7 +140,7 @@ onMounted(fetchArchive)
   gap: 24px;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 20px 24px 60px;
+  padding: 20px var(--page-padding) 60px;
 }
 
 .archive-sidebar {
@@ -376,7 +376,7 @@ onMounted(fetchArchive)
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .archive-card {
     padding: 20px;
   }

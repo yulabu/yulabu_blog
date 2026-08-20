@@ -92,7 +92,7 @@ import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
   gap: 24px;
   max-width: 1000px;
   margin: 0 auto;
-  padding: 20px 24px 60px;
+  padding: 20px var(--page-padding) 60px;
 }
 
 .profile-card,
@@ -236,7 +236,7 @@ import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
   background: rgba(var(--color-primary-rgb), 0.22);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .about-layout {
     grid-template-columns: 1fr;
   }
@@ -246,11 +246,7 @@ import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
   }
 }
 
-@media (max-width: 640px) {
-  .about-layout {
-    padding: 16px 16px 40px;
-  }
-
+@media (max-width: 480px) {
   .content-card {
     padding: 24px;
   }

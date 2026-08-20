@@ -51,6 +51,7 @@ onUnmounted(() => {
 .home-hero {
   position: relative;
   height: 100vh;
+  height: 100svh;
   overflow: hidden;
   transition: height 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -61,6 +62,7 @@ onUnmounted(() => {
 
 .home-hero :deep(.banner) {
   height: 100vh;
+  height: 100svh;
   transition: height 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -78,21 +80,21 @@ onUnmounted(() => {
 }
 
 .home-hero :deep(.site-title) {
-  font-size: 56px;
+  font-size: clamp(28px, 6vw, 56px);
   transition: font-size 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .home-hero.collapsed :deep(.site-title) {
-  font-size: 42px;
+  font-size: clamp(24px, 5vw, 42px);
 }
 
 .home-hero :deep(.subtitle) {
-  font-size: 32px;
+  font-size: clamp(18px, 4vw, 32px);
   transition: font-size 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .home-hero.collapsed :deep(.subtitle) {
-  font-size: 42px;
+  font-size: clamp(20px, 5vw, 42px);
 }
 
 .home-hero :deep(.waves) {
@@ -139,5 +141,31 @@ onUnmounted(() => {
 @keyframes bounce {
   0%, 100% { transform: translate(-50%, 0); }
   50% { transform: translate(-50%, 12px); }
+}
+
+@media (max-width: 768px) {
+  .home-hero {
+    height: 320px;
+  }
+
+  .home-hero.collapsed {
+    height: 280px;
+  }
+
+  .home-hero :deep(.banner) {
+    height: 320px;
+  }
+
+  .home-hero.collapsed :deep(.banner) {
+    height: 280px;
+  }
+
+  .home-hero :deep(.content) {
+    padding-top: 40px;
+  }
+
+  .scroll-hint {
+    bottom: 24px;
+  }
 }
 </style>

@@ -16,7 +16,8 @@
 <style scoped>
 .card{
   position: relative;
-  width: 300px;
+  width: 100%;
+  max-width: 300px;
   height: 260px;
   background: linear-gradient(to right bottom,
       var(--bg-glass-start),
@@ -31,7 +32,7 @@
 }
 .card-top{
   position: relative;
-  width: 330px;
+  width: 100%;
   height: 130px;
   background-color: var(--bg-personal-top);
   display: flex;

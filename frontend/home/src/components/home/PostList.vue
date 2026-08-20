@@ -261,4 +261,22 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 .empty-icon {
   font-size: 32px;
 }
+
+@media (max-width: 480px) {
+  .post-list {
+    padding: 16px 12px;
+  }
+
+  .post-card {
+    padding: 12px;
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+}
 </style>
