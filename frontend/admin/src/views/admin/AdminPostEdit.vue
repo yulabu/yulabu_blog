@@ -35,6 +35,17 @@
               <AdminFormInput v-model="form.author" placeholder="作者" />
             </AdminFormField>
           </AdminFormGroup>
+          <AdminFormGroup>
+            <AdminFormField label="所属专栏" hint="切换后立即生效">
+              <AdminFormSelect
+                v-model="form.columnId"
+                placeholder="无专栏"
+                :options="columnOptions"
+                :disabled="columnSaving"
+                @change="onColumnChange"
+              />
+            </AdminFormField>
+          </AdminFormGroup>
         </AdminFormRow>
 
         <AdminFormField label="正文">
@@ -73,11 +84,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getTags, createTag } from '@/api/tag'
 import { getPost, createPost, updatePost } from '@/api/post'
+import { getAdminColumns, addColumnPost, removeColumnPost } from '@/api/column'
 import { uploadImages, cleanupTemp } from '@/api/upload'
 import {
   extractLocalImageRefs,
@@ -107,7 +119,8 @@ const form = ref({
   summary: '',
   categoryId: '',
   author: '匿名',
-  content: ''
+  content: '',
+  columnId: ''
 })
 
 const tags = ref([])
@@ -123,6 +136,45 @@ const importModalRef = ref(null)
 const tagOptions = computed(() =>
   tags.value.map((tag) => ({ value: tag.id, label: tag.name }))
 )
+
+const columns = ref([])
+const columnSaving = ref(false)
+const columnInitialized = ref(false)
+
+const columnOptions = computed(() =>
+  columns.value.map((c) => ({ value: c.id, label: c.name }))
+)
+
+async function fetchColumns() {
+  try {
+    columns.value = await getAdminColumns()
+  } catch (e) {
+    toast('获取专栏列表失败', 'error')
+  }
+}
+
+watch(() => form.value.columnId, async (val) => {
+  if (!columnInitialized.value || !isEdit.value) return
+  const postId = Number(route.params.id)
+  if (columnSaving.value) return
+
+  columnSaving.value = true
+  try {
+    if (val) {
+      await addColumnPost(Number(val), postId)
+      toast('已加入专栏')
+    } else {
+      await removeColumnPost(form.value.lastColumnId, postId)
+      toast('已移出专栏')
+    }
+  } catch (e) {
+    toast(e.message || '专栏更新失败', 'error')
+    form.value.columnId = form.value.lastColumnId
+  } finally {
+    columnSaving.value = false
+    form.value.lastColumnId = form.value.columnId
+  }
+})
 
 async function fetchTags() {
   try {
@@ -260,8 +312,11 @@ async function fetchPost() {
       summary: post.summary || '',
       categoryId: post.category?.id || '',
       author: post.author || '匿名',
-      content: post.content || ''
+      content: post.content || '',
+      columnId: post.column?.id || '',
+      lastColumnId: post.column?.id || ''
     }
+    columnInitialized.value = true
   } catch (e) {
     toast('获取文章失败', 'error')
   }
@@ -320,6 +375,7 @@ onMounted(() => {
     tempId.value = generateTempId()
   }
   fetchTags()
+  fetchColumns()
   fetchPost()
 })
 </script>

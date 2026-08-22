@@ -6,6 +6,8 @@ const PostDetailView = () => import('@/views/PostDetailView.vue')
 const ArchiveView = () => import('@/views/ArchiveView.vue')
 const AboutView = () => import('@/views/AboutView.vue')
 const FriendsView = () => import('@/views/FriendsView.vue')
+const ColumnsView = () => import('@/views/ColumnsView.vue')
+const ColumnDetailView = () => import('@/views/ColumnDetailView.vue')
 
 const routes = [
   {
@@ -32,6 +34,16 @@ const routes = [
     path: '/friends',
     name: 'Friends',
     component: FriendsView,
+  },
+  {
+    path: '/columns',
+    name: 'Columns',
+    component: ColumnsView,
+  },
+  {
+    path: '/columns/:id',
+    name: 'ColumnDetail',
+    component: ColumnDetailView,
   },
 ]
 

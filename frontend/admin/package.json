@@ -15,12 +15,14 @@
     "axios": "^1.18.1",
     "md-editor-v3": "^6.5.4",
     "pinia": "^4.0.2",
+    "sortablejs": "^1.15.7",
     "vue": "^3.5.38",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.13.2",
+    "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/tsconfig": "^0.9.1",
     "npm-run-all2": "^9.0.2",

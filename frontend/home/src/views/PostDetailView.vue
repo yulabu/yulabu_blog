@@ -15,6 +15,32 @@
             <span class="date">{{ formatDate(post.createdAt) }}</span>
           </div>
         </div>
+        <nav v-if="prevPost || nextPost" class="chapter-nav">
+          <div
+            v-if="prevPost"
+            class="chapter-item prev"
+            @click="goChapter(prevPost.id)"
+          >
+            <span class="chapter-label">上一篇</span>
+            <span class="chapter-title">{{ prevPost.title }}</span>
+          </div>
+          <div v-else class="chapter-item disabled">
+            <span class="chapter-label">上一篇</span>
+            <span class="chapter-title">已是第一篇</span>
+          </div>
+          <div
+            v-if="nextPost"
+            class="chapter-item next"
+            @click="goChapter(nextPost.id)"
+          >
+            <span class="chapter-label">下一篇</span>
+            <span class="chapter-title">{{ nextPost.title }}</span>
+          </div>
+          <div v-else class="chapter-item disabled">
+            <span class="chapter-label">下一篇</span>
+            <span class="chapter-title">已是最后一篇</span>
+          </div>
+        </nav>
         <div class="content-card">
           <MdPreview
             :modelValue="post.content"
@@ -51,12 +77,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
 import { getPost } from '@/api/post'
+import { getPrevPost, getNextPost } from '@/api/column'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useUiStore } from '@/stores/ui'
 import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
@@ -74,6 +101,8 @@ const post = ref({
 })
 const catalog = ref([])
 const activeHeading = ref('')
+const prevPost = ref(null)
+const nextPost = ref(null)
 
 async function fetchPost() {
   try {
@@ -81,6 +110,22 @@ async function fetchPost() {
   } catch (e) {
     toast('获取文章详情失败', 'error')
   }
+}
+
+async function fetchChapter() {
+  const id = Number(route.params.id)
+  try {
+    const [prev, next] = await Promise.all([getPrevPost(id), getNextPost(id)])
+    prevPost.value = prev.post
+    nextPost.value = next.post
+  } catch (e) {
+    prevPost.value = null
+    nextPost.value = null
+  }
+}
+
+function goChapter(id) {
+  router.push(`/post/${id}`)
 }
 
 function handleCatalog(list) {
@@ -118,7 +163,14 @@ function handleScroll() {
 
 onMounted(() => {
   fetchPost()
+  fetchChapter()
   window.addEventListener('scroll', handleScroll, { passive: true })
+})
+
+watch(() => route.params.id, () => {
+  fetchPost()
+  fetchChapter()
+  activeHeading.value = ''
 })
 
 onUnmounted(() => {
@@ -322,6 +374,78 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--color-text);
   opacity: 0.5;
+}
+
+.chapter-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.chapter-item {
+  padding: 14px 18px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
+  background: linear-gradient(to right bottom,
+      var(--bg-glass-start),
+      var(--bg-glass-mid),
+      var(--bg-glass-end));
+  backdrop-filter: blur(16px);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chapter-item.next {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.chapter-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px var(--shadow-color);
+}
+
+.chapter-item.disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.chapter-item.disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.chapter-label {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.chapter-title {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .chapter-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .chapter-item.next {
+    text-align: left;
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 1024px) {

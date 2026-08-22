@@ -10,9 +10,15 @@ export interface Post {
   summary: string | null
   author: string
   category: Category | null
+  column: ColumnRef | null
   status: 'published' | 'trash'
   createdAt: string
   updatedAt: string
+}
+
+export interface ColumnRef {
+  id: number
+  name: string
 }
 
 export interface PaginatedPosts {
@@ -117,4 +123,37 @@ export interface FriendLink {
   status: 'show' | 'hide'
   created_at: string
   updated_at: string
+}
+
+export interface ColumnItem {
+  id: number
+  name: string
+  desc: string | null
+  cover: string | null
+  sort_order: number
+  status: 'show' | 'hide'
+  post_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ColumnPostItem {
+  id: number
+  title: string
+  summary: string | null
+  category: Category | null
+  createdAt: string
+  sort: number
+}
+
+export interface ColumnCandidate {
+  id: number
+  title: string
+  category: Category | null
+}
+
+export interface ColumnPostsData {
+  column: ColumnItem
+  posts: ColumnPostItem[]
+  candidates: ColumnCandidate[]
 }

@@ -71,6 +71,33 @@ export interface FriendLink {
   status: 'show' | 'hide'
 }
 
+export interface ColumnItem {
+  id: number
+  name: string
+  desc: string | null
+  cover: string | null
+  sort_order: number
+  status: 'show' | 'hide'
+  post_count: number
+}
+
+export interface ColumnPostItem {
+  id: number
+  title: string
+  summary: string | null
+  category: Category | null
+  createdAt: string
+  sort: number
+}
+
+export interface ColumnDetail extends ColumnItem {
+  posts: ColumnPostItem[]
+}
+
+export interface PrevNextPost {
+  post: { id: number; title: string } | null
+}
+
 export interface MessageResponse {
   message: string
 }
