@@ -5,6 +5,8 @@ const auth = require('@middleware/auth');
 
 router.get('/', postController.getPosts);
 router.get('/archive', postController.getArchive);
+router.get('/:id/prev', postController.getPrevPost);
+router.get('/:id/next', postController.getNextPost);
 router.get('/:id', postController.getPostById);
 router.post('/', auth, postController.createPost);
 router.put('/:id', auth, postController.updatePost);

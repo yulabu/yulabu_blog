@@ -1,8 +1,9 @@
 const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
-const { Post, Tag } = require('@models');
+const { Post, Tag, ColumnPost, Column } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
+const { prevNextVO } = require('@vo/column.vo');
 const { finalizeTempImages, syncPostImages } = require('@utils/image');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
@@ -33,10 +34,53 @@ exports.getPosts = async (req, res) => {
 exports.getPostById = async (req, res) => {
   const postId = postIdDTO(req.params);
   const post = await Post.findByPk(postId, {
-    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+    include: [
+      { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+      { model: ColumnPost, as: 'columnPost', include: { model: Column, as: 'column', attributes: ['column_id', 'column_name'] } }
+    ],
   });
   if (!post || post.post_status !== 'published') throw new AppError(404, '文章不存在');
   res.json(postDetail(post));
+};
+
+// 获取上一篇（同专栏内 sort_order 小于当前的最大一篇）
+exports.getPrevPost = async (req, res) => {
+  const postId = postIdDTO(req.params);
+  const columnPost = await ColumnPost.findOne({
+    where: { post_id: postId },
+    include: { model: Post, as: 'post', where: { post_status: 'published' }, required: true }
+  });
+  if (!columnPost) return res.json({ post: null });
+
+  const prev = await ColumnPost.findOne({
+    where: {
+      column_id: columnPost.column_id,
+      sort_order: { [Op.lt]: columnPost.sort_order }
+    },
+    include: { model: Post, as: 'post', where: { post_status: 'published' }, required: true },
+    order: [['sort_order', 'DESC']]
+  });
+  res.json(prevNextVO(prev ? prev.post : null));
+};
+
+// 获取下一篇（同专栏内 sort_order 大于当前的最小一篇）
+exports.getNextPost = async (req, res) => {
+  const postId = postIdDTO(req.params);
+  const columnPost = await ColumnPost.findOne({
+    where: { post_id: postId },
+    include: { model: Post, as: 'post', where: { post_status: 'published' }, required: true }
+  });
+  if (!columnPost) return res.json({ post: null });
+
+  const next = await ColumnPost.findOne({
+    where: {
+      column_id: columnPost.column_id,
+      sort_order: { [Op.gt]: columnPost.sort_order }
+    },
+    include: { model: Post, as: 'post', where: { post_status: 'published' }, required: true },
+    order: [['sort_order', 'ASC']]
+  });
+  res.json(prevNextVO(next ? next.post : null));
 };
 
 // 获取文章归档：按年份和月份分组
@@ -117,12 +161,13 @@ exports.updatePost = async (req, res) => {
   res.json({ id: post.post_id, message: '更新成功' });
 };
 
-// 删除文章（软删除，改为 trash 状态）
+// 删除文章（软删除，改为 trash 状态；顺带移出专栏）
 exports.deletePost = async (req, res) => {
   const postId = postIdDTO(req.params);
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
   await post.update({ post_status: 'trash' });
+  await ColumnPost.destroy({ where: { post_id: postId } });
   res.json({ message: '已移入回收站' });
 };

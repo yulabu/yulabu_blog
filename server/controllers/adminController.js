@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const AppError = require('@middleware/AppError');
 const { parseId, paginate } = require('@dto/common.dto');
-const { Post, Tag } = require('@models');
+const { Post, Tag, ColumnPost } = require('@models');
 const { postSummary } = require('@vo/post.vo');
 const { deletePostImages } = require('@utils/image');
 
@@ -77,5 +77,6 @@ exports.forceDeletePost = async (req, res) => {
 
   await post.destroy();
   await deletePostImages(postId);
+  await ColumnPost.destroy({ where: { post_id: postId } });
   res.json({ message: '已彻底删除' });
 };

@@ -5,6 +5,7 @@ const adminController = require('@controllers/adminController');
 const adminAccountController = require('@controllers/adminAccountController');
 const noticeController = require('@controllers/noticeController');
 const friendLinkController = require('@controllers/friendLinkController');
+const columnController = require('@controllers/columnController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);
@@ -39,5 +40,15 @@ router.post('/friendlinks', friendLinkController.createLink);
 router.put('/friendlinks/:id', friendLinkController.updateLink);
 router.put('/friendlinks/:id/preview', friendLinkController.fetchPreview);
 router.delete('/friendlinks/:id', friendLinkController.deleteLink);
+
+// 专栏管理
+router.get('/columns', columnController.getAdminColumns);
+router.post('/columns', columnController.createColumn);
+router.put('/columns/:id', columnController.updateColumn);
+router.delete('/columns/:id', columnController.deleteColumn);
+router.get('/columns/:id/posts', columnController.getColumnPosts);
+router.post('/columns/:id/posts', columnController.addColumnPost);
+router.delete('/columns/:id/posts/:postId', columnController.removeColumnPost);
+router.put('/columns/:id/order', columnController.updateColumnPostOrder);
 
 module.exports = router;

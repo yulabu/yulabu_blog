@@ -6,6 +6,7 @@ function postDetail(post) {
     summary: post.post_summary,
     author: post.post_author,
     category: post.category ? toCategory(post.category) : null,
+    column: post.columnPost && post.columnPost.column ? toColumn(post.columnPost.column) : null,
     status: post.post_status,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
@@ -23,6 +24,14 @@ function toCategory(tag) {
   return {
     id: tag.tag_id,
     name: tag.tag_name,
+  };
+}
+
+// 内部：专栏字段转换
+function toColumn(column) {
+  return {
+    id: column.column_id,
+    name: column.column_name,
   };
 }
 
