@@ -32,10 +32,6 @@
           <Icon icon="material-symbols:link" class="menu-icon" />
           <span>友链管理</span>
         </router-link>
-        <router-link to="/admin/moments" class="menu-item" active-class="active">
-          <Icon icon="material-symbols:notes" class="menu-icon" />
-          <span>碎碎念管理</span>
-        </router-link>
       </div>
 
       <router-link to="/admin/users" class="menu-item" active-class="active">

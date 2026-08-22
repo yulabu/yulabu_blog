@@ -7,7 +7,6 @@
       <router-link to="/" class="nav-link">首页</router-link>
       <router-link to="/friends" class="nav-link">友链</router-link>
       <router-link to="/archive" class="nav-link">归档</router-link>
-      <a href="#" class="nav-link" @click.prevent>碎碎念</a>
       <router-link to="/about" class="nav-link">关于</router-link>
     </div>
     <div class="nav-search">
@@ -35,7 +34,6 @@
         <router-link to="/" class="mobile-link" @click="closeMenu">首页</router-link>
         <router-link to="/friends" class="mobile-link" @click="closeMenu">友链</router-link>
         <router-link to="/archive" class="mobile-link" @click="closeMenu">归档</router-link>
-        <a href="#" class="mobile-link" @click.prevent="closeMenu">碎碎念</a>
         <router-link to="/about" class="mobile-link" @click="closeMenu">关于</router-link>
       </div>
     </transition>

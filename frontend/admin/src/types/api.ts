@@ -118,19 +118,3 @@ export interface FriendLink {
   created_at: string
   updated_at: string
 }
-
-export interface Moment {
-  id: number
-  content: string
-  image: string | null
-  status: 'show' | 'hide'
-  created_at: string
-  updated_at: string
-}
-
-export interface PaginatedMoments {
-  moments: Moment[]
-  total: number
-  page: number
-  totalPages: number
-}

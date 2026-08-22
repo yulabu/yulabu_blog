@@ -103,16 +103,6 @@ async function deletePostImages(postId) {
   }
 }
 
-// 删除碎碎念时清理整个配图目录
-async function deleteMomentImages(momentId) {
-  const momentDir = path.join(UPLOAD_DIR, 'moments', String(momentId))
-  try {
-    await fs.rm(momentDir, { recursive: true, force: true })
-  } catch (err) {
-    // 目录不存在或删除失败均忽略
-  }
-}
-
 async function finalizeTempImages(postId, tempId, content) {
   if (tempId !== path.basename(tempId)) {
     throw new AppError(400, '无效的临时标识');
@@ -194,7 +184,6 @@ module.exports = {
   finalizeTempImages,
   syncPostImages,
   deletePostImages,
-  deleteMomentImages,
   sanitizeFilename,
   cleanupOldTempDirs,
   ONE_DAY_MS
