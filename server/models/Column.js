@@ -26,7 +26,8 @@ module.exports = (sequelize, DataTypes) => {
       comment: '专栏排序（越小越前）'
     },
     status: {
-      type: DataTypes.ENUM('show', 'hide'),
+      // draft 追加在末尾：MySQL ENUM 按索引存储，插入前面会导致现有数据错位
+      type: DataTypes.ENUM('show', 'hide', 'draft'),
       defaultValue: 'show',
       comment: '显示状态'
     }
