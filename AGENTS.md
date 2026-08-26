@@ -1,4 +1,6 @@
-Yulabu Blog 生产部署环境
+## 施工约定
+- 方案初步设计时，遵循现有项目结构和风格，设计对应方案
+## Yulabu Blog 生产部署环境
 服务器
 项	值
 系统	Debian 12 (bookworm)，xanmod 内核 6.12.67

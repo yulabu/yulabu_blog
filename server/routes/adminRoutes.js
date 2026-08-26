@@ -6,6 +6,7 @@ const adminAccountController = require('@controllers/adminAccountController');
 const noticeController = require('@controllers/noticeController');
 const friendLinkController = require('@controllers/friendLinkController');
 const columnController = require('@controllers/columnController');
+const imageController = require('@controllers/imageController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);
@@ -50,5 +51,11 @@ router.get('/columns/:id/posts', columnController.getColumnPosts);
 router.post('/columns/:id/posts', columnController.addColumnPost);
 router.delete('/columns/:id/posts/:postId', columnController.removeColumnPost);
 router.put('/columns/:id/order', columnController.updateColumnPostOrder);
+
+// 图片库管理
+router.get('/images', imageController.getImages);
+router.get('/images/:id', imageController.getImageById);
+router.delete('/images/batch', imageController.deleteImagesBatch);
+router.delete('/images/:id', imageController.deleteImage);
 
 module.exports = router;
