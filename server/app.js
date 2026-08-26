@@ -31,10 +31,10 @@ app.use('/api/columns', publicLimiter, columnRoutes);
 // admin路由
 const adminRoutes = require('@routes/adminRoutes');
 app.use('/api/admin', adminLimiter, adminRoutes);
-// 上传路由
-const uploadRoutes = require('@routes/uploadRoutes');
-app.use('/api/upload', adminLimiter, uploadRoutes);
-const { UPLOAD_DIR } = require('@config/upload');
+// 图片路由
+const imageRoutes = require('@routes/imageRoutes');
+app.use('/api/images', adminLimiter, imageRoutes);
+const { UPLOAD_DIR } = require('@config/image');
 // 静态图片服务
 app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
   dotfiles: 'deny',
