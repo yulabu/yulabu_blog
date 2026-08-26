@@ -8,7 +8,7 @@ function imageVO(image) {
     reference_id: image.reference_id,
     reference_title: image.reference_title || null,
     bound: image.reference_id !== null,
-    created_at: image.created_at
+    created_at: image.createdAt
   };
 }
 
