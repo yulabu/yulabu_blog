@@ -40,18 +40,34 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
   dotfiles: 'deny',
   index: false
 }));
-// 图片清理
-const { cleanupOldTempDirs, ONE_DAY_MS } = require('@utils/image');
+// 图片 GC：孤儿回收 + 废弃草稿清理 + 历史遗留 temp 目录兜底
+const { runGC } = require('@utils/gc');
 // 导入模型
-const { Post, Tag, Admin, Notice, FriendLink, Column, ColumnPost } = require('@models');
+const { Post, Tag, Admin, Notice, FriendLink, Column, ColumnPost, Image } = require('@models');
 
 // 同步数据库（创建表）
 // 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。
 // 长期开启 alter: true 在 MySQL 上容易因索引名不匹配而产生重复索引，
 // 最终触发 ER_TOO_MANY_KEYS（max 64 keys allowed）。
+const GC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+async function runGCSafe() {
+  try {
+    const { orphans, drafts } = await runGC();
+    if (orphans || drafts) {
+      console.log(`GC 完成：孤儿图片 ${orphans} 张，废弃草稿 ${drafts} 篇`);
+    }
+  } catch (err) {
+    console.error('GC 失败:', err);
+  }
+}
+
 sequelize.sync()
   .then(() => {
     console.log('所有模型同步成功');
+    // 依赖数据库表，需在 sync 之后执行；启动先跑一次，再每 24 小时执行
+    runGCSafe();
+    setInterval(runGCSafe, GC_INTERVAL_MS);
   })
   .catch(err => {
     console.error('同步失败:', err);
@@ -72,15 +88,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-// 启动后异步清理过期临时目录，失败不影响服务
-cleanupOldTempDirs().catch(err => {
-  console.error('清理临时目录失败:', err);
-});
-
-// 每 24 小时自动清理一次过期临时目录
-setInterval(() => {
-  cleanupOldTempDirs().catch(err => {
-    console.error('定时清理临时目录失败:', err);
-  });
-}, ONE_DAY_MS);

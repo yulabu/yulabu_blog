@@ -4,7 +4,7 @@ const { Post, Tag, ColumnPost, Column } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
-const { finalizeTempImages, syncPostImages } = require('@utils/image');
+const { finalizeTempImages, unbindUnusedFiles } = require('@utils/image');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
@@ -154,11 +154,19 @@ exports.updatePost = async (req, res) => {
   const data = updatePostDTO(req.body);
   await post.update(data);
 
+  // 正文变更后差集解绑：正文不再引用的图片置为孤儿（24h 宽限期后由 GC 物理删除）
   if (data.post_content !== undefined) {
-    await syncPostImages(postId, data.post_content);
+    await unbindUnusedFiles(postId);
   }
 
   res.json({ id: post.post_id, message: '更新成功' });
+};
+
+// 差集解绑接口：前端离开编辑页时兜底调用（幂等）
+exports.unbindImages = async (req, res) => {
+  const postId = postIdDTO(req.params);
+  const { unbound } = await unbindUnusedFiles(postId);
+  res.json({ message: `已解绑 ${unbound} 张` });
 };
 
 // 删除文章（软删除，改为 trash 状态；顺带移出专栏）

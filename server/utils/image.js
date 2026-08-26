@@ -1,19 +1,21 @@
 const fs = require('fs').promises
 const path = require('path')
 const sharp = require('sharp')
+const { Op } = require('sequelize')
 const AppError = require('@middleware/AppError')
 const { UPLOAD_DIR } = require('@config/image')
+const { Image, Post } = require('@models')
 
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-// 从正文中提取某个上传目录下被引用的文件名
-function extractReferencedImages(content, postId) {
+// 从正文中提取本系统图片的存储 key 集合（去重）
+// 支持 Markdown 图片语法与 <img> 标签，只匹配 /uploads/ 开头的相对路径
+function extractReferencedImages(content) {
   const refs = new Set()
   if (!content) return refs
 
-  const prefix = `/uploads/${String(postId)}/`
   const patterns = [
     /!\[[^\]]*\]\(([^)]+)\)/g,
     /<img\s+[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi
@@ -23,13 +25,51 @@ function extractReferencedImages(content, postId) {
     let match
     while ((match = regex.exec(content)) !== null) {
       const url = match[1]
-      if (url.startsWith(prefix)) {
-        refs.add(decodeURIComponent(url.slice(prefix.length)))
+      if (url.startsWith('/uploads/')) {
+        try {
+          const key = decodeURIComponent(url.slice('/uploads/'.length))
+          if (key) refs.add(key)
+        } catch (err) {
+          // 忽略无法解码的 URL
+        }
       }
     }
   }
 
   return refs
+}
+
+// 差集解绑：将绑定到文章但正文中已不引用的图片置为孤儿（reference_id = NULL）
+// 幂等：重复调用（保存 + 离开兜底）无副作用
+async function unbindUnusedFiles(postId) {
+  const post = await Post.findByPk(postId)
+  if (!post) return { unbound: 0 }
+
+  const used = extractReferencedImages(post.post_content)
+  const bound = await Image.findAll({
+    where: { reference_type: 'post_content', reference_id: postId }
+  })
+
+  const unbindIds = bound
+    .filter(img => !used.has(img.storage_path))
+    .map(img => img.image_id)
+
+  if (unbindIds.length > 0) {
+    await Image.update(
+      { reference_id: null },
+      { where: { image_id: { [Op.in]: unbindIds } } }
+    )
+  }
+
+  return { unbound: unbindIds.length }
+}
+
+// 将文章全部图片解绑为孤儿（废弃草稿清理用）
+async function markPostImagesOrphan(postId) {
+  await Image.update(
+    { reference_id: null },
+    { where: { reference_type: 'post_content', reference_id: postId } }
+  )
 }
 
 // 同步文章上传目录：只保留正文中引用到的图片
@@ -147,5 +187,8 @@ module.exports = {
   syncPostImages,
   deletePostImages,
   cleanupOldTempDirs,
-  ONE_DAY_MS
+  ONE_DAY_MS,
+  extractReferencedImages,
+  unbindUnusedFiles,
+  markPostImagesOrphan
 }
