@@ -11,7 +11,7 @@ export interface Post {
   author: string
   category: Category | null
   column: ColumnRef | null
-  status: 'published' | 'trash'
+  status: 'published' | 'trash' | 'draft'
   createdAt: string
   updatedAt: string
 }
@@ -108,8 +108,14 @@ export interface IdResponse {
   message: string
 }
 
+export interface UploadedImage {
+  image_id: number
+  url: string
+  thumb_url: string
+}
+
 export interface UploadResult {
-  urls: string[]
+  images: UploadedImage[]
 }
 
 export interface FriendLink {

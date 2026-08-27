@@ -1,7 +1,6 @@
 import http from '@/utils/http'
 import type {
   DashboardStats,
-  Post,
   PaginatedAdmins,
   Admin,
   AdminForm,
@@ -10,21 +9,6 @@ import type {
 
 export function getDashboard() {
   return http.get<DashboardStats>('/admin/dashboard')
-}
-
-export function getTrashPosts(page = 1, limit = 10) {
-  return http.get<{ posts: Post[]; total: number; page: number; totalPages: number }>(
-    '/admin/posts/trash',
-    { params: { page, limit } }
-  )
-}
-
-export function restorePost(id: number) {
-  return http.put<{ message: string }>(`/admin/posts/${id}/restore`)
-}
-
-export function forceDeletePost(id: number) {
-  return http.delete<{ message: string }>(`/admin/posts/${id}/force`)
 }
 
 export function getCurrentAdmin() {

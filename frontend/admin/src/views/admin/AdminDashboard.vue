@@ -34,7 +34,7 @@
           </div>
         </div>
 
-        <div class="stat-card" @click="router.push('/admin/trash')">
+        <div class="stat-card" @click="router.push('/admin/posts')">
           <div class="stat-icon">
             <Icon icon="material-symbols:delete-outline" />
           </div>

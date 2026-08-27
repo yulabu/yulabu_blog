@@ -4,7 +4,8 @@
       <template #actions>
         <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
         <AdminButton variant="secondary" @click="openImportModal">导入附图片Markdown文章</AdminButton>
-        <AdminButton variant="primary" :loading="loading" @click="onSave">保存</AdminButton>
+        <AdminButton variant="secondary" :loading="loading" @click="onSaveDraft">保存草稿</AdminButton>
+        <AdminButton variant="primary" :loading="loading" @click="onPublish">发布</AdminButton>
       </template>
 
       <AdminForm>
@@ -88,9 +89,9 @@ import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getTags, createTag } from '@/api/tag'
-import { getPost, createPost, updatePost } from '@/api/post'
+import { getAdminPost, createPost, updatePost, unbindImages } from '@/api/post'
 import { getAdminColumns, addColumnPost, removeColumnPost } from '@/api/column'
-import { uploadImages, cleanupTemp } from '@/api/upload'
+import { uploadImages } from '@/api/image'
 import {
   extractLocalImageRefs,
   matchImagesByFilename,
@@ -110,7 +111,7 @@ import AdminMarkdownField from '@/components/admin/forms/AdminMarkdownField.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { toast } = useMessageBox()
+const { toast, confirm } = useMessageBox()
 
 const isEdit = computed(() => !!route.params.id)
 
@@ -129,9 +130,70 @@ const tagModalVisible = ref(false)
 const newTagName = ref('')
 const tagInputRef = ref(null)
 const tagSaving = ref(false)
-const tempId = ref('')
 const importModalVisible = ref(false)
 const importModalRef = ref(null)
+
+// ===== 图片绑定：ensureDraft 延迟建草稿 + 双快照脏检查 =====
+const draftId = ref(null)
+let draftPromise = null
+
+// 快照：上次保存/加载后的表单状态，用于脏检查
+const originalData = ref(null)
+
+function snapshotForm() {
+  return {
+    title: form.value.title,
+    summary: form.value.summary,
+    categoryId: form.value.categoryId,
+    author: form.value.author,
+    content: form.value.content,
+    columnId: form.value.columnId
+  }
+}
+
+function isDeepEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+const hasUnsavedChanges = computed(() => {
+  if (!originalData.value) return false
+  return !isDeepEqual(originalData.value, snapshotForm())
+})
+
+// 确保草稿已创建并返回 post_id（Promise 去重，防止输入/上传并发重复建草稿）
+async function ensureDraft() {
+  if (isEdit.value) return Number(route.params.id)
+  if (draftId.value) return draftId.value
+  if (draftPromise) return draftPromise
+
+  draftPromise = (async () => {
+    try {
+      const res = await createPost({
+        title: form.value.title || '未命名草稿',
+        content: form.value.content,
+        summary: form.value.summary,
+        author: form.value.author || '匿名',
+        categoryId: form.value.categoryId ? Number(form.value.categoryId) : null
+      })
+      draftId.value = res.id
+      return res.id
+    } finally {
+      draftPromise = null
+    }
+  })()
+
+  return draftPromise
+}
+
+// 首次输入触发建草稿（进入页面但什么都不做则不建，避免脏数据）
+watch(
+  () => [form.value.title, form.value.content, form.value.summary],
+  () => {
+    if (!isEdit.value && !draftId.value && !draftPromise) {
+      ensureDraft().catch(() => {})
+    }
+  }
+)
 
 const tagOptions = computed(() =>
   tags.value.map((tag) => ({ value: tag.id, label: tag.name }))
@@ -140,6 +202,7 @@ const tagOptions = computed(() =>
 const columns = ref([])
 const columnSaving = ref(false)
 const columnInitialized = ref(false)
+const currentStatus = ref('draft')
 
 const columnOptions = computed(() =>
   columns.value.map((c) => ({ value: c.id, label: c.name }))
@@ -206,13 +269,6 @@ function closeImportModal() {
   importModalRef.value?.reset()
 }
 
-function generateTempId() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-  return Date.now().toString(36) + Math.random().toString(36).slice(2)
-}
-
 async function onCreateTag() {
   const name = newTagName.value.trim()
   if (!name) {
@@ -241,17 +297,13 @@ async function onCreateTag() {
 }
 
 async function handleUploadImages(files) {
-  const result = await uploadImages({
-    files,
-    postId: isEdit.value ? Number(route.params.id) : undefined,
-    tempId: isEdit.value ? undefined : tempId.value
-  })
-  return result
+  const postId = await ensureDraft()
+  return uploadImages({ files, postId })
 }
 
 async function uploadImagesForEditor(files) {
   const result = await handleUploadImages(Array.from(files))
-  return result.urls
+  return result.images.map((img) => img.url)
 }
 
 async function handleImport({ markdown, files }) {
@@ -281,7 +333,7 @@ async function handleImport({ markdown, files }) {
 
     const result = await handleUploadImages(uniqueFiles)
     const fileToUrl = new Map()
-    uniqueFiles.forEach((file, i) => fileToUrl.set(file, result.urls[i]))
+    result.images.forEach((img, i) => fileToUrl.set(uniqueFiles[i], img.url))
 
     const replacements = matched.map((m) => ({
       ref: m.ref,
@@ -306,7 +358,7 @@ async function handleImport({ markdown, files }) {
 async function fetchPost() {
   if (!isEdit.value) return
   try {
-    const post = await getPost(Number(route.params.id))
+    const post = await getAdminPost(Number(route.params.id))
     form.value = {
       title: post.title || '',
       summary: post.summary || '',
@@ -317,12 +369,50 @@ async function fetchPost() {
       lastColumnId: post.column?.id || ''
     }
     columnInitialized.value = true
+    currentStatus.value = post.status || 'draft'
+    originalData.value = snapshotForm()
   } catch (e) {
     toast('获取文章失败', 'error')
   }
 }
 
-async function onSave() {
+// 保存草稿：无强制校验（标题/正文可为空），保持当前状态
+// 新建/编辑草稿 → draft；编辑已发布文章 → published（保存修改不降级）
+async function onSaveDraft() {
+  if (loading.value) return
+
+  loading.value = true
+  try {
+    const postForm = {
+      title: form.value.title.trim(),
+      content: form.value.content,
+      summary: form.value.summary.trim(),
+      author: form.value.author.trim(),
+      categoryId: form.value.categoryId ? Number(form.value.categoryId) : null
+    }
+
+    let postId
+    let status
+    if (isEdit.value) {
+      postId = Number(route.params.id)
+      status = currentStatus.value || 'draft' // 保持当前状态：已发布不降级
+    } else {
+      postId = await ensureDraft()
+      status = 'draft'
+    }
+    await updatePost(postId, postForm, status)
+    toast('草稿已保存')
+    originalData.value = snapshotForm()
+    router.push('/admin/posts')
+  } catch (e) {
+    toast(e.message || '保存失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 发布：校验标题/正文，将现有 post 状态更新为 published
+async function onPublish() {
   if (loading.value) return
 
   if (!form.value.title.trim()) {
@@ -345,14 +435,17 @@ async function onSave() {
     }
 
     if (isEdit.value) {
-      await updatePost(Number(route.params.id), postForm)
+      await updatePost(Number(route.params.id), postForm, 'published')
     } else {
-      await createPost(postForm, tempId.value)
+      // 新建：草稿已由 ensureDraft 创建，发布即状态流转
+      const postId = await ensureDraft()
+      await updatePost(postId, postForm, 'published')
     }
-    toast(isEdit.value ? '保存成功' : '创建成功')
+    toast('发布成功')
+    originalData.value = snapshotForm()
     router.push('/admin/posts')
   } catch (e) {
-    toast(e.message || '保存失败', 'error')
+    toast(e.message || '发布失败', 'error')
   } finally {
     loading.value = false
   }
@@ -363,17 +456,23 @@ function goBack() {
 }
 
 onBeforeRouteLeave(async () => {
-  if (tempId.value) {
+  // 1. 未保存修改：确认是否离开
+  if (hasUnsavedChanges.value) {
+    const ok = await confirm('提示', '当前内容尚未保存，确定要离开吗？未保存的内容将会丢失。')
+    if (!ok) return false
+  }
+
+  // 2. 离开前差集解绑：正文不再引用的图片置为孤儿（后端幂等）
+  const postId = isEdit.value ? Number(route.params.id) : draftId.value
+  if (postId) {
     try {
-      await cleanupTemp(tempId.value)
+      await unbindImages(postId)
     } catch { /* 静默忽略 */ }
   }
+  return true
 })
 
 onMounted(() => {
-  if (!isEdit.value) {
-    tempId.value = generateTempId()
-  }
   fetchTags()
   fetchColumns()
   fetchPost()

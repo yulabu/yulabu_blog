@@ -17,6 +17,7 @@ const props = defineProps({
 const MAP = {
   published: { text: '已发布', class: 'published' },
   trash: { text: '回收站', class: 'trash' },
+  draft: { text: '草稿', class: 'draft' },
   show: { text: '显示', class: 'show' },
   hide: { text: '隐藏', class: 'hide' },
   pinned: { text: '置顶', class: 'pinned' },
@@ -53,5 +54,10 @@ const badgeClass = computed(() => badge.value.class)
 .admin-status-badge.pinned {
   background: rgba(230, 160, 80, 0.2);
   color: rgb(180, 120, 40);
+}
+
+.admin-status-badge.draft {
+  background: rgba(80, 140, 230, 0.15);
+  color: rgb(60, 110, 200);
 }
 </style>
