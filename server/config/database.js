@@ -8,6 +8,8 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'mysql',
+    // 固定东八区：DATETIME 列按本地时间存取（Sequelize 默认 +00:00 会存 UTC 字符串，看库偏差 8h）
+    timezone: '+08:00',
     logging: false,
     define: {
       timestamps: true,
