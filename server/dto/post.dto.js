@@ -34,7 +34,8 @@ function updatePostDTO(body) {
     const title = body.post_title.trim();
     if (!title && body.post_status !== 'draft') throw new AppError(400, '标题不能为空');
     if (title.length > 32) throw new AppError(400, '标题不能超过32个字符');
-    dto.post_title = title;
+    // draft 状态空标题保持默认名（与 createPostDTO 一致）
+    dto.post_title = title || '未命名草稿';
   }
 
   if (body.post_content !== undefined) {

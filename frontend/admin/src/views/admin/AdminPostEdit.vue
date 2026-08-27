@@ -384,7 +384,7 @@ async function onSaveDraft() {
   loading.value = true
   try {
     const postForm = {
-      title: form.value.title.trim(),
+      title: form.value.title.trim() || '未命名草稿',
       content: form.value.content,
       summary: form.value.summary.trim(),
       author: form.value.author.trim(),
