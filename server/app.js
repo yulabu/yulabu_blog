@@ -40,7 +40,7 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
   dotfiles: 'deny',
   index: false
 }));
-// 图片 GC：孤儿回收 + 废弃草稿清理 + 历史遗留 temp 目录兜底
+// 图片 GC：孤儿回收 + 废弃草稿清理
 const { runGC } = require('@utils/gc');
 // 导入模型
 const { Post, Tag, Admin, Notice, FriendLink, Column, ColumnPost, Image } = require('@models');

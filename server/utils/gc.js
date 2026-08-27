@@ -1,7 +1,7 @@
 const { Op } = require('sequelize')
 const { Image, Post } = require('@models')
 const { deleteImageFiles } = require('@utils/imageStorage')
-const { markPostImagesOrphan, cleanupOldTempDirs } = require('@utils/image')
+const { markPostImagesOrphan } = require('@utils/image')
 
 // 孤儿图片宽限期：解绑后 24 小时才物理删除（反悔窗口）
 const ORPHAN_GRACE_MS = 24 * 60 * 60 * 1000
@@ -44,11 +44,10 @@ async function gcAbandonedDrafts() {
   return drafts.length
 }
 
-// GC 总入口：孤儿回收 + 废弃草稿清理 + 历史遗留 temp 目录兜底
+// GC 总入口：孤儿回收 + 废弃草稿清理
 async function runGC() {
   const orphans = await gcOrphanImages()
   const drafts = await gcAbandonedDrafts()
-  await cleanupOldTempDirs()
   return { orphans, drafts }
 }
 

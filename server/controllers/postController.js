@@ -5,7 +5,7 @@ const { Post, Tag, ColumnPost, Column, Image } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
-const { finalizeTempImages, unbindUnusedFiles, deletePostImages } = require('@utils/image');
+const { unbindUnusedFiles } = require('@utils/image');
 const { deleteImageFiles } = require('@utils/imageStorage');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
@@ -126,23 +126,8 @@ exports.getArchive = async (req, res) => {
 
 // 创建文章
 exports.createPost = async (req, res) => {
-  const { temp_id } = req.body;
-  if (temp_id && !/^[a-zA-Z0-9_-]+$/.test(temp_id)) {
-    throw new AppError(400, '无效的临时标识');
-  }
   const data = createPostDTO(req.body);
   const post = await Post.create(data);
-
-  if (temp_id) {
-    const finalContent = await finalizeTempImages(
-      post.post_id,
-      temp_id,
-      post.post_content
-    );
-    if (finalContent !== post.post_content) {
-      await post.update({ post_content: finalContent });
-    }
-  }
 
   res.status(201).json({ id: post.post_id, message: '创建成功' });
 };
@@ -242,7 +227,7 @@ exports.restorePost = async (req, res) => {
 // 彻底删除文章：按图片常规生命周期全流程清理
 // ① 按字段路径删除 uploads 物理文件（原图 + 缩略图）
 // ② 删除 image 表对应行
-// ③ 删除 post 及关联，旧布局目录兜底（存量数据）
+// ③ 删除 post 及关联
 exports.forceDeletePost = async (req, res) => {
   const postId = parseId(req.params, '文章');
 
@@ -262,9 +247,8 @@ exports.forceDeletePost = async (req, res) => {
     await Image.destroy({ where: { image_id: { [Op.in]: images.map(i => i.image_id) } } });
   }
 
-  // ③ 删除 post 及关联 + 旧布局目录兜底
+  // ③ 删除 post 及关联
   await post.destroy();
   await ColumnPost.destroy({ where: { post_id: postId } });
-  await deletePostImages(postId);
   res.json({ message: '已彻底删除' });
 };
