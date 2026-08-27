@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('@middleware/auth');
 const adminController = require('@controllers/adminController');
 const adminAccountController = require('@controllers/adminAccountController');
+const postController = require('@controllers/postController');
 const noticeController = require('@controllers/noticeController');
 const friendLinkController = require('@controllers/friendLinkController');
 const columnController = require('@controllers/columnController');
@@ -21,10 +22,11 @@ router.delete('/admins/:id', adminAccountController.deleteAdmin);
 // 工作台
 router.get('/dashboard', adminController.getDashboard);
 
-// 文章回收站
-router.get('/posts/trash', adminController.getTrashPosts);
-router.put('/posts/:id/restore', adminController.restorePost);
-router.delete('/posts/:id/force', adminController.forceDeletePost);
+// 文章管理（三种状态统一列表，前端按 status 切换；回收站操作归此）
+router.get('/posts', postController.getAdminPosts);
+router.get('/posts/:id', postController.getAdminPostById);
+router.put('/posts/:id/restore', postController.restorePost);
+router.delete('/posts/:id/force', postController.forceDeletePost);
 
 // 公告管理
 router.get('/notices', noticeController.getAdminNotices);

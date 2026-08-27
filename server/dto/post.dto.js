@@ -2,21 +2,27 @@ const AppError = require('@middleware/AppError');
 const { parseId, paginate } = require('./common.dto');
 
 // ========== 创建文章 ==========
+// draft 状态下允许空标题/正文（ensureDraft 延迟建草稿），发布必须完整
 function createPostDTO(body) {
+  const isDraft = body.post_status === 'draft';
   const title = body.post_title?.trim();
   const content = body.post_content;
 
-  if (!title) throw new AppError(400, '标题不能为空');
-  if (title.length > 32) throw new AppError(400, '标题不能超过32个字符');
-  if (!content) throw new AppError(400, '正文不能为空');
+  if (!isDraft) {
+    if (!title) throw new AppError(400, '标题不能为空');
+    if (title.length > 32) throw new AppError(400, '标题不能超过32个字符');
+    if (!content) throw new AppError(400, '正文不能为空');
+  } else if (title && title.length > 32) {
+    throw new AppError(400, '标题不能超过32个字符');
+  }
 
   return {
-    post_title: title,
-    post_content: content,
+    post_title: title || '未命名草稿',
+    post_content: content || '',
     post_summary: (body.post_summary || '').trim().slice(0, 128) || null,
     post_author: (body.post_author || '').trim() || '匿名',
     post_category_id: body.post_category_id ? Number(body.post_category_id) : null,
-    post_status: 'published', // 强制写死，外部不可控制
+    post_status: isDraft ? 'draft' : 'published', // 仅允许 draft / published，外部不可直接置 trash
   };
 }
 
@@ -26,7 +32,7 @@ function updatePostDTO(body) {
 
   if (body.post_title !== undefined) {
     const title = body.post_title.trim();
-    if (!title) throw new AppError(400, '标题不能为空');
+    if (!title && body.post_status !== 'draft') throw new AppError(400, '标题不能为空');
     if (title.length > 32) throw new AppError(400, '标题不能超过32个字符');
     dto.post_title = title;
   }
@@ -43,8 +49,8 @@ function updatePostDTO(body) {
     dto.post_category_id = body.post_category_id ? Number(body.post_category_id) : null;
   }
 
-  // 允许在 published 和 trash 之间切换
-  if (body.post_status === 'published' || body.post_status === 'trash') {
+  // 允许在 published / trash / draft 之间切换
+  if (body.post_status === 'published' || body.post_status === 'trash' || body.post_status === 'draft') {
     dto.post_status = body.post_status;
   }
 

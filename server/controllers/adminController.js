@@ -1,9 +1,6 @@
 const { Op } = require('sequelize');
-const AppError = require('@middleware/AppError');
-const { parseId, paginate } = require('@dto/common.dto');
-const { Post, Tag, ColumnPost } = require('@models');
+const { Post, Tag } = require('@models');
 const { postSummary } = require('@vo/post.vo');
-const { deletePostImages } = require('@utils/image');
 
 // 工作台统计数据
 exports.getDashboard = async (req, res) => {
@@ -34,49 +31,4 @@ exports.getDashboard = async (req, res) => {
     trashCount: trash,
     recentPosts: recentPosts.map(postSummary)
   });
-};
-
-// 获取回收站文章列表
-exports.getTrashPosts = async (req, res) => {
-  const { page, limit, offset } = paginate(req.query);
-
-  const { rows: posts, count: total } = await Post.findAndCountAll({
-    where: { post_status: 'trash' },
-    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
-    order: [['updated_at', 'DESC']],
-    limit,
-    offset
-  });
-
-  res.json({
-    posts: posts.map(postSummary),
-    total,
-    page,
-    totalPages: Math.ceil(total / limit)
-  });
-};
-
-// 恢复文章
-exports.restorePost = async (req, res) => {
-  const postId = parseId(req.params, '文章');
-
-  const post = await Post.findByPk(postId);
-  if (!post) throw new AppError(404, '文章不存在');
-  if (post.post_status !== 'trash') throw new AppError(400, '文章不在回收站');
-
-  await post.update({ post_status: 'published' });
-  res.json({ message: '恢复成功' });
-};
-
-// 彻底删除文章
-exports.forceDeletePost = async (req, res) => {
-  const postId = parseId(req.params, '文章');
-
-  const post = await Post.findByPk(postId);
-  if (!post) throw new AppError(404, '文章不存在');
-
-  await post.destroy();
-  await deletePostImages(postId);
-  await ColumnPost.destroy({ where: { post_id: postId } });
-  res.json({ message: '已彻底删除' });
 };

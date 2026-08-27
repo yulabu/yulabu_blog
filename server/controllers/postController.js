@@ -1,10 +1,11 @@
 const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
+const { parseId, paginate } = require('@dto/common.dto');
 const { Post, Tag, ColumnPost, Column } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
-const { finalizeTempImages, unbindUnusedFiles } = require('@utils/image');
+const { finalizeTempImages, unbindUnusedFiles, deletePostImages } = require('@utils/image');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
@@ -178,4 +179,74 @@ exports.deletePost = async (req, res) => {
   await post.update({ post_status: 'trash' });
   await ColumnPost.destroy({ where: { post_id: postId } });
   res.json({ message: '已移入回收站' });
+};
+
+// ========== 后台文章管理（三种状态统一列表，前端按 status 切换） ==========
+
+// 后台文章列表：status 参数分别筛选 published / trash / draft 三种枚举，分页沿用项目惯例
+exports.getAdminPosts = async (req, res) => {
+  const { page, limit, offset } = paginate(req.query);
+  const q = (req.query.q || '').trim().slice(0, 32) || null;
+  const status = req.query.status;
+
+  const where = {};
+  if (status === 'published' || status === 'trash' || status === 'draft') {
+    where.post_status = status;
+  }
+  if (q) {
+    where.post_title = { [Op.like]: `%${q}%` };
+  }
+
+  const { rows: posts, count: total } = await Post.findAndCountAll({
+    where,
+    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+    order: [['created_at', 'DESC']],
+    limit,
+    offset
+  });
+
+  res.json({
+    posts: posts.map(postSummary),
+    total,
+    page,
+    totalPages: Math.ceil(total / limit)
+  });
+};
+
+// 后台文章详情（不过滤状态，草稿/回收站均可查看编辑）
+exports.getAdminPostById = async (req, res) => {
+  const postId = parseId(req.params, '文章');
+  const post = await Post.findByPk(postId, {
+    include: [
+      { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+      { model: ColumnPost, as: 'columnPost', include: { model: Column, as: 'column', attributes: ['column_id', 'column_name'] } }
+    ]
+  });
+  if (!post) throw new AppError(404, '文章不存在');
+  res.json(postDetail(post));
+};
+
+// 恢复文章
+exports.restorePost = async (req, res) => {
+  const postId = parseId(req.params, '文章');
+
+  const post = await Post.findByPk(postId);
+  if (!post) throw new AppError(404, '文章不存在');
+  if (post.post_status !== 'trash') throw new AppError(400, '文章不在回收站');
+
+  await post.update({ post_status: 'published' });
+  res.json({ message: '恢复成功' });
+};
+
+// 彻底删除文章（沿用现有逻辑，未迁移）
+exports.forceDeletePost = async (req, res) => {
+  const postId = parseId(req.params, '文章');
+
+  const post = await Post.findByPk(postId);
+  if (!post) throw new AppError(404, '文章不存在');
+
+  await post.destroy();
+  await deletePostImages(postId);
+  await ColumnPost.destroy({ where: { post_id: postId } });
+  res.json({ message: '已彻底删除' });
 };
