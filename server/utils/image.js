@@ -41,6 +41,10 @@ function extractReferencedImages(content) {
 
 // 差集解绑：将绑定到文章但正文中已不引用的图片置为孤儿（reference_id = NULL）
 // 幂等：重复调用（保存 + 离开兜底）无副作用
+// 保护窗口：绑定后 GRACE 内的图片不解绑——粘贴/拖拽上传与正文插入 URL 存在
+// 异步时序窗口，保存时正文可能暂未引用该图，留待窗口过后再进差集，避免误伤。
+const UNBIND_GRACE_MS = 60 * 1000
+
 async function unbindUnusedFiles(postId) {
   const post = await Post.findByPk(postId)
   if (!post) return { unbound: 0 }
@@ -50,8 +54,10 @@ async function unbindUnusedFiles(postId) {
     where: { reference_type: 'post_content', reference_id: postId }
   })
 
+  const graceCutoff = new Date(Date.now() - UNBIND_GRACE_MS)
   const unbindIds = bound
     .filter(img => !used.has(img.storage_path))
+    .filter(img => img.createdAt <= graceCutoff)
     .map(img => img.image_id)
 
   if (unbindIds.length > 0) {
@@ -190,5 +196,6 @@ module.exports = {
   ONE_DAY_MS,
   extractReferencedImages,
   unbindUnusedFiles,
-  markPostImagesOrphan
+  markPostImagesOrphan,
+  UNBIND_GRACE_MS
 }

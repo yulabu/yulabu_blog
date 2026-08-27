@@ -1,11 +1,12 @@
 const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { parseId, paginate } = require('@dto/common.dto');
-const { Post, Tag, ColumnPost, Column } = require('@models');
+const { Post, Tag, ColumnPost, Column, Image } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
 const { finalizeTempImages, unbindUnusedFiles, deletePostImages } = require('@utils/image');
+const { deleteImageFiles } = require('@utils/imageStorage');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
@@ -238,15 +239,32 @@ exports.restorePost = async (req, res) => {
   res.json({ message: '恢复成功' });
 };
 
-// 彻底删除文章（沿用现有逻辑，未迁移）
+// 彻底删除文章：按图片常规生命周期全流程清理
+// ① 按字段路径删除 uploads 物理文件（原图 + 缩略图）
+// ② 删除 image 表对应行
+// ③ 删除 post 及关联，旧布局目录兜底（存量数据）
 exports.forceDeletePost = async (req, res) => {
   const postId = parseId(req.params, '文章');
 
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
+  // ① 根据 storage_path / thumb_path 删除物理文件（失败不阻塞主流程）
+  const images = await Image.findAll({
+    where: { reference_type: 'post_content', reference_id: postId }
+  });
+  for (const image of images) {
+    await deleteImageFiles(image.storage_path, image.thumb_path);
+  }
+
+  // ② 删除 image 表对应行
+  if (images.length > 0) {
+    await Image.destroy({ where: { image_id: { [Op.in]: images.map(i => i.image_id) } } });
+  }
+
+  // ③ 删除 post 及关联 + 旧布局目录兜底
   await post.destroy();
-  await deletePostImages(postId);
   await ColumnPost.destroy({ where: { post_id: postId } });
+  await deletePostImages(postId);
   res.json({ message: '已彻底删除' });
 };
