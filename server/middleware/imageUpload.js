@@ -2,14 +2,13 @@
 const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
-const { UPLOAD_DIR } = require('@config/image')
+const { TMP_DIR } = require('@config/image')
 
 const MAX_FILE_SIZE = Number(process.env.UPLOAD_MAX_SIZE) || 5 * 1024 * 1024
 const MAX_TOTAL_SIZE = Number(process.env.UPLOAD_MAX_TOTAL_SIZE) || 20 * 1024 * 1024
 const MAX_FILES = 20
 
-// 临时落盘目录（处理完成后由 controller 清理）
-const TMP_DIR = path.join(UPLOAD_DIR, '.tmp')
+// 临时落盘目录（处理完成后由 controller 清理，GC 兜底过期清理）
 fs.mkdirSync(TMP_DIR, { recursive: true })
 
 const storage = multer.diskStorage({

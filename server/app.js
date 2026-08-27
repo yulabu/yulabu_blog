@@ -40,7 +40,7 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
   dotfiles: 'deny',
   index: false
 }));
-// 图片 GC：孤儿回收 + 废弃草稿清理
+// 图片 GC：孤儿回收 + 废弃草稿清理 + 上传临时文件兜底
 const { runGC } = require('@utils/gc');
 // 导入模型
 const { Post, Tag, Admin, Notice, FriendLink, Column, ColumnPost, Image } = require('@models');
@@ -53,9 +53,9 @@ const GC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 async function runGCSafe() {
   try {
-    const { orphans, drafts } = await runGC();
-    if (orphans || drafts) {
-      console.log(`GC 完成：孤儿图片 ${orphans} 张，废弃草稿 ${drafts} 篇`);
+    const { orphans, drafts, tmpFiles } = await runGC();
+    if (orphans || drafts || tmpFiles) {
+      console.log(`GC 完成：孤儿图片 ${orphans} 张，废弃草稿 ${drafts} 篇，临时文件 ${tmpFiles} 个`);
     }
   } catch (err) {
     console.error('GC 失败:', err);
