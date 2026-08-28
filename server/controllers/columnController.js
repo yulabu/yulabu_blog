@@ -1,8 +1,11 @@
+const fs = require('fs').promises;
 const { Op } = require('sequelize');
 const AppError = require('@middleware/AppError');
-const { sequelize, Column, ColumnPost, Post, Tag } = require('@models');
+const { sequelize, Column, ColumnPost, Post, Tag, Image } = require('@models');
 const { createColumnDTO, updateColumnDTO, columnIdDTO, columnPostIdsDTO } = require('@dto/column.dto');
 const { columnDetail, columnList, columnPostItem } = require('@vo/column.vo');
+const { unbindCover } = require('@utils/image');
+const { saveImageFile, deleteImageFiles } = require('@utils/imageStorage');
 
 // 统计每个专栏的文章数
 async function countPostsByColumn(columns) {
@@ -55,6 +58,43 @@ exports.getColumnById = async (req, res) => {
 
 // ========== 管理接口 ==========
 
+// 专栏封面上传（单张）：转码落盘 + 写入 Image 记录（reference_type=cover 绑定专栏）
+// 一次只传一张；临时文件由本函数 finally 清理（GC 兜底过期清理）
+exports.uploadColumnCover = async (req, res) => {
+  const id = columnIdDTO(req.params);
+  const column = await Column.findByPk(id);
+  if (!column) throw new AppError(404, '专栏不存在');
+
+  const file = req.file;
+  if (!file) {
+    throw new AppError(400, '没有上传文件');
+  }
+
+  try {
+    const info = await saveImageFile(file.path);
+    const record = await Image.create({
+      reference_type: 'cover',
+      reference_id: id,
+      storage_path: info.storagePath,
+      thumb_path: info.thumbPath,
+      file_size: info.fileSize
+    });
+    res.json({
+      image: {
+        image_id: record.image_id,
+        url: `/uploads/${info.storagePath}`,
+        thumb_url: `/uploads/${info.thumbPath}`
+      }
+    });
+  } finally {
+    try {
+      await fs.unlink(file.path);
+    } catch (err) {
+      // 忽略清理失败
+    }
+  }
+};
+
 exports.getAdminColumns = async (req, res) => {
   const columns = await Column.findAll({
     order: [['sort_order', 'ASC'], ['column_id', 'ASC']]
@@ -77,6 +117,12 @@ exports.updateColumn = async (req, res) => {
   if (!column) throw new AppError(404, '专栏不存在');
   const data = updateColumnDTO(req.body);
   await column.update(data);
+
+  // 封面变更后差集解绑：column_cover 不再引用的封面图置为孤儿（24h 宽限期后由 GC 物理删除）
+  if (data.column_cover !== undefined) {
+    await unbindCover(id, data.column_cover);
+  }
+
   res.json({ id: column.column_id, message: '更新成功' });
 };
 
@@ -85,10 +131,26 @@ exports.deleteColumn = async (req, res) => {
   const column = await Column.findByPk(id);
   if (!column) throw new AppError(404, '专栏不存在');
 
+  // 收集专栏绑定封面图（删除时同步物理清理，不残留孤儿）
+  const coverImages = await Image.findAll({
+    where: { reference_type: 'cover', reference_id: id }
+  });
+
   await sequelize.transaction(async (t) => {
     await ColumnPost.destroy({ where: { column_id: id }, transaction: t });
+    if (coverImages.length > 0) {
+      await Image.destroy({
+        where: { image_id: { [Op.in]: coverImages.map(img => img.image_id) } },
+        transaction: t
+      });
+    }
     await column.destroy({ transaction: t });
   });
+
+  // 事务成功后删文件（单个失败忽略，避免残留文件阻塞删除）
+  for (const image of coverImages) {
+    await deleteImageFiles(image.storage_path, image.thumb_path);
+  }
 
   res.json({ message: '删除成功' });
 };

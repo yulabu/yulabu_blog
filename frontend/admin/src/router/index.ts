@@ -14,6 +14,7 @@ const AdminUserList = () => import(/* webpackChunkName: "admin" */ '@/views/admi
 const AdminSettings = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminSettings.vue');
 const AdminFriendLinkList = () => import('@/views/admin/AdminFriendLinkList.vue');
 const AdminColumnList = () => import('@/views/admin/AdminColumnList.vue');
+const AdminColumnEdit = () => import('@/views/admin/AdminColumnEdit.vue');
 const AdminColumnPosts = () => import('@/views/admin/AdminColumnPosts.vue');
 
 const routes = [
@@ -36,6 +37,8 @@ const routes = [
       { path: 'users', component: AdminUserList },
       { path: 'friendlinks', component: AdminFriendLinkList },
       { path: 'columns', component: AdminColumnList },
+      { path: 'columns/new', component: AdminColumnEdit },
+      { path: 'columns/:id/edit', component: AdminColumnEdit },
       { path: 'columns/:id/posts', component: AdminColumnPosts },
       { path: 'settings', component: AdminSettings }
     ]

@@ -25,7 +25,7 @@ function createColumnDTO(body) {
     dto.sort_order = order;
   }
   if (body.status !== undefined) {
-    if (!['show', 'hide'].includes(body.status)) throw new AppError(400, '状态值无效');
+    if (!['show', 'hide', 'draft'].includes(body.status)) throw new AppError(400, '状态值无效');
     dto.status = body.status;
   }
 
@@ -57,7 +57,7 @@ function updateColumnDTO(body) {
     dto.sort_order = order;
   }
   if (body.status !== undefined) {
-    if (!['show', 'hide'].includes(body.status)) throw new AppError(400, '状态值无效');
+    if (!['show', 'hide', 'draft'].includes(body.status)) throw new AppError(400, '状态值无效');
     dto.status = body.status;
   }
 

@@ -5,6 +5,16 @@ export function getAdminColumns() {
   return http.get<ColumnItem[]>('/admin/columns')
 }
 
+// 专栏封面上传：一次一张，绑定到指定专栏
+export function uploadColumnCover(id: number, file: File) {
+  const formData = new FormData()
+  formData.append('image', file)
+  return http.post<{ image: { image_id: number; url: string; thumb_url: string } }>(
+    `/admin/columns/${id}/cover`,
+    formData
+  )
+}
+
 export function createColumn(data: {
   column_name: string
   column_desc?: string

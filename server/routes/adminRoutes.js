@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('@middleware/auth');
+const upload = require('@middleware/imageUpload');
 const adminController = require('@controllers/adminController');
 const adminAccountController = require('@controllers/adminAccountController');
 const postController = require('@controllers/postController');
@@ -47,6 +48,7 @@ router.delete('/friendlinks/:id', friendLinkController.deleteLink);
 // 专栏管理
 router.get('/columns', columnController.getAdminColumns);
 router.post('/columns', columnController.createColumn);
+router.post('/columns/:id/cover', upload.single('image'), columnController.uploadColumnCover);
 router.put('/columns/:id', columnController.updateColumn);
 router.delete('/columns/:id', columnController.deleteColumn);
 router.get('/columns/:id/posts', columnController.getColumnPosts);

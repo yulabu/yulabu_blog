@@ -7,7 +7,7 @@ const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
 const { imageVO } = require('@vo/image.vo')
 const { MAX_TOTAL_SIZE } = require('@middleware/imageUpload')
 
-// 批量上传图片：转码落盘 + 写入 Image 记录（绑定 post），返回图片信息
+// 批量上传图片（文章专用）：转码落盘 + 写入 Image 记录（绑定 post），返回图片信息
 // type 参数：post_content（默认，正文图）/ cover（文章封面）；两类型均绑定 post
 const UPLOAD_TYPES = ['post_content', 'cover']
 
