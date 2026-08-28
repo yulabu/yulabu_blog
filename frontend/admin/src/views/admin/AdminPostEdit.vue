@@ -1,6 +1,9 @@
 <template>
   <div class="post-edit-page">
     <AdminPageCard :title="isEdit ? '编辑文章' : '新建文章'">
+      <template #title-extra>
+        <AdminStatusBadge :type="currentStatus" />
+      </template>
       <template #actions>
         <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
         <AdminButton variant="secondary" @click="openImportModal">导入附图片Markdown文章</AdminButton>
@@ -106,6 +109,7 @@ import {
 } from '@/utils/importMarkdown'
 import AdminModal from '@/components/admin/AdminModal.vue'
 import AdminImageUpload from '@/components/admin/AdminImageUpload.vue'
+import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 import ImportMarkdownModal from '@/components/admin/ImportMarkdownModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'

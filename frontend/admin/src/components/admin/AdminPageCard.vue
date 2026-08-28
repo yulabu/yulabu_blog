@@ -2,7 +2,10 @@
   <div class="admin-page-card">
     <div class="admin-page-card__header">
       <div>
-        <h2 class="admin-page-card__title">{{ title }}</h2>
+        <div class="admin-page-card__title-wrap">
+          <h2 class="admin-page-card__title">{{ title }}</h2>
+          <slot name="title-extra" />
+        </div>
         <p v-if="subtitle" class="admin-page-card__subtitle">{{ subtitle }}</p>
       </div>
       <div v-if="$slots.search" class="admin-page-card__search">
@@ -77,6 +80,12 @@ defineProps({
   font-weight: 600;
   color: var(--color-heading);
   margin: 0;
+}
+
+.admin-page-card__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .admin-page-card__subtitle {
