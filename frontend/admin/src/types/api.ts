@@ -11,6 +11,7 @@ export interface Post {
   author: string
   category: Category | null
   column: ColumnRef | null
+  cover: string | null
   status: 'published' | 'trash' | 'draft'
   createdAt: string
   updatedAt: string
@@ -34,6 +35,7 @@ export interface PostForm {
   summary: string
   author: string
   categoryId: number | null
+  cover: string | null
 }
 
 export interface Notice {

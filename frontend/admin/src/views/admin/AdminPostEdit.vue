@@ -13,6 +13,14 @@
           <AdminFormInput v-model="form.title" placeholder="请输入标题" />
         </AdminFormField>
 
+        <AdminFormField label="封面">
+          <AdminImageUpload
+            v-model="form.cover"
+            :upload="uploadCoverImage"
+            tip="建议尺寸 16/9，jpg/png 格式"
+          />
+        </AdminFormField>
+
         <AdminFormField label="摘要">
           <AdminFormInput v-model="form.summary" placeholder="请输入摘要" />
         </AdminFormField>
@@ -43,7 +51,6 @@
                 placeholder="无专栏"
                 :options="columnOptions"
                 :disabled="columnSaving"
-                @change="onColumnChange"
               />
             </AdminFormField>
           </AdminFormGroup>
@@ -98,6 +105,7 @@ import {
   buildMarkdownWithImageUrls
 } from '@/utils/importMarkdown'
 import AdminModal from '@/components/admin/AdminModal.vue'
+import AdminImageUpload from '@/components/admin/AdminImageUpload.vue'
 import ImportMarkdownModal from '@/components/admin/ImportMarkdownModal.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
@@ -121,7 +129,8 @@ const form = ref({
   categoryId: '',
   author: '匿名',
   content: '',
-  columnId: ''
+  columnId: '',
+  cover: ''
 })
 
 const tags = ref([])
@@ -147,7 +156,8 @@ function snapshotForm() {
     categoryId: form.value.categoryId,
     author: form.value.author,
     content: form.value.content,
-    columnId: form.value.columnId
+    columnId: form.value.columnId,
+    cover: form.value.cover
   }
 }
 
@@ -173,7 +183,8 @@ async function ensureDraft() {
         content: form.value.content,
         summary: form.value.summary,
         author: form.value.author || '匿名',
-        categoryId: form.value.categoryId ? Number(form.value.categoryId) : null
+        categoryId: form.value.categoryId ? Number(form.value.categoryId) : null,
+        cover: form.value.cover?.trim() || null
       })
       draftId.value = res.id
       return res.id
@@ -301,6 +312,13 @@ async function handleUploadImages(files) {
   return uploadImages({ files, postId })
 }
 
+// 封面上传：绑定类型 cover，返回 URL（v-model 由 AdminImageUpload 写入 form.cover）
+async function uploadCoverImage(file) {
+  const postId = await ensureDraft()
+  const result = await uploadImages({ files: [file], postId, type: 'cover' })
+  return result.images[0].url
+}
+
 async function uploadImagesForEditor(files) {
   const result = await handleUploadImages(Array.from(files))
   return result.images.map((img) => img.url)
@@ -366,7 +384,8 @@ async function fetchPost() {
       author: post.author || '匿名',
       content: post.content || '',
       columnId: post.column?.id || '',
-      lastColumnId: post.column?.id || ''
+      lastColumnId: post.column?.id || '',
+      cover: post.cover || ''
     }
     columnInitialized.value = true
     currentStatus.value = post.status || 'draft'
@@ -388,7 +407,8 @@ async function onSaveDraft() {
       content: form.value.content,
       summary: form.value.summary.trim(),
       author: form.value.author.trim(),
-      categoryId: form.value.categoryId ? Number(form.value.categoryId) : null
+      categoryId: form.value.categoryId ? Number(form.value.categoryId) : null,
+      cover: form.value.cover?.trim() || null
     }
 
     let postId
@@ -431,7 +451,8 @@ async function onPublish() {
       content: form.value.content,
       summary: form.value.summary.trim(),
       author: form.value.author.trim(),
-      categoryId: form.value.categoryId ? Number(form.value.categoryId) : null
+      categoryId: form.value.categoryId ? Number(form.value.categoryId) : null,
+      cover: form.value.cover?.trim() || null
     }
 
     if (isEdit.value) {

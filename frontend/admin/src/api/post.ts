@@ -31,6 +31,7 @@ export function createPost(form: PostForm) {
     post_summary: form.summary || null,
     post_author: form.author || '匿名',
     post_category_id: form.categoryId,
+    post_cover: form.cover?.trim() || null,
     post_status: 'draft'
   })
 }
@@ -42,6 +43,7 @@ export function updatePost(id: number, form: PostForm, status?: string) {
     post_summary: form.summary || null,
     post_author: form.author || '匿名',
     post_category_id: form.categoryId,
+    post_cover: form.cover?.trim() || null,
     post_status: status
   })
 }

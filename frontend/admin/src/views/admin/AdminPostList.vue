@@ -21,37 +21,38 @@
             {{ tab.label }}
           </button>
         </div>
-        <AdminButton variant="primary" @click="goNew">新建文章</AdminButton>
+        <AdminButton variant="primary" @click="goNew">新增文章</AdminButton>
       </template>
 
-      <AdminDataTable :columns="columns" :data="posts">
-        <template #cell-title="{ row }">
-          <AdminDataTableCellTitle :title="row.title" />
-        </template>
+      <div class="card-grid">
+        <div v-for="post in posts" :key="post.id" class="post-card">
+          <div class="card-cover" :class="{ 'is-failed': coverFailed.has(post.id) || !post.cover }">
+            <img
+              v-if="post.cover && !coverFailed.has(post.id)"
+              :src="post.cover"
+              :alt="post.title"
+              loading="lazy"
+              @error="onCoverError(post.id)"
+            />
+            <span v-else>暂无封面</span>
+          </div>
 
-        <template #cell-category="{ row }">
-          <AdminDataTableCellCategory :name="row.category?.name" />
-        </template>
-
-        <template #cell-status="{ row }">
-          <AdminStatusBadge :type="row.status" />
-        </template>
-
-        <template #cell-createdAt="{ row }">
-          <AdminDataTableCellText muted>{{ formatDate(row.createdAt) }}</AdminDataTableCellText>
-        </template>
-
-        <template #cell-actions="{ row }">
-          <AdminDataTableCellActions>
-            <AdminButton variant="text" @click="goEdit(row.id)">编辑</AdminButton>
-            <template v-if="row.status === 'trash'">
-              <AdminButton variant="text" @click="onRestore(row.id)">恢复</AdminButton>
-              <AdminButton variant="danger" @click="onForceDelete(row.id)">彻底删除</AdminButton>
-            </template>
-            <AdminButton v-else variant="danger" @click="onDelete(row.id)">删除</AdminButton>
-          </AdminDataTableCellActions>
-        </template>
-      </AdminDataTable>
+          <div class="card-body">
+            <span class="card-title" :title="post.title">{{ post.title }}</span>
+            <div class="card-bottom">
+              <span class="card-date">🕐 {{ formatDate(post.createdAt) }}</span>
+              <div class="card-actions">
+                <AdminButton variant="text" @click="goEdit(post.id)">编辑</AdminButton>
+                <template v-if="post.status === 'trash'">
+                  <AdminButton variant="text" @click="onRestore(post.id)">恢复</AdminButton>
+                  <AdminButton variant="danger" @click="onForceDelete(post.id)">彻底删除</AdminButton>
+                </template>
+                <AdminButton v-else variant="danger" @click="onDelete(post.id)">删除</AdminButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <Pagination v-if="!loading && totalPages > 1" v-model:page="page" :totalPages="totalPages" />
     </AdminPageCard>
@@ -69,13 +70,7 @@ import { getAdminPosts, deletePost, restorePost, forceDeletePost } from '@/api/p
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminSearchBar from '@/components/admin/AdminSearchBar.vue'
-import AdminDataTable from '@/components/admin/AdminDataTable.vue'
-import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
-import AdminDataTableCellTitle from '@/components/admin/data-table/AdminDataTableCellTitle.vue'
-import AdminDataTableCellCategory from '@/components/admin/data-table/AdminDataTableCellCategory.vue'
-import AdminDataTableCellActions from '@/components/admin/data-table/AdminDataTableCellActions.vue'
-import AdminDataTableCellText from '@/components/admin/data-table/AdminDataTableCellText.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
@@ -99,24 +94,24 @@ const { items: posts, loading, page, totalPages, fetch, refresh } = useAdminList
   }
 )
 
-const columns = [
-  { key: 'title', label: '标题' },
-  { key: 'category', label: '分类' },
-  { key: 'author', label: '作者' },
-  { key: 'status', label: '状态' },
-  { key: 'createdAt', label: '创建时间' },
-  { key: 'actions', label: '操作', class: 'text-center' }
-]
+// 封面加载失败记录（失败态与无封面一致：灰底"暂无封面"）
+const coverFailed = ref(new Set())
+
+function onCoverError(id) {
+  coverFailed.value = new Set(coverFailed.value).add(id)
+}
 
 function onTabChange(value) {
   activeTab.value = value
   page.value = 1
+  coverFailed.value = new Set()
   fetch()
 }
 
 function onSearch(q) {
   searchQuery.value = q
   page.value = 1
+  coverFailed.value = new Set()
   fetch()
 }
 
@@ -186,5 +181,78 @@ const { confirmDelete: onForceDelete } = useConfirmDelete(forceDeletePost, {
   background: #ffffff;
   color: var(--color-heading);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  padding: 8px 0 16px;
+}
+
+.post-card {
+  border: 1px solid var(--color-border, #e5e6eb);
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.post-card:hover {
+  border-color: var(--color-primary, #165dff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.card-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #f2f3f5;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-body {
+  padding: 12px 14px;
+}
+
+.card-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 8px;
+}
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-date {
+  font-size: 12px;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 </style>
