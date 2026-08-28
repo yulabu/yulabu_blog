@@ -27,9 +27,9 @@ function createPostDTO(body) {
   };
 }
 
-// 封面 URL 校验：undefined 不动（create 传 undefined → null），trim，空串转 null，≤512
+// 封面 URL 校验：undefined/null 不动（null 为前端无封面时的显式值），trim，空串转 null，≤512
 function normalizeCover(value) {
-  if (value === undefined) return null;
+  if (value === undefined || value === null) return null;
   const cover = value.trim();
   if (cover.length > 512) throw new AppError(400, '封面图URL不能超过512个字符');
   return cover || null;
