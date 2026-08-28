@@ -5,7 +5,7 @@ const { Post, Tag, ColumnPost, Column, Image } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
-const { unbindUnusedFiles } = require('@utils/image');
+const { unbindUnusedFiles, unbindCover } = require('@utils/image');
 const { deleteImageFiles } = require('@utils/imageStorage');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
@@ -146,6 +146,11 @@ exports.updatePost = async (req, res) => {
     await unbindUnusedFiles(postId);
   }
 
+  // 封面变更后差集解绑：post_cover 不再引用的封面图置为孤儿
+  if (data.post_cover !== undefined) {
+    await unbindCover(postId, data.post_cover);
+  }
+
   res.json({ id: post.post_id, message: '更新成功' });
 };
 
@@ -225,7 +230,7 @@ exports.restorePost = async (req, res) => {
 };
 
 // 彻底删除文章：按图片常规生命周期全流程清理
-// ① 按字段路径删除 uploads 物理文件（原图 + 缩略图）
+// ① 按字段路径删除 uploads 物理文件（原图 + 缩略图，正文图 + 封面图）
 // ② 删除 image 表对应行
 // ③ 删除 post 及关联
 exports.forceDeletePost = async (req, res) => {
@@ -236,7 +241,7 @@ exports.forceDeletePost = async (req, res) => {
 
   // ① 根据 storage_path / thumb_path 删除物理文件（失败不阻塞主流程）
   const images = await Image.findAll({
-    where: { reference_type: 'post_content', reference_id: postId }
+    where: { reference_type: { [Op.in]: ['post_content', 'cover'] }, reference_id: postId }
   });
   for (const image of images) {
     await deleteImageFiles(image.storage_path, image.thumb_path);

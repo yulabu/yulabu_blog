@@ -22,8 +22,17 @@ function createPostDTO(body) {
     post_summary: (body.post_summary || '').trim().slice(0, 128) || null,
     post_author: (body.post_author || '').trim() || '匿名',
     post_category_id: body.post_category_id ? Number(body.post_category_id) : null,
+    post_cover: normalizeCover(body.post_cover),
     post_status: isDraft ? 'draft' : 'published', // 仅允许 draft / published，外部不可直接置 trash
   };
+}
+
+// 封面 URL 校验：undefined 不动（create 传 undefined → null），trim，空串转 null，≤512
+function normalizeCover(value) {
+  if (value === undefined) return null;
+  const cover = value.trim();
+  if (cover.length > 512) throw new AppError(400, '封面图URL不能超过512个字符');
+  return cover || null;
 }
 
 // ========== 更新文章 ==========
@@ -48,6 +57,10 @@ function updatePostDTO(body) {
 
   if (body.post_category_id !== undefined) {
     dto.post_category_id = body.post_category_id ? Number(body.post_category_id) : null;
+  }
+
+  if (body.post_cover !== undefined) {
+    dto.post_cover = normalizeCover(body.post_cover);
   }
 
   // 允许在 published / trash / draft 之间切换

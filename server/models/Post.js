@@ -31,6 +31,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: '分类ID'
     },
+    post_cover: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
+      comment: '封面图URL'
+    },
     post_status: {
       // draft 必须追加在末尾：MySQL ENUM 按索引存储，插入前面会导致现有数据错位
       type: DataTypes.ENUM('published', 'trash', 'draft'),

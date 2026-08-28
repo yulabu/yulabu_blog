@@ -8,6 +8,9 @@ const { imageVO } = require('@vo/image.vo')
 const { MAX_TOTAL_SIZE } = require('@middleware/imageUpload')
 
 // 批量上传图片：转码落盘 + 写入 Image 记录（绑定 post），返回图片信息
+// type 参数：post_content（默认，正文图）/ cover（文章封面）；两类型均绑定 post
+const UPLOAD_TYPES = ['post_content', 'cover']
+
 exports.uploadBatch = async (req, res) => {
   const files = req.files
   if (!files || files.length === 0) {
@@ -15,6 +18,11 @@ exports.uploadBatch = async (req, res) => {
   }
 
   try {
+    const type = req.body.type || 'post_content'
+    if (!UPLOAD_TYPES.includes(type)) {
+      throw new AppError(400, '不支持的引用类型')
+    }
+
     const postId = Number(req.body.post_id)
     if (!postId || postId < 1) {
       throw new AppError(400, '缺少有效的 post_id')
@@ -38,7 +46,7 @@ exports.uploadBatch = async (req, res) => {
     for (const file of files) {
       const info = await saveImageFile(file.path)
       const record = await Image.create({
-        reference_type: 'post_content',
+        reference_type: type,
         reference_id: postId,
         storage_path: info.storagePath,
         thumb_path: info.thumbPath,

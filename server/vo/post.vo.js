@@ -7,6 +7,7 @@ function postDetail(post) {
     author: post.post_author,
     category: post.category ? toCategory(post.category) : null,
     column: post.columnPost && post.columnPost.column ? toColumn(post.columnPost.column) : null,
+    cover: post.post_cover || null,
     status: post.post_status,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,

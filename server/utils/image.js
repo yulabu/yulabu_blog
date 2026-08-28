@@ -69,9 +69,36 @@ async function markPostImagesOrphan(postId) {
   )
 }
 
+// 封面差集解绑：post_cover 未引用的 cover 图置为孤儿
+// 无保护窗口：封面上传后未保存视为放弃（孤儿由 24h GC 回收）
+// 外链/null 视为未引用（全部解绑）；幂等
+async function unbindCover(postId, coverUrl) {
+  const usedKey = coverUrl && coverUrl.startsWith('/uploads/')
+    ? decodeURIComponent(coverUrl.slice('/uploads/'.length))
+    : null
+
+  const bound = await Image.findAll({
+    where: { reference_type: 'cover', reference_id: postId }
+  })
+
+  const unbindIds = bound
+    .filter(img => img.storage_path !== usedKey)
+    .map(img => img.image_id)
+
+  if (unbindIds.length > 0) {
+    await Image.update(
+      { reference_id: null },
+      { where: { image_id: { [Op.in]: unbindIds } } }
+    )
+  }
+
+  return { unbound: unbindIds.length }
+}
+
 module.exports = {
   extractReferencedImages,
   unbindUnusedFiles,
   markPostImagesOrphan,
+  unbindCover,
   UNBIND_GRACE_MS
 }
