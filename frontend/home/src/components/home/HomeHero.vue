@@ -1,9 +1,15 @@
 <template>
   <div class="home-hero" :class="{ collapsed }">
     <WelcomeBanner />
-    <div class="scroll-hint" @click="scrollToContent">
-      <div class="chevron"></div>
+    <div class="hero-intro" aria-hidden="true">
+      <span class="hero-intro__line"></span>
+      <span>YULABU / JOURNAL</span>
+      <span class="hero-intro__line"></span>
     </div>
+    <button type="button" class="scroll-hint" aria-label="向下探索" @click="scrollToContent">
+      <span class="scroll-label">向下探索</span>
+      <div class="chevron"></div>
+    </button>
   </div>
 </template>
 
@@ -75,6 +81,10 @@ onUnmounted(() => {
   transition: padding-top 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+.home-hero :deep(.bg) {
+  transform: scale(1.02);
+}
+
 .home-hero.collapsed :deep(.content) {
   padding-top: 76px;
 }
@@ -110,19 +120,76 @@ onUnmounted(() => {
   background-position: top center;
 }
 
+.hero-intro {
+  position: absolute;
+  top: 31%;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, .82);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .28em;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  transition: opacity .5s ease, transform .5s ease;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .28);
+}
+
+.hero-intro__line {
+  width: 34px;
+  height: 1px;
+  background: rgba(255, 255, 255, .62);
+}
+
+.home-hero.collapsed .hero-intro {
+  opacity: 0;
+  transform: translate(-50%, -12px);
+}
+
 .scroll-hint {
   position: absolute;
   bottom: 40px;
   left: 50%;
   z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, .36);
+  border-radius: 16px;
+  padding: 10px 14px 13px;
+  background: rgba(17, 48, 32, .2);
+  color: rgba(255, 255, 255, .82);
+  font: inherit;
   opacity: 1;
   cursor: pointer;
+  backdrop-filter: blur(8px);
   transition: opacity 0.5s ease;
   animation: bounce 1.5s ease-in-out infinite;
 }
 
-.scroll-hint:hover .chevron {
+.scroll-hint:hover,
+.scroll-hint:focus-visible {
+  background: rgba(17, 48, 32, .34);
+  outline: none;
+}
+
+.scroll-hint:focus-visible {
+  border-color: rgba(255, 255, 255, .75);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .16);
+}
+
+.scroll-hint:hover .chevron,
+.scroll-hint:focus-visible .chevron {
   border-color: rgba(255, 255, 255, 0.85);
+}
+
+.scroll-label {
+  font-size: 10px;
+  letter-spacing: .12em;
 }
 
 .home-hero.collapsed .scroll-hint {
@@ -162,6 +229,16 @@ onUnmounted(() => {
 
   .home-hero :deep(.content) {
     padding-top: 40px;
+  }
+
+  .hero-intro {
+    top: 22%;
+    font-size: 9px;
+    letter-spacing: .2em;
+  }
+
+  .hero-intro__line {
+    width: 22px;
   }
 
   .scroll-hint {

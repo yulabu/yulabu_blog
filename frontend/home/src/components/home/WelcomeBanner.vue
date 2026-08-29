@@ -95,13 +95,26 @@ onUnmounted(() => {
 <style scoped>
 .banner {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 360px;
   overflow: hidden;
 }
 
+.banner::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 28, 19, .12), transparent 42%, rgba(8, 28, 19, .28)),
+    radial-gradient(circle at 50% 42%, transparent 0, rgba(8, 28, 19, .2) 100%);
+  pointer-events: none;
+}
+
 .bg {
   position: absolute;
+  z-index: 0;
   top: 0;
   left: 0;
   width: 100%;
@@ -109,7 +122,8 @@ onUnmounted(() => {
   background-image: url('@/assets/img/banner2.png');
   background-size: cover;
   background-position: center;
-  filter: brightness(0.75);
+  filter: brightness(0.72) saturate(.92);
+  transform: scale(1.015);
 }
 
 .content {
@@ -126,22 +140,18 @@ onUnmounted(() => {
 .site-title {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: clamp(24px, 5vw, 42px);
-  color: white;
-  text-shadow:
-    2px 0 4px rgba(255, 255, 255, 0.75),
-    0 1px 6px rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, .96);
+  text-shadow: 0 4px 22px rgba(0, 0, 0, .4), 0 1px 2px rgba(0, 0, 0, .3);
   margin: 0 0 12px;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   text-align: center;
 }
 
 .subtitle {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: clamp(18px, 4vw, 42px);
-  color: white;
-  text-shadow:
-    2px 0 4px rgba(255, 255, 255, 0.75),
-    0 1px 6px rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, .94);
+  text-shadow: 0 3px 16px rgba(0, 0, 0, .4);
   margin: 0;
   letter-spacing: 4px;
   text-align: center;

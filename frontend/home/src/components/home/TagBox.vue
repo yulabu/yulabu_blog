@@ -1,9 +1,17 @@
 <template>
   <GlassPanel class="card">
     <div class="header">
-      <span class="line"></span>
-      <h4 class="title">标签</h4>
-      <span class="count" v-if="tags.length">共 {{ tags.length }} 个</span>
+      <span class="heading-icon">
+        <Icon icon="material-symbols:label-outline" />
+      </span>
+      <div class="heading-copy">
+        <span class="heading-kicker">EXPLORE</span>
+        <h4 class="title">标签</h4>
+      </div>
+      <span class="count" v-if="tags.length">
+        <strong>{{ tags.length }}</strong>
+        <small>个标签</small>
+      </span>
       <button v-if="activeId" class="clear-tag" @click="onSelect(null)">全部</button>
     </div>
     <div class="body">
@@ -26,7 +34,8 @@
           :class="{ active: activeId === tag.id }"
           @click="onSelect(tag.id)"
         >
-          {{ tag.name }} ({{ tag.count }})
+          <span class="tag-name">{{ tag.name }}</span>
+          <small class="tag-count">{{ tag.count }}</small>
         </span>
       </div>
     </div>
@@ -35,6 +44,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { Icon } from '@iconify/vue'
 import { getTags } from '@/api/tag'
 import { useMessageBox } from '@/composables/useMessageBox'
 import ContentState from '@/components/common/ContentState.vue'
@@ -77,41 +87,76 @@ onMounted(() => {
 <style scoped>
 .card {
   width: 100%;
-  padding: 20px;
-  border-radius: 16px;
+  padding: 18px;
+  border-radius: 20px;
 }
 
 .header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--border-divider);
-  margin-bottom: 16px;
+  align-items: flex-start;
+  gap: 9px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-divider);
+  margin-bottom: 15px;
 }
 
-.line {
-  width: 4px;
-  height: 20px;
-  background: var(--color-primary);
-  border-radius: 2px;
+.heading-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(var(--color-primary-rgb), .16);
+  border-radius: 10px;
+  background: rgba(var(--color-primary-rgb), .1);
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.heading-copy {
+  min-width: 0;
+}
+
+.heading-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  line-height: 1;
 }
 
 .title {
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-weight: 600;
-  color: var(--color-primary);
-  font-size: 18px;
+  color: var(--color-heading);
+  font-size: 17px;
+  line-height: 1.2;
   margin: 0;
 }
 
 .count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   margin-left: auto;
-  font-size: 12px;
-  color: var(--color-text);
-  background: rgba(var(--color-accent-rgb), .12);
-  padding: 2px 8px;
-  border-radius: 10px;
+  color: var(--color-muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.count strong {
+  color: var(--color-heading);
+  font-family: Georgia, serif;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.count small {
+  margin-top: 3px;
+  font-size: 9px;
 }
 
 .body {
@@ -122,28 +167,54 @@ onMounted(() => {
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .tag {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(var(--color-primary-rgb), 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px 7px 11px;
+  border: 1px solid rgba(var(--color-primary-rgb), .11);
+  border-radius: 10px;
+  background: rgba(var(--color-primary-rgb), 0.08);
   color: var(--color-text);
   font-size: 13px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  transition: all 0.2s ease;
+  transition: background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
   cursor: pointer;
 }
 
 .tag:hover {
-  background: rgba(var(--color-primary-rgb), 0.22);
+  border-color: rgba(var(--color-primary-rgb), .26);
+  background: rgba(var(--color-primary-rgb), 0.16);
   color: var(--color-heading);
+  transform: translateY(-1px);
 }
 
 .tag.active {
+  border-color: var(--color-primary);
   background: var(--color-primary);
+  color: #fff;
+}
+
+.tag-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: rgba(var(--color-primary-rgb), .12);
+  color: var(--color-primary);
+  font-family: Georgia, serif;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.tag.active .tag-count {
+  background: rgba(255, 255, 255, .2);
   color: #fff;
 }
 
