@@ -1,15 +1,15 @@
 <template>
-  <div class="page-bg">
-    <header class="top-banner">
-      <WelcomeBanner :show-typing="false" subtitle="专栏详情" />
-    </header>
-
+  <SitePageFrame :show-typing="false" subtitle="专栏详情">
     <div class="column-detail-layout">
-      <div v-if="loading" class="state">加载中...</div>
-      <div v-else-if="!column" class="state">专栏不存在</div>
+      <ContentState v-if="loading" kind="loading" size="page">
+        加载中...
+      </ContentState>
+      <ContentState v-else-if="!column" kind="empty" size="page">
+        专栏不存在
+      </ContentState>
 
       <template v-else>
-        <div class="column-header">
+        <GlassPanel class="column-header">
           <img v-if="column.cover" :src="column.cover" :alt="column.name" class="header-cover" />
           <div v-else class="header-cover fallback">{{ column.name.charAt(0) }}</div>
           <div class="header-info">
@@ -17,10 +17,12 @@
             <p v-if="column.desc" class="header-desc">{{ column.desc }}</p>
             <span class="header-count">共 {{ column.posts.length }} 篇文章</span>
           </div>
-        </div>
+        </GlassPanel>
 
-        <div class="posts-card">
-          <div v-if="column.posts.length === 0" class="state">专栏内暂无文章</div>
+        <GlassPanel class="posts-card">
+          <ContentState v-if="column.posts.length === 0" kind="empty" size="panel">
+            专栏内暂无文章
+          </ContentState>
           <div
             v-else
             v-for="(post, index) in column.posts"
@@ -38,10 +40,10 @@
               </div>
             </div>
           </div>
-        </div>
+        </GlassPanel>
       </template>
     </div>
-  </div>
+  </SitePageFrame>
 </template>
 
 <script setup>
@@ -50,7 +52,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { getColumnDetail } from '@/api/column'
 import { formatDate } from '@/utils/date'
 import { useMessageBox } from '@/composables/useMessageBox'
-import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
+import ContentState from '@/components/common/ContentState.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
+import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,16 +79,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-bg {
-  width: 100%;
-  min-height: 100vh;
-  background-color: var(--bg-page);
-}
-
-.top-banner {
-  width: 100%;
-}
-
 .column-detail-layout {
   max-width: 900px;
   margin: 0 auto;
@@ -94,27 +88,11 @@ onMounted(async () => {
   gap: 24px;
 }
 
-.state {
-  text-align: center;
-  padding: 60px 0;
-  color: var(--color-text);
-  opacity: 0.6;
-  font-size: 14px;
-}
-
 .column-header {
   display: flex;
   gap: 20px;
   padding: 24px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
 }
 
 .header-cover {
@@ -170,14 +148,6 @@ onMounted(async () => {
 .posts-card {
   padding: 16px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
   display: flex;
   flex-direction: column;
   gap: 12px;

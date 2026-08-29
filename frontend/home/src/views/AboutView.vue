@@ -1,11 +1,7 @@
 <template>
-  <div class="page-bg">
-    <header class="top-banner">
-      <WelcomeBanner :show-typing="false" subtitle="关于我" />
-    </header>
-
+  <SitePageFrame :show-typing="false" subtitle="关于我">
     <div class="about-layout">
-      <aside class="profile-card">
+      <GlassPanel as="aside" class="profile-card">
         <div class="avatar-wrap">
           <img src="@/assets/img/Personal_img.jpg" alt="avatar" class="avatar" />
         </div>
@@ -19,9 +15,9 @@
             <Icon icon="mdi:email" class="social-icon" />
           </a>
         </div>
-      </aside>
+      </GlassPanel>
 
-      <main class="content-card">
+      <GlassPanel as="main" class="content-card">
         <section class="section">
           <h3 class="section-title">
             <Icon icon="mdi:account" class="title-icon" />
@@ -65,27 +61,18 @@
             如果你有任何想法或建议，欢迎通过 GitHub 或 Email 与我交流。
           </p>
         </section>
-      </main>
+      </GlassPanel>
     </div>
-  </div>
+  </SitePageFrame>
 </template>
 
 <script setup>
 import { Icon } from '@iconify/vue'
-import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
+import SitePageFrame from '@/components/common/SitePageFrame.vue'
 </script>
 
 <style scoped>
-.page-bg {
-  width: 100%;
-  min-height: 100vh;
-  background-color: var(--bg-page);
-}
-
-.top-banner {
-  width: 100%;
-}
-
 .about-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -98,16 +85,6 @@ import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
 .profile-card,
 .content-card {
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(
-    to right bottom,
-    var(--bg-glass-start),
-    var(--bg-glass-mid),
-    var(--bg-glass-end)
-  );
-  backdrop-filter: blur(16px);
 }
 
 .profile-card {

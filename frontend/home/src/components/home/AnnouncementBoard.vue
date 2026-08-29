@@ -1,15 +1,19 @@
 <template>
-  <div class="card">
+  <GlassPanel class="card">
     <div class="header">
       <Icon icon="material-symbols:campaign-outline" class="icon" />
       <h4 class="title">公告</h4>
       <span class="count" v-if="notices.length">共 {{ notices.length }} 条</span>
     </div>
     <div class="body">
-      <div v-if="!notices.length" class="empty">
-        <Icon icon="material-symbols:notifications-off-outline" class="empty-icon" />
-        <span>暂无公告</span>
-      </div>
+      <ContentState
+        v-if="!notices.length"
+        kind="empty"
+        size="compact"
+        icon="material-symbols:notifications-off-outline"
+      >
+        暂无公告
+      </ContentState>
       <div v-else v-for="item in notices" :key="item.notice_id" class="notice">
         <div class="notice-left">
           <span class="dot"></span>
@@ -23,7 +27,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </GlassPanel>
 </template>
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -31,6 +35,8 @@ import { Icon } from '@iconify/vue'
 import { formatDate } from '@/utils/date'
 import { getPublicNotices } from '@/api/notice'
 import { useMessageBox } from '@/composables/useMessageBox'
+import ContentState from '@/components/common/ContentState.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
 
 const notices = ref([])
 const { toast } = useMessageBox()
@@ -51,14 +57,6 @@ onMounted(fetchNotices)
   width: 100%;
   padding: 24px 20px;
   border-radius: 5%;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
 }
 
 .header {
@@ -165,19 +163,4 @@ onMounted(fetchNotices)
   -webkit-box-orient: vertical;
 }
 
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px 0;
-  color: var(--color-text);
-  opacity: .45;
-  font-size: 13px;
-  gap: 8px;
-}
-
-.empty-icon {
-  font-size: 32px;
-}
 </style>

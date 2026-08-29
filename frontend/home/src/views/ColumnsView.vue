@@ -1,15 +1,15 @@
 <template>
-  <div class="page-bg">
-    <header class="top-banner">
-      <WelcomeBanner :show-typing="false" subtitle="专栏" />
-    </header>
-
+  <SitePageFrame :show-typing="false" subtitle="专栏">
     <main class="columns-layout">
-      <div v-if="loading" class="state">加载中...</div>
-      <div v-else-if="columns.length === 0" class="state">暂无专栏</div>
+      <ContentState v-if="loading" kind="loading" size="page">
+        加载中...
+      </ContentState>
+      <ContentState v-else-if="columns.length === 0" kind="empty" size="page">
+        暂无专栏
+      </ContentState>
 
       <div v-else class="columns-grid">
-        <div
+        <GlassPanel
           v-for="column in columns"
           :key="column.id"
           class="column-card"
@@ -31,10 +31,10 @@
             <h3 class="card-name">{{ column.name }}</h3>
             <p class="card-desc">{{ column.desc || '这个专栏还没有简介' }}</p>
           </div>
-        </div>
+        </GlassPanel>
       </div>
     </main>
-  </div>
+  </SitePageFrame>
 </template>
 
 <script setup>
@@ -42,7 +42,9 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getColumns } from '@/api/column'
 import { useMessageBox } from '@/composables/useMessageBox'
-import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
+import ContentState from '@/components/common/ContentState.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
+import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
 const router = useRouter()
 const { toast } = useMessageBox()
@@ -65,28 +67,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-bg {
-  width: 100%;
-  min-height: 100vh;
-  background-color: var(--bg-page);
-}
-
-.top-banner {
-  width: 100%;
-}
-
 .columns-layout {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px var(--page-padding) 60px;
-}
-
-.state {
-  text-align: center;
-  padding: 60px 0;
-  color: var(--color-text);
-  opacity: 0.6;
-  font-size: 14px;
 }
 
 .columns-grid {
@@ -98,14 +82,6 @@ onMounted(async () => {
 .column-card {
   border-radius: 16px;
   overflow: hidden;
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  box-shadow: 0 4px 12px var(--shadow-color);
   cursor: pointer;
   transition: transform 0.25s, box-shadow 0.25s;
   display: flex;

@@ -1,21 +1,22 @@
 <template>
-  <div class="page-bg">
-    <header class="top-banner">
-      <WelcomeBanner :show-typing="false" subtitle="文章归档" />
-    </header>
+  <SitePageFrame :show-typing="false" subtitle="文章归档">
     <div class="archive-layout">
       <aside class="archive-sidebar">
         <!-- 左侧预留空位 -->
       </aside>
       <main class="archive-main">
-        <div class="archive-card">
+        <GlassPanel class="archive-card">
           <div class="archive-header">
             <h1 class="archive-title">文章年份列表</h1>
             <span v-if="totalPosts > 0" class="total-count">共 {{ totalPosts }} 篇</span>
           </div>
 
-          <div v-if="loading" class="state">加载中...</div>
-          <div v-else-if="archives.length === 0" class="state">暂无文章</div>
+          <ContentState v-if="loading" kind="loading" size="panel">
+            加载中...
+          </ContentState>
+          <ContentState v-else-if="archives.length === 0" kind="empty" size="panel">
+            暂无文章
+          </ContentState>
 
           <div v-else class="year-list">
             <div
@@ -64,10 +65,10 @@
               </div>
             </div>
           </div>
-        </div>
+        </GlassPanel>
       </main>
     </div>
-  </div>
+  </SitePageFrame>
 </template>
 
 <script setup>
@@ -76,7 +77,9 @@ import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { getArchive } from '@/api/post'
 import { useMessageBox } from '@/composables/useMessageBox'
-import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
+import ContentState from '@/components/common/ContentState.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
+import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
 const router = useRouter()
 const { toast } = useMessageBox()
@@ -124,16 +127,6 @@ onMounted(fetchArchive)
 </script>
 
 <style scoped>
-.page-bg {
-  width: 100%;
-  min-height: 100vh;
-  background-color: var(--bg-page);
-}
-
-.top-banner {
-  width: 100%;
-}
-
 .archive-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -154,14 +147,6 @@ onMounted(fetchArchive)
 .archive-card {
   padding: 28px 32px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
 }
 
 .archive-header {
@@ -187,14 +172,6 @@ onMounted(fetchArchive)
   background: rgba(var(--color-accent-rgb), 0.12);
   padding: 4px 12px;
   border-radius: 12px;
-}
-
-.state {
-  text-align: center;
-  padding: 40px 0;
-  color: var(--color-text);
-  opacity: 0.6;
-  font-size: 14px;
 }
 
 .year-section {

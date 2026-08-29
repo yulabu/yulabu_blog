@@ -1,5 +1,5 @@
 <template>
-  <div class="card">
+  <GlassPanel class="card">
     <div class="card-top">
       <div class="image"></div>
     </div>
@@ -11,22 +11,17 @@
       <div class="joker-image"></div>
       <span class="joker-text">Hey？</span>
     </div>
-  </div>
+  </GlassPanel>
 </template>
+<script setup>
+import GlassPanel from '@/components/common/GlassPanel.vue'
+</script>
 <style scoped>
 .card{
   position: relative;
   width: 100%;
   max-width: 300px;
   height: 260px;
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  box-shadow: 0 4px 12px var(--shadow-color);
   overflow: hidden;
   border-radius: 0 0 30px 30px;
 }

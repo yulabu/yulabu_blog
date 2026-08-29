@@ -1,11 +1,8 @@
 <template>
-  <div class="page-bg">
-    <header class="top-banner">
-      <WelcomeBanner />
-    </header>
+  <SitePageFrame>
     <div class="detail-container">
       <main class="main-content">
-        <div class="meta-card">
+        <GlassPanel class="meta-card">
           <h1 class="post-title">{{ post.title }}</h1>
           <div class="meta-row">
             <span v-if="post.category" class="category-tag">{{ post.category.name }}</span>
@@ -14,34 +11,34 @@
             <span class="meta-separator">·</span>
             <span class="date">{{ formatDate(post.createdAt) }}</span>
           </div>
-        </div>
+        </GlassPanel>
         <nav v-if="prevPost || nextPost" class="chapter-nav">
-          <div
+          <GlassPanel
             v-if="prevPost"
             class="chapter-item prev"
             @click="goChapter(prevPost.id)"
           >
             <span class="chapter-label">上一篇</span>
             <span class="chapter-title">{{ prevPost.title }}</span>
-          </div>
-          <div v-else class="chapter-item disabled">
+          </GlassPanel>
+          <GlassPanel v-else class="chapter-item disabled">
             <span class="chapter-label">上一篇</span>
             <span class="chapter-title">已是第一篇</span>
-          </div>
-          <div
+          </GlassPanel>
+          <GlassPanel
             v-if="nextPost"
             class="chapter-item next"
             @click="goChapter(nextPost.id)"
           >
             <span class="chapter-label">下一篇</span>
             <span class="chapter-title">{{ nextPost.title }}</span>
-          </div>
-          <div v-else class="chapter-item disabled">
+          </GlassPanel>
+          <GlassPanel v-else class="chapter-item disabled">
             <span class="chapter-label">下一篇</span>
             <span class="chapter-title">已是最后一篇</span>
-          </div>
+          </GlassPanel>
         </nav>
-        <div class="content-card">
+        <GlassPanel class="content-card">
           <MdPreview
             :modelValue="post.content"
             :theme="uiStore.theme"
@@ -51,10 +48,10 @@
             :mdHeadingId="(h) => `heading-${h.index}`"
             @onGetCatalog="handleCatalog"
           />
-        </div>
+        </GlassPanel>
       </main>
       <aside class="toc-sidebar">
-        <div class="toc-card">
+        <GlassPanel class="toc-card">
           <div class="toc-header">
             <span class="line"></span>
             <h4>目录</h4>
@@ -70,10 +67,10 @@
             </li>
           </ul>
           <div v-else class="toc-empty">暂无目录</div>
-        </div>
+        </GlassPanel>
       </aside>
     </div>
-  </div>
+  </SitePageFrame>
 </template>
 
 <script setup>
@@ -86,7 +83,8 @@ import { getPost } from '@/api/post'
 import { getPrevPost, getNextPost } from '@/api/column'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useUiStore } from '@/stores/ui'
-import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
+import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
 const route = useRoute()
 const { toast } = useMessageBox()
@@ -179,12 +177,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.page-bg {
-  width: 100%;
-  min-height: 100vh;
-  background-color: var(--bg-page);
-}
-
 .detail-container {
   display: grid;
   grid-template-columns: 1fr 260px;
@@ -204,14 +196,6 @@ onUnmounted(() => {
 .meta-card {
   padding: 24px 28px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
 }
 
 .post-title {
@@ -246,14 +230,6 @@ onUnmounted(() => {
 .content-card {
   padding: 24px 28px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
   min-height: 400px;
 }
 
@@ -282,14 +258,6 @@ onUnmounted(() => {
   top: 96px;
   padding: 20px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
   max-height: calc(100vh - 116px);
   overflow-y: auto;
 }
@@ -385,14 +353,6 @@ onUnmounted(() => {
 .chapter-item {
   padding: 14px 18px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;

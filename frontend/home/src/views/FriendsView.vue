@@ -1,15 +1,16 @@
 <template>
-  <div class="page-bg">
-    <header class="top-banner">
-      <WelcomeBanner :show-typing="false" subtitle="友链" />
-    </header>
-
+  <SitePageFrame :show-typing="false" subtitle="友链">
     <main class="friends-layout">
-      <div v-if="loading" class="state">加载中...</div>
-      <div v-else-if="links.length === 0" class="state">暂无友链</div>
+      <ContentState v-if="loading" kind="loading" size="page">
+        加载中...
+      </ContentState>
+      <ContentState v-else-if="links.length === 0" kind="empty" size="page">
+        暂无友链
+      </ContentState>
 
       <div v-else class="friends-grid">
-        <a
+        <GlassPanel
+          as="a"
           v-for="link in links"
           :key="link.id"
           class="friend-card"
@@ -39,17 +40,19 @@
             <h3 class="card-name">{{ link.name }}</h3>
             <p class="card-desc">{{ link.description || '这个站点还没有简介' }}</p>
           </div>
-        </a>
+        </GlassPanel>
       </div>
     </main>
-  </div>
+  </SitePageFrame>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getFriendLinks } from '@/api/friend'
 import { useMessageBox } from '@/composables/useMessageBox'
-import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
+import ContentState from '@/components/common/ContentState.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
+import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
 const { toast } = useMessageBox()
 const links = ref([])
@@ -67,28 +70,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-bg {
-  width: 100%;
-  min-height: 100vh;
-  background-color: var(--bg-page);
-}
-
-.top-banner {
-  width: 100%;
-}
-
 .friends-layout {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px var(--page-padding) 60px;
-}
-
-.state {
-  text-align: center;
-  padding: 60px 0;
-  color: var(--color-text);
-  opacity: 0.6;
-  font-size: 14px;
 }
 
 .friends-grid {
@@ -100,14 +85,6 @@ onMounted(async () => {
 .friend-card {
   border-radius: 16px;
   overflow: hidden;
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  box-shadow: 0 4px 12px var(--shadow-color);
   text-decoration: none;
   transition: transform 0.25s, box-shadow 0.25s;
   display: flex;

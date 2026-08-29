@@ -10,6 +10,7 @@ export interface Post {
   summary: string | null
   author: string
   category: Category | null
+  cover: string | null
   status: 'published' | 'trash'
   createdAt: string
   updatedAt: string

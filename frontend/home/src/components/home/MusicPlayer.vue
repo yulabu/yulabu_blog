@@ -1,5 +1,5 @@
 <template>
-  <div class="card">
+  <GlassPanel class="card">
     <div class="cover">
       <img :src="musicPlayerImg" alt="">
     </div>
@@ -24,7 +24,7 @@
     <div class="btn-box" @click="togglePlay">
       <div class="play"><Icon :icon="isPlaying ? 'material-symbols:pause' : 'material-symbols:play-arrow'" /></div>
     </div>
-  </div>
+  </GlassPanel>
 </template>
 <style scoped>
   .card{
@@ -33,15 +33,7 @@
     height: auto;
     padding: 36px;
     border-radius: 5%;
-    box-shadow: 0 4px 12px var(--shadow-color);
-    border-top: 1px solid var(--border-light);
-    border-left: 1px solid var(--border-light);
-    background: linear-gradient(to right bottom,
-        var(--bg-glass-start),
-        var(--bg-glass-mid),
-        var(--bg-glass-end));
-    backdrop-filter: blur(16px);
-    overflow: hidden;
+     overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -125,6 +117,7 @@
 <script setup>
   import { ref, onMounted, onUnmounted } from 'vue';
   import { Icon } from '@iconify/vue'
+  import GlassPanel from '@/components/common/GlassPanel.vue'
   import musicPlayerImg from '@/assets/img/music_player.jpg'
   import musicSrc from '@/assets/music/我爱你 - nxd.mp3'
   const audioRef = ref(null);

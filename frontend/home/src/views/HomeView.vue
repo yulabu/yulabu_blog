@@ -1,8 +1,8 @@
 <template>
-    <div class="page-bg">
-        <header class="top-banner">
-            <HomeHero /> 
-        </header>
+    <SitePageFrame>
+        <template #banner>
+            <HomeHero />
+        </template>
         <div class="home-layout">
             <aside class="left-sidebar">
                 <PersonalCard />
@@ -16,7 +16,7 @@
                 <MusicPlayer />
             </aside>
         </div>  
-    </div>
+    </SitePageFrame>
     
 </template>
 <script setup>
@@ -28,6 +28,7 @@ import HomeHero from '@/components/home/HomeHero.vue';
 import PostList from '@/components/home/PostList.vue';
 import MusicPlayer from '@/components/home/MusicPlayer.vue';
 import AnnouncementBoard from '@/components/home/AnnouncementBoard.vue';
+import SitePageFrame from '@/components/common/SitePageFrame.vue';
 
 const route = useRoute()
 const router = useRouter()
@@ -47,14 +48,6 @@ function onClear() {
 }
 </script>
 <style scoped>
-    .page-bg{
-        width: 100%;
-        min-height: 100vh;
-        background-color: var(--bg-page);
-    }
-    .top-banner{
-        width: 100%;
-    }
     .home-layout {
     display: grid;
     grid-template-columns: 300px 640px 280px;

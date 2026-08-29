@@ -1,5 +1,5 @@
 <template>
-  <div class="card">
+  <GlassPanel class="card">
     <div class="header">
       <span class="line"></span>
       <h4 class="title">标签</h4>
@@ -7,13 +7,17 @@
       <button v-if="activeId" class="clear-tag" @click="onSelect(null)">全部</button>
     </div>
     <div class="body">
-      <div v-if="loading" class="empty">
-        <span>加载中...</span>
-      </div>
-      <div v-else-if="!tags.length" class="empty">
-        <Icon icon="material-symbols:label-off-outline" class="empty-icon" />
-        <span>暂无标签</span>
-      </div>
+      <ContentState v-if="loading" kind="loading" size="compact">
+        加载中...
+      </ContentState>
+      <ContentState
+        v-else-if="!tags.length"
+        kind="empty"
+        size="compact"
+        icon="material-symbols:label-off-outline"
+      >
+        暂无标签
+      </ContentState>
       <div v-else class="tag-list">
         <span
           v-for="tag in tags"
@@ -26,14 +30,15 @@
         </span>
       </div>
     </div>
-  </div>
+  </GlassPanel>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Icon } from '@iconify/vue'
 import { getTags } from '@/api/tag'
 import { useMessageBox } from '@/composables/useMessageBox'
+import ContentState from '@/components/common/ContentState.vue'
+import GlassPanel from '@/components/common/GlassPanel.vue'
 
 const props = defineProps({
   activeId: {
@@ -74,14 +79,6 @@ onMounted(() => {
   width: 100%;
   padding: 20px;
   border-radius: 16px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  backdrop-filter: blur(16px);
 }
 
 .header {
@@ -163,19 +160,4 @@ onMounted(() => {
   text-decoration: underline;
 }
 
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px 0;
-  color: var(--color-text);
-  opacity: .45;
-  font-size: 13px;
-  gap: 8px;
-}
-
-.empty-icon {
-  font-size: 32px;
-}
 </style>
