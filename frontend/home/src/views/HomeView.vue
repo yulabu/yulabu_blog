@@ -3,16 +3,16 @@
         <template #banner>
             <HomeHero />
         </template>
-        <div class="home-layout">
+<div class="home-layout">
             <aside class="left-sidebar">
                 <PersonalCard />
-                <TagBox :active-id="activeCategoryId" @select="onTagSelect" />
+                <TagBox :active-id="activeCategoryId" @select="onTagSelect" @loaded="onSectionLoaded" />
             </aside>
             <main class="center">
-                <PostList :category-id="activeCategoryId" :search-query="searchQuery" @clear="onClear" />
+                <PostList :category-id="activeCategoryId" :search-query="searchQuery" @clear="onClear" @loaded="onSectionLoaded" />
             </main>
             <aside class="right-sidebar">
-                <AnnouncementBoard />
+                <AnnouncementBoard @loaded="onSectionLoaded" />
                 <MusicPlayer />
             </aside>
         </div>  
@@ -20,8 +20,9 @@
     
 </template>
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useUiStore } from '@/stores/ui'
 import PersonalCard from '@/components/home/PersonalCard.vue';
 import TagBox from '@/components/home/TagBox.vue';
 import HomeHero from '@/components/home/HomeHero.vue';
@@ -32,9 +33,39 @@ import SitePageFrame from '@/components/common/SitePageFrame.vue';
 
 const route = useRoute()
 const router = useRouter()
+const uiStore = useUiStore()
 
 const activeCategoryId = ref(null)
 const searchQuery = computed(() => (route.query.q ? String(route.query.q) : ''))
+
+// 首页加载：等待文章列表 / 标签 / 公告全部就绪后熄灭加载遮罩与进度条
+const PENDING_SECTIONS = 3
+const pendingSections = ref(PENDING_SECTIONS)
+let loadingTimeout = null
+
+function onSectionLoaded() {
+  pendingSections.value -= 1
+  if (pendingSections.value <= 0) {
+    finishLoading()
+  }
+}
+
+function finishLoading() {
+  clearTimeout(loadingTimeout)
+  uiStore.setPageLoading(false)
+}
+
+onMounted(() => {
+  pendingSections.value = PENDING_SECTIONS
+  uiStore.setPageLoading(true)
+  // 兜底：8s 内未全部就绪则强制熄灭（防请求挂起卡死）
+  loadingTimeout = setTimeout(finishLoading, 8000)
+})
+
+onUnmounted(() => {
+  clearTimeout(loadingTimeout)
+  uiStore.setPageLoading(false)
+})
 
 function onTagSelect(id) {
   activeCategoryId.value = id

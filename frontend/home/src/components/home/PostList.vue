@@ -52,7 +52,7 @@
           </div>
           <span v-if="index === 0" class="featured-label">
             <Icon icon="material-symbols:auto-awesome" />
-            编辑精选
+            最近更新
           </span>
           <h4 v-if="index === 0" class="featured-title">{{ post.title }}</h4>
           <span class="cover-arrow">
@@ -106,7 +106,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['clear'])
+const emit = defineEmits(['clear', 'loaded'])
 
 const posts = ref([])
 const total = ref(0)
@@ -144,6 +144,8 @@ async function fetchPosts() {
     total.value = data.total
   } catch (e) {
     toast('获取文章列表失败', 'error')
+  } finally {
+    emit('loaded')
   }
 }
 

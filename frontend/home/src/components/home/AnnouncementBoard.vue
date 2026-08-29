@@ -56,6 +56,7 @@ import GlassPanel from '@/components/common/GlassPanel.vue'
 
 const notices = ref([])
 const { toast } = useMessageBox()
+const emit = defineEmits(['loaded'])
 
 async function fetchNotices() {
   try {
@@ -63,6 +64,8 @@ async function fetchNotices() {
     notices.value = data.notices || []
   } catch (e) {
     toast('获取公告失败', 'error')
+  } finally {
+    emit('loaded')
   }
 }
 

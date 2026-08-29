@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import Navbar from '@/components/common/Navbar.vue'
 import MessageBox from '@/components/common/MessageBox.vue'
 import LoadingOverlay from '@/components/common/LoadingOverlay.vue'
+import TopProgressBar from '@/components/common/TopProgressBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,15 +15,21 @@ const showNavbar = computed(() => {
   if (isHomeRoute.value && !uiStore.homeHeroCollapsed) return false
   return true
 })
-const isPageLoading = ref(false)
 
-router.beforeEach(() => { isPageLoading.value = true })
-router.afterEach(() => { isPageLoading.value = false })
+// 首页进入/刷新：加载遮罩与进度条由 HomeView 等待数据就绪后熄灭；
+// 其他页面保持路由级即时亮灭（首页内 query 搜索导航不会误亮）
+router.beforeEach((to) => {
+  if (to.name !== 'Home') uiStore.setPageLoading(true)
+})
+router.afterEach((to) => {
+  if (to.name !== 'Home') uiStore.setPageLoading(false)
+})
 </script>
 
 <template>
     <Navbar v-if="showNavbar" />
-    <LoadingOverlay :visible="isPageLoading" />
+    <TopProgressBar :loading="uiStore.pageLoading" />
+    <LoadingOverlay :visible="uiStore.pageLoading" />
     <router-view />
     <MessageBox />
 </template>

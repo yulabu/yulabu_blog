@@ -57,7 +57,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'loaded'])
 
 const tags = ref([])
 const loading = ref(true)
@@ -72,6 +72,7 @@ async function fetchTags() {
     tags.value = []
   } finally {
     loading.value = false
+    emit('loaded')
   }
 }
 

@@ -19,6 +19,11 @@ function getBooleanFromSession(key: string, defaultValue: boolean): boolean {
 export const useUiStore = defineStore('ui', () => {
   const homeHeroCollapsed = ref(getBooleanFromSession(HOME_HERO_COLLAPSED_KEY, false))
   const theme = ref<Theme>((localStorage.getItem(THEME_KEY) as Theme) || 'light')
+  const pageLoading = ref(false)
+
+  function setPageLoading(value: boolean) {
+    pageLoading.value = value
+  }
 
   function setHomeHeroCollapsed(value: boolean) {
     homeHeroCollapsed.value = value
@@ -45,6 +50,8 @@ export const useUiStore = defineStore('ui', () => {
     theme,
     setTheme,
     toggleTheme,
-    initTheme
+    initTheme,
+    pageLoading,
+    setPageLoading
   }
 })
