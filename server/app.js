@@ -7,6 +7,8 @@ const sequelize = require('@config/database');
 const { publicLimiter, staticLimiter, adminLimiter } = require('@middleware/rateLimiter');
 
 const app = express();
+// 信任本机反向代理（Nginx），正确解析 X-Forwarded-For（express-rate-limit 8.x 校验要求）
+app.set('trust proxy', 'loopback');
 // 中间件
 app.use(cors());
 app.use(express.json());
