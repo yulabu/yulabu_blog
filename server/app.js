@@ -65,8 +65,15 @@ async function runGCSafe() {
 }
 
 sequelize.sync()
-  .then(() => {
+  .then(async () => {
     console.log('所有模型同步成功');
+    // 一次性幂等结构同步：补齐 sync() 不处理的 ALTER（新增列/ENUM 追加），重复执行安全
+    try {
+      const syncSchema = require('./scripts/sync-schema');
+      await syncSchema();
+    } catch (e) {
+      console.error('[sync-schema] 同步失败:', e.message);
+    }
     // 依赖数据库表，需在 sync 之后执行；启动先跑一次，再每 24 小时执行
     runGCSafe();
     setInterval(runGCSafe, GC_INTERVAL_MS);
