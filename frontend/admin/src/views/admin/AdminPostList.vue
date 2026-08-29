@@ -60,8 +60,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAdminList } from '@/composables/useAdminList'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
 import { useMessageBox } from '@/composables/useMessageBox'
@@ -74,6 +74,7 @@ import AdminButton from '@/components/admin/AdminButton.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { confirm } = useMessageBox()
 const searchQuery = ref('')
 
@@ -83,7 +84,7 @@ const tabs = [
   { label: '草稿', value: 'draft' },
   { label: '回收站', value: 'trash' }
 ]
-const activeTab = ref('')
+const activeTab = ref(route.query.status ? String(route.query.status) : '')
 
 const { items: posts, loading, page, totalPages, fetch, refresh } = useAdminList(
   (pageNum, pageSize) => getAdminPosts(pageNum, pageSize, activeTab.value || undefined, searchQuery.value),
@@ -105,8 +106,22 @@ function onTabChange(value) {
   activeTab.value = value
   page.value = 1
   coverFailed.value = new Set()
+  router.replace({ query: { ...route.query, status: value || undefined } })
   fetch()
 }
+
+watch(
+  () => route.query.status,
+  (val) => {
+    const next = val ? String(val) : ''
+    if (next !== activeTab.value) {
+      activeTab.value = next
+      page.value = 1
+      coverFailed.value = new Set()
+      fetch()
+    }
+  }
+)
 
 function onSearch(q) {
   searchQuery.value = q
@@ -120,7 +135,7 @@ function goNew() {
 }
 
 function goEdit(id) {
-  router.push(`/admin/posts/${id}/edit`)
+  router.push({ path: `/admin/posts/${id}/edit`, query: { fromStatus: activeTab.value || undefined } })
 }
 
 const { confirmDelete: onDelete } = useConfirmDelete(deletePost, {
@@ -130,12 +145,12 @@ const { confirmDelete: onDelete } = useConfirmDelete(deletePost, {
 })
 
 const { run: doRestore } = useAsyncAction(restorePost, {
-  successMessage: '恢复成功',
+  successMessage: '已恢复至草稿',
   onSuccess: refresh
 })
 
 async function onRestore(id) {
-  const ok = await confirm('恢复确认', '确定要恢复这篇文章吗？恢复后将回到已发布列表。')
+  const ok = await confirm('恢复确认', '确定要恢复这篇文章吗？恢复后将变为草稿，可继续编辑后发布。')
   if (!ok) return
   doRestore(id)
 }

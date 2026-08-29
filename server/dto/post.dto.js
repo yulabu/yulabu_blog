@@ -63,6 +63,12 @@ function updatePostDTO(body) {
     dto.post_cover = normalizeCover(body.post_cover);
   }
 
+  if (body.post_author !== undefined) {
+    const raw = (body.post_author || '').trim();
+    if (raw.length > 16) throw new AppError(400, '作者名不能超过16个字符');
+    dto.post_author = raw || '匿名';
+  }
+
   // 允许在 published / trash / draft 之间切换
   if (body.post_status === 'published' || body.post_status === 'trash' || body.post_status === 'draft') {
     dto.post_status = body.post_status;

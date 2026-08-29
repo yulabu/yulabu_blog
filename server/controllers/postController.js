@@ -225,8 +225,8 @@ exports.restorePost = async (req, res) => {
   if (!post) throw new AppError(404, '文章不存在');
   if (post.post_status !== 'trash') throw new AppError(400, '文章不在回收站');
 
-  await post.update({ post_status: 'published' });
-  res.json({ message: '恢复成功' });
+  await post.update({ post_status: 'draft' });
+  res.json({ message: '已恢复至草稿' });
 };
 
 // 彻底删除文章：按图片常规生命周期全流程清理

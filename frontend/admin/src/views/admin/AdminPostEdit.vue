@@ -6,14 +6,25 @@
       </template>
       <template #actions>
         <AdminButton variant="secondary" @click="goBack">返回</AdminButton>
-        <AdminButton variant="secondary" @click="openImportModal">导入附图片Markdown文章</AdminButton>
-        <AdminButton variant="secondary" :loading="loading" @click="onSaveDraft">保存草稿</AdminButton>
-        <AdminButton variant="primary" :loading="loading" @click="onPublish">发布</AdminButton>
+        <template v-if="isTrash">
+          <AdminButton variant="primary" :loading="loading" @click="onRestoreEdit">恢复为草稿</AdminButton>
+          <AdminButton variant="danger" :loading="loading" @click="onForceDeleteEdit">彻底删除</AdminButton>
+        </template>
+        <template v-else-if="currentStatus === 'published'">
+          <AdminButton variant="secondary" @click="openImportModal" :disabled="isTrash">导入附图片Markdown文章</AdminButton>
+          <AdminButton variant="primary" :loading="loading" @click="onSavePublished">保存</AdminButton>
+          <AdminButton variant="danger" :loading="loading" @click="onMoveToTrash">移至回收站</AdminButton>
+        </template>
+        <template v-else>
+          <AdminButton variant="secondary" @click="openImportModal">导入附图片Markdown文章</AdminButton>
+          <AdminButton variant="secondary" :loading="loading" @click="onSaveDraft">保存草稿</AdminButton>
+          <AdminButton variant="primary" :loading="loading" @click="onPublish">发布</AdminButton>
+        </template>
       </template>
 
       <AdminForm>
         <AdminFormField label="标题">
-          <AdminFormInput v-model="form.title" placeholder="请输入标题" />
+          <AdminFormInput v-model="form.title" placeholder="请输入标题" :disabled="isTrash" />
         </AdminFormField>
 
         <AdminFormField label="封面">
@@ -21,11 +32,12 @@
             v-model="form.cover"
             :upload="uploadCoverImage"
             tip="建议尺寸 16/9，jpg/png 格式"
+            :disabled="isTrash"
           />
         </AdminFormField>
 
         <AdminFormField label="摘要">
-          <AdminFormInput v-model="form.summary" placeholder="请输入摘要" />
+          <AdminFormInput v-model="form.summary" placeholder="请输入摘要" :disabled="isTrash" />
         </AdminFormField>
 
         <AdminFormRow inline>
@@ -35,16 +47,17 @@
                 v-model="form.categoryId"
                 placeholder="无分类"
                 :options="tagOptions"
+                :disabled="isTrash"
               >
                 <template #append>
-                  <button type="button" class="btn-add" @click="openTagModal" title="新建分类">+</button>
+                  <button type="button" class="btn-add" @click="openTagModal" title="新建分类" :disabled="isTrash">+</button>
                 </template>
               </AdminFormSelect>
             </AdminFormField>
           </AdminFormGroup>
           <AdminFormGroup>
             <AdminFormField label="作者">
-              <AdminFormInput v-model="form.author" placeholder="作者" />
+              <AdminFormInput v-model="form.author" placeholder="作者" :disabled="isTrash" />
             </AdminFormField>
           </AdminFormGroup>
           <AdminFormGroup>
@@ -53,16 +66,17 @@
                 v-model="form.columnId"
                 placeholder="无专栏"
                 :options="columnOptions"
-                :disabled="columnSaving"
+                :disabled="isTrash || columnSaving"
               />
             </AdminFormField>
           </AdminFormGroup>
         </AdminFormRow>
 
         <AdminFormField label="正文">
-          <AdminMarkdownField v-model="form.content" :upload-images="uploadImagesForEditor" />
+          <AdminMarkdownField v-model="form.content" :upload-images="uploadImagesForEditor" :disabled="isTrash" />
         </AdminFormField>
       </AdminForm>
+      <div v-if="isTrash" class="trash-tip">该文章在回收站中为只读，需恢复为草稿后方可编辑</div>
     </AdminPageCard>
 
     <!-- 新建分类弹窗 -->
@@ -99,7 +113,7 @@ import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { getTags, createTag } from '@/api/tag'
-import { getAdminPost, createPost, updatePost, unbindImages } from '@/api/post'
+import { getAdminPost, createPost, updatePost, unbindImages, deletePost, restorePost, forceDeletePost } from '@/api/post'
 import { getAdminColumns, addColumnPost, removeColumnPost } from '@/api/column'
 import { uploadImages } from '@/api/image'
 import {
@@ -218,6 +232,15 @@ const columns = ref([])
 const columnSaving = ref(false)
 const columnInitialized = ref(false)
 const currentStatus = ref('draft')
+const isTrash = computed(() => currentStatus.value === 'trash')
+
+// 返回时保留来源 tab：fromStatus（列表透传）优先，否则用当前状态（trash 除外）
+function pushPostListWithStatus(fallbackStatus) {
+  const fromStatus = route.query.fromStatus ? String(route.query.fromStatus) : ''
+  const status = fromStatus || fallbackStatus || ''
+  const query = status && status !== 'trash' ? { status } : {}
+  router.push({ path: '/admin/posts', query })
+}
 
 const columnOptions = computed(() =>
   columns.value.map((c) => ({ value: c.id, label: c.name }))
@@ -312,12 +335,20 @@ async function onCreateTag() {
 }
 
 async function handleUploadImages(files) {
+  if (isTrash.value) {
+    toast('回收站文章为只读，请先恢复为草稿', 'error')
+    throw new Error('trash readonly')
+  }
   const postId = await ensureDraft()
   return uploadImages({ files, postId })
 }
 
 // 封面上传：绑定类型 cover，返回 URL（v-model 由 AdminImageUpload 写入 form.cover）
 async function uploadCoverImage(file) {
+  if (isTrash.value) {
+    toast('回收站文章为只读，请先恢复为草稿', 'error')
+    throw new Error('trash readonly')
+  }
   const postId = await ensureDraft()
   const result = await uploadImages({ files: [file], postId, type: 'cover' })
   return result.images[0].url
@@ -399,10 +430,9 @@ async function fetchPost() {
   }
 }
 
-// 保存草稿：无强制校验（标题/正文可为空），保持当前状态
-// 新建/编辑草稿 → draft；编辑已发布文章 → published（保存修改不降级）
+// 保存草稿：仅 draft 状态使用，无强制校验
 async function onSaveDraft() {
-  if (loading.value) return
+  if (loading.value || isTrash.value) return
 
   loading.value = true
   try {
@@ -416,18 +446,16 @@ async function onSaveDraft() {
     }
 
     let postId
-    let status
     if (isEdit.value) {
       postId = Number(route.params.id)
-      status = currentStatus.value || 'draft' // 保持当前状态：已发布不降级
+      await updatePost(postId, postForm, 'draft')
     } else {
       postId = await ensureDraft()
-      status = 'draft'
+      await updatePost(postId, postForm, 'draft')
     }
-    await updatePost(postId, postForm, status)
     toast('草稿已保存')
     originalData.value = snapshotForm()
-    router.push('/admin/posts')
+    pushPostListWithStatus('draft')
   } catch (e) {
     toast(e.message || '保存失败', 'error')
   } finally {
@@ -435,9 +463,44 @@ async function onSaveDraft() {
   }
 }
 
-// 发布：校验标题/正文，将现有 post 状态更新为 published
+// 保存：published 状态使用，校验标题/正文，保存后保持 published
+async function onSavePublished() {
+  if (loading.value || isTrash.value) return
+
+  if (!form.value.title.trim()) {
+    toast('标题不能为空', 'error')
+    return
+  }
+  if (!form.value.content.trim()) {
+    toast('正文不能为空', 'error')
+    return
+  }
+
+  loading.value = true
+  try {
+    const postForm = {
+      title: form.value.title.trim(),
+      content: form.value.content,
+      summary: form.value.summary.trim(),
+      author: form.value.author.trim(),
+      categoryId: form.value.categoryId ? Number(form.value.categoryId) : null,
+      cover: form.value.cover?.trim() || null
+    }
+    const postId = isEdit.value ? Number(route.params.id) : await ensureDraft()
+    await updatePost(postId, postForm, 'published')
+    toast('保存成功')
+    originalData.value = snapshotForm()
+    pushPostListWithStatus('published')
+  } catch (e) {
+    toast(e.message || '保存失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 发布：校验标题/正文，将状态更新为 published
 async function onPublish() {
-  if (loading.value) return
+  if (loading.value || isTrash.value) return
 
   if (!form.value.title.trim()) {
     toast('标题不能为空', 'error')
@@ -462,13 +525,12 @@ async function onPublish() {
     if (isEdit.value) {
       await updatePost(Number(route.params.id), postForm, 'published')
     } else {
-      // 新建：草稿已由 ensureDraft 创建，发布即状态流转
       const postId = await ensureDraft()
       await updatePost(postId, postForm, 'published')
     }
     toast('发布成功')
     originalData.value = snapshotForm()
-    router.push('/admin/posts')
+    pushPostListWithStatus('published')
   } catch (e) {
     toast(e.message || '发布失败', 'error')
   } finally {
@@ -476,8 +538,59 @@ async function onPublish() {
   }
 }
 
+// 移至回收站
+async function onMoveToTrash() {
+  if (loading.value) return
+  const ok = await confirm('移至回收站', '确定要将该文章移至回收站吗？')
+  if (!ok) return
+  loading.value = true
+  try {
+    await deletePost(Number(route.params.id))
+    toast('已移至回收站')
+    originalData.value = snapshotForm()
+    pushPostListWithStatus('trash')
+  } catch (e) {
+    toast(e.message || '操作失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+// trash：恢复为草稿
+async function onRestoreEdit() {
+  if (loading.value) return
+  loading.value = true
+  try {
+    await restorePost(Number(route.params.id))
+    toast('已恢复至草稿')
+    currentStatus.value = 'draft'
+    originalData.value = snapshotForm()
+  } catch (e) {
+    toast(e.message || '恢复失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+// trash：彻底删除
+async function onForceDeleteEdit() {
+  if (loading.value) return
+  const ok = await confirm('彻底删除确认', '彻底删除后无法恢复，确定要删除这篇文章吗？')
+  if (!ok) return
+  loading.value = true
+  try {
+    await forceDeletePost(Number(route.params.id))
+    toast('已彻底删除')
+    router.push({ path: '/admin/posts', query: { status: 'trash' } })
+  } catch (e) {
+    toast(e.message || '删除失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
 function goBack() {
-  router.push('/admin')
+  pushPostListWithStatus(currentStatus.value)
 }
 
 onBeforeRouteLeave(async () => {
@@ -527,5 +640,16 @@ onMounted(() => {
 
 .btn-add:hover {
   background: var(--color-primary-hover);
+}
+
+.trash-tip {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #c0392b;
+  text-align: center;
 }
 </style>
