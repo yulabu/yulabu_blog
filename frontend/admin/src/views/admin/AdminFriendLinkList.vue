@@ -35,7 +35,7 @@
         <template #cell-actions="{ row }">
           <AdminDataTableCellActions>
             <AdminButton variant="text" @click="openModal(row)">编辑</AdminButton>
-            <AdminButton variant="text" :disabled="previewLoading" @click="onFetchPreview(row)">
+            <AdminButton variant="text" :disabled="previewLoading" @click="onFetchPreview(row.id)">
               {{ previewLoading ? '抓取中...' : '抓图' }}
             </AdminButton>
             <AdminButton variant="danger" @click="onDelete(row.id)">删除</AdminButton>
@@ -122,6 +122,10 @@ import AdminFormSelect from '@/components/admin/forms/AdminFormSelect.vue'
 
 const { toast } = useMessageBox()
 const searchQuery = ref('')
+
+function onSearch(query) {
+  searchQuery.value = query
+}
 
 const { items: allLinks, loading, refresh } = useAdminList(getAdminFriendLinks, {
   paginated: false,
