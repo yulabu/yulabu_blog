@@ -10,13 +10,19 @@ function getBooleanFromStorage(key: string, defaultValue: boolean): boolean {
   return raw === null ? defaultValue : raw === 'true'
 }
 
+// 全屏封面折叠状态用 sessionStorage：刷新保留（不弹全屏），关闭网站重开清空（重新弹出）
+function getBooleanFromSession(key: string, defaultValue: boolean): boolean {
+  const raw = sessionStorage.getItem(key)
+  return raw === null ? defaultValue : raw === 'true'
+}
+
 export const useUiStore = defineStore('ui', () => {
-  const homeHeroCollapsed = ref(getBooleanFromStorage(HOME_HERO_COLLAPSED_KEY, false))
+  const homeHeroCollapsed = ref(getBooleanFromSession(HOME_HERO_COLLAPSED_KEY, false))
   const theme = ref<Theme>((localStorage.getItem(THEME_KEY) as Theme) || 'light')
 
   function setHomeHeroCollapsed(value: boolean) {
     homeHeroCollapsed.value = value
-    localStorage.setItem(HOME_HERO_COLLAPSED_KEY, String(value))
+    sessionStorage.setItem(HOME_HERO_COLLAPSED_KEY, String(value))
   }
 
   function setTheme(value: Theme) {
