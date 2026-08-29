@@ -1,5 +1,6 @@
 <template>
-      <section class="login-page">
+    <LoadingOverlay :visible="!imagesReady" />
+    <section class="login-page">
         <div class="color1">
             <div class="bubble-img" style="--j:0"></div>
             <div class="bubble-img" style="--j:1"></div>
@@ -415,15 +416,56 @@ section .color3::before{
 }
 </style>
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import LoadingOverlay from '@/components/common/LoadingOverlay.vue'
+import bg0 from '@/assets/img/background_0.png'
+import bubble1_1 from '@/assets/img/nxd_bubble1_1.png'
+import bubble1_2 from '@/assets/img/nxd_bubble1_2.jpg'
+import bubble1_3 from '@/assets/img/nxd_bubble1_3.jpg'
+import bubble2_1 from '@/assets/img/nxd_bubble2_1.jpg'
+import bubble2_2 from '@/assets/img/nxd_bubble2_2.jpg'
+import bubble2_3 from '@/assets/img/nxd_bubble2_3.jpg'
+import bubble3_1 from '@/assets/img/nxd_bubble3_1.jpg'
+import bubble3_2 from '@/assets/img/nxd_bubble3_2.jpg'
+import bubble3_3 from '@/assets/img/nxd_bubble3_3.jpg'
+import loginLeft from '@/assets/img/login_left.jpg'
 
 const admin_name = ref('')
 const admin_password = ref('')
 const loginError = ref('')
 const router = useRouter()
 const authStore = useAuthStore()
+
+const imagesReady = ref(false)
+let preloadTimeout = null
+
+// 预加载页面全部背景图，就绪前以遮罩盖住页面，就绪后淡出露出
+function preloadImages() {
+  const images = [bg0, bubble1_1, bubble1_2, bubble1_3, bubble2_1, bubble2_2, bubble2_3, bubble3_1, bubble3_2, bubble3_3, loginLeft]
+  let loaded = 0
+  const total = images.length
+  images.forEach((url) => {
+    const img = new Image()
+    img.onload = () => {
+      loaded += 1
+      if (loaded >= total) imagesReady.value = true
+    }
+    img.onerror = () => {
+      loaded += 1
+      if (loaded >= total) imagesReady.value = true
+    }
+    img.src = url
+  })
+  // 兜底：个别图挂起时 8s 后强制放行，防止遮罩卡死
+  preloadTimeout = setTimeout(() => {
+    imagesReady.value = true
+  }, 8000)
+}
+
+onMounted(preloadImages)
+onUnmounted(() => clearTimeout(preloadTimeout))
 
 async function handleLogin() {
   loginError.value = ''
