@@ -20,6 +20,7 @@ defineProps<{ visible: boolean }>()
   justify-content: center;
   background: var(--overlay-bg);
   backdrop-filter: blur(4px);
+  pointer-events: none;
 }
 
 .spinner {

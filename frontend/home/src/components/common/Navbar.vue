@@ -3,12 +3,13 @@
     <div class="nav-brand">
       <span class="logo">Yulabu</span>
     </div>
-    <div class="nav-links">
+    <div class="nav-links" ref="navLinksRef">
       <router-link to="/" class="nav-link">首页</router-link>
       <router-link to="/columns" class="nav-link">专栏</router-link>
       <router-link to="/friends" class="nav-link">友链</router-link>
       <router-link to="/archive" class="nav-link">归档</router-link>
       <router-link to="/about" class="nav-link">关于</router-link>
+      <div class="nav-indicator" ref="indicatorRef"></div>
     </div>
     <div class="nav-search">
       <input
@@ -51,6 +52,8 @@ const isScrolled = ref(false)
 const BANNER_HEIGHT = 360
 const NAVBAR_HEIGHT = 56
 const THRESHOLD = BANNER_HEIGHT - NAVBAR_HEIGHT
+const navLinksRef = ref(null)
+const indicatorRef = ref(null)
 
 const route = useRoute()
 const router = useRouter()
@@ -90,6 +93,18 @@ function closeAll() {
   closeSearch()
 }
 
+function updateIndicator() {
+  if (!navLinksRef.value || !indicatorRef.value) return
+  const active = navLinksRef.value.querySelector('.router-link-active')
+  if (!active) {
+    indicatorRef.value.style.opacity = '0'
+    return
+  }
+  indicatorRef.value.style.opacity = '1'
+  indicatorRef.value.style.left = `${active.offsetLeft}px`
+  indicatorRef.value.style.width = `${active.offsetWidth}px`
+}
+
 function onSearch() {
   const q = searchInput.value.trim().slice(0, 32)
   if (q) {
@@ -110,9 +125,12 @@ watch(() => route.path, () => {
   closeSearch()
 })
 
+watch(() => route.path, () => nextTick(updateIndicator))
+
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
   handleScroll()
+  updateIndicator()
 })
 
 onUnmounted(() => {
@@ -177,6 +195,7 @@ const vClickOutside = {
 }
 
 .nav-links {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 28px;
@@ -201,15 +220,14 @@ const vClickOutside = {
   font-weight: 900;
 }
 
-.nav-link.router-link-active::after {
-  content: '';
+.nav-indicator {
   position: absolute;
   bottom: 0;
-  left: 0;
-  width: 100%;
   height: 2px;
   background: rgb(99, 149, 86);
   border-radius: 1px;
+  transition: left 0.3s ease, width 0.3s ease, opacity 0.2s ease;
+  pointer-events: none;
 }
 
 .nav-search {
