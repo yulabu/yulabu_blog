@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { useAnimatedCursor } from '@/composables/useAnimatedCursor'
 import Navbar from '@/components/common/Navbar.vue'
+import MusicPlayer from '@/components/common/MusicPlayer.vue'
 import MessageBox from '@/components/common/MessageBox.vue'
 import LoadingOverlay from '@/components/common/LoadingOverlay.vue'
 import TopProgressBar from '@/components/common/TopProgressBar.vue'
@@ -42,4 +43,5 @@ router.afterEach((to) => {
     <LoadingOverlay :visible="uiStore.pageLoading" />
     <router-view />
     <MessageBox />
+    <MusicPlayer />
 </template>

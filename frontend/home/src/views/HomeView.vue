@@ -13,7 +13,6 @@
             </main>
             <aside class="right-sidebar">
                 <AnnouncementBoard @loaded="onSectionLoaded" />
-                <MusicPlayer />
             </aside>
         </div>  
     </SitePageFrame>
@@ -27,7 +26,6 @@ import PersonalCard from '@/components/home/PersonalCard.vue';
 import TagBox from '@/components/home/TagBox.vue';
 import HomeHero from '@/components/home/HomeHero.vue';
 import PostList from '@/components/home/PostList.vue';
-import MusicPlayer from '@/components/home/MusicPlayer.vue';
 import AnnouncementBoard from '@/components/home/AnnouncementBoard.vue';
 import SitePageFrame from '@/components/common/SitePageFrame.vue';
 
