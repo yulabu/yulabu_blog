@@ -55,7 +55,7 @@
                           <span v-if="post.category" class="category-tag">{{ post.category.name }}</span>
                           <span class="views">
                             <Icon icon="material-symbols:visibility-outline" class="view-icon" />
-                            0
+                            {{ formatViewCount(post.viewCount) }}
                           </span>
                         </div>
                       </div>
@@ -76,6 +76,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { getArchive } from '@/api/post'
+import { formatViewCount } from '@/utils/format'
 import { useMessageBox } from '@/composables/useMessageBox'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'

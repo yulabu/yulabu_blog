@@ -14,3 +14,11 @@ export function getPost(id: number) {
 export function getArchive() {
   return http.get<{ archives: ArchiveYear[] }>('/posts/archive')
 }
+
+// 记录文章访问（fire & forget，静默失败不影响浏览）
+export function recordPostView(id: number) {
+  return http.post<{ message: string }>('/visits', {
+    post_id: id,
+    page_path: `/post/${id}`
+  })
+}

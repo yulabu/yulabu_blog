@@ -12,6 +12,7 @@ export interface Post {
   category: Category | null
   cover: string | null
   status: 'published' | 'trash'
+  viewCount: number
   createdAt: string
   updatedAt: string
 }
@@ -30,6 +31,7 @@ export interface ArchivePost {
   author: string
   category: Category | null
   status: 'published' | 'trash'
+  viewCount: number
   createdAt: string
   updatedAt: string
 }

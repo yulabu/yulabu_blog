@@ -10,6 +10,11 @@
             <span class="author">{{ post.author }}</span>
             <span class="meta-separator">·</span>
             <span class="date">{{ formatDate(post.createdAt) }}</span>
+            <span class="meta-separator">·</span>
+            <span class="views">
+              <Icon icon="material-symbols:visibility-outline" class="view-icon" />
+              {{ formatViewCount(post.viewCount) }} 次阅读
+            </span>
           </div>
         </GlassPanel>
         <nav v-if="prevPost || nextPost" class="chapter-nav">
@@ -76,10 +81,12 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Icon } from '@iconify/vue'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
-import { getPost } from '@/api/post'
+import { formatViewCount } from '@/utils/format'
+import { getPost, recordPostView } from '@/api/post'
 import { getPrevPost, getNextPost } from '@/api/column'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useUiStore } from '@/stores/ui'
@@ -95,6 +102,7 @@ const post = ref({
   content: '',
   category: null,
   author: '',
+  viewCount: 0,
   createdAt: ''
 })
 const catalog = ref([])
@@ -103,11 +111,14 @@ const prevPost = ref(null)
 const nextPost = ref(null)
 
 async function fetchPost() {
+  const id = Number(route.params.id)
   try {
-    post.value = await getPost(Number(route.params.id))
+    post.value = await getPost(id)
   } catch (e) {
     toast('获取文章详情失败', 'error')
   }
+  // 记录访问：fire & forget，静默失败不影响读者体验
+  recordPostView(id).catch(() => {})
 }
 
 async function fetchChapter() {
@@ -225,6 +236,17 @@ onUnmounted(() => {
 
 .meta-separator {
   opacity: 0.5;
+}
+
+.views {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-muted);
+}
+
+.view-icon {
+  font-size: 15px;
 }
 
 .content-card {
