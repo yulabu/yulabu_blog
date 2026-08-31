@@ -8,8 +8,6 @@ const AdminDashboard = () => import(/* webpackChunkName: "admin" */ '@/views/adm
 const AdminPostList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminPostList.vue');
 const AdminPostEdit = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminPostEdit.vue');
 const AdminTagList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminTagList.vue');
-const AdminNoticeList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminNoticeList.vue');
-const AdminNoticeEdit = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminNoticeEdit.vue');
 const AdminUserList = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminUserList.vue');
 const AdminSettings = () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminSettings.vue');
 const AdminFriendLinkList = () => import('@/views/admin/AdminFriendLinkList.vue');
@@ -31,9 +29,6 @@ const routes = [
       { path: 'posts/new', component: AdminPostEdit },
       { path: 'posts/:id/edit', component: AdminPostEdit },
       { path: 'tags', component: AdminTagList },
-      { path: 'notices', component: AdminNoticeList },
-      { path: 'notices/new', component: AdminNoticeEdit },
-      { path: 'notices/:id/edit', component: AdminNoticeEdit },
       { path: 'users', component: AdminUserList },
       { path: 'friendlinks', component: AdminFriendLinkList },
       { path: 'columns', component: AdminColumnList },

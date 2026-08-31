@@ -20,10 +20,6 @@
           <Icon icon="material-symbols:label-outline" class="menu-icon" />
           <span>标签管理</span>
         </router-link>
-        <router-link to="/admin/notices" class="menu-item" active-class="active">
-          <Icon icon="material-symbols:campaign-outline" class="menu-icon" />
-          <span>公告管理</span>
-        </router-link>
         <router-link to="/admin/friendlinks" class="menu-item" active-class="active">
           <Icon icon="material-symbols:link" class="menu-icon" />
           <span>友链管理</span>

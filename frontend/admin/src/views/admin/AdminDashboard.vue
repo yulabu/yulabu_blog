@@ -84,10 +84,6 @@
               <Icon icon="material-symbols:edit-square-outline" />
               <span>新建文章</span>
             </button>
-            <button class="action-btn" @click="router.push('/admin/notices/new')">
-              <Icon icon="material-symbols:campaign-outline" />
-              <span>发布公告</span>
-            </button>
             <button class="action-btn" @click="router.push('/admin/users')">
               <Icon icon="material-symbols:shield-person-outline" />
               <span>用户权限</span>
