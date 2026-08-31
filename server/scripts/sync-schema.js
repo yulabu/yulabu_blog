@@ -44,6 +44,14 @@ async function syncSchema() {
     }
   }
 
+  // post.view_count
+  if (!(await hasColumn('post', 'view_count'))) {
+    await sequelize.query(
+      `ALTER TABLE \`post\` ADD COLUMN \`view_count\` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '浏览量(PV)'`
+    );
+    console.log('[sync-schema] post.view_count 已添加');
+  }
+
   // friend_link.preview_image
   if (!(await hasColumn('friend_link', 'preview_image'))) {
     await sequelize.query(
@@ -80,6 +88,32 @@ async function syncSchema() {
       }
     } catch (e) {
       if (!e.message.includes("doesn't exist") && !e.message.includes('Unknown table')) throw e;
+    }
+  }
+
+  // visit_log 表
+  {
+    const [tables] = await sequelize.query(
+      `SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'visit_log' LIMIT 1`
+    );
+    if (tables.length === 0) {
+      await sequelize.query(`
+        CREATE TABLE \`visit_log\` (
+          \`visit_id\` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          \`post_id\` BIGINT UNSIGNED NULL,
+          \`ip_address\` VARCHAR(45) NOT NULL COMMENT '访客IP',
+          \`user_agent\` VARCHAR(512) NULL COMMENT '浏览器UA',
+          \`referrer\` VARCHAR(512) NULL COMMENT '来源页',
+          \`page_path\` VARCHAR(256) NOT NULL COMMENT '访问路径',
+          \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (\`post_id\`) REFERENCES \`post\`(\`post_id\`) ON DELETE SET NULL,
+          INDEX \`idx_post_id\` (\`post_id\`),
+          INDEX \`idx_created_at\` (\`created_at\`),
+          INDEX \`idx_ip\` (\`ip_address\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      console.log('[sync-schema] visit_log 表已创建');
     }
   }
 

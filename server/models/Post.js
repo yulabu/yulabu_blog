@@ -41,6 +41,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM('published', 'trash', 'draft'),
       defaultValue: 'published',
       comment: '文章状态'
+    },
+    view_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '浏览量(PV)'
     }
   }, {
     tableName: 'post',      // 表名

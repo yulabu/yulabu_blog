@@ -33,6 +33,9 @@ app.use('/api/admin', adminLimiter, adminRoutes);
 // 图片路由
 const imageRoutes = require('@routes/imageRoutes');
 app.use('/api/images', adminLimiter, imageRoutes);
+// 访问记录路由
+const visitRoutes = require('@routes/visitRoutes');
+app.use('/api/visits', publicLimiter, visitRoutes);
 const { UPLOAD_DIR } = require('@config/image');
 // 静态图片服务
 app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
@@ -42,7 +45,7 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
 // 图片 GC：孤儿回收 + 废弃草稿清理 + 上传临时文件兜底
 const { runGC } = require('@utils/gc');
 // 导入模型
-const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image } = require('@models');
+const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog } = require('@models');
 
 // 同步数据库（创建表）
 // 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。
@@ -74,6 +77,14 @@ sequelize.sync()
     // 依赖数据库表，需在 sync 之后执行；启动先跑一次，再每 24 小时执行
     runGCSafe();
     setInterval(runGCSafe, GC_INTERVAL_MS);
+    // 访问日志 GC：独立定时器，每 24 小时清理 90 天前的日志
+    const { cleanupOldVisitLogs } = require('@utils/visitGc');
+    const runVisitGcSafe = async () => {
+      try { await cleanupOldVisitLogs(); }
+      catch (err) { console.error('[visit-gc] 失败:', err); }
+    };
+    runVisitGcSafe();
+    setInterval(runVisitGcSafe, GC_INTERVAL_MS);
   })
   .catch(err => {
     console.error('同步失败:', err);

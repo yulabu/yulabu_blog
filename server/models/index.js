@@ -8,6 +8,7 @@ const FriendLink = require('./FriendLink')(sequelize, DataTypes);
 const Column = require('./Column')(sequelize, DataTypes);
 const ColumnPost = require('./ColumnPost')(sequelize, DataTypes);
 const Image = require('./Image')(sequelize, DataTypes);
+const VisitLog = require('./VisitLog')(sequelize, DataTypes);
 
 // 关联：一个 Tag 下有多个 Post（外键 post_category_id → tag_id）
 Tag.hasMany(Post, { foreignKey: 'post_category_id', as: 'posts' });
@@ -19,4 +20,8 @@ ColumnPost.belongsTo(Column, { foreignKey: 'column_id', as: 'column' });
 Post.hasOne(ColumnPost, { foreignKey: 'post_id', as: 'columnPost' });
 ColumnPost.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
 
-module.exports = { sequelize, Post, Tag, Admin, FriendLink, Column, ColumnPost, Image };
+// 关联：访问日志 -> 文章
+VisitLog.belongsTo(Post, { foreignKey: 'post_id', as: 'Post' });
+Post.hasMany(VisitLog, { foreignKey: 'post_id', as: 'visitLogs' });
+
+module.exports = { sequelize, Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog };

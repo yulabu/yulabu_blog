@@ -6,6 +6,7 @@ const adminController = require('@controllers/adminController');
 const adminAccountController = require('@controllers/adminAccountController');
 const postController = require('@controllers/postController');
 const friendLinkController = require('@controllers/friendLinkController');
+const visitController = require('@controllers/visitController');
 const columnController = require('@controllers/columnController');
 const imageController = require('@controllers/imageController');
 
@@ -52,5 +53,10 @@ router.get('/images', imageController.getImages);
 router.get('/images/:id', imageController.getImageById);
 router.delete('/images/batch', imageController.deleteImagesBatch);
 router.delete('/images/:id', imageController.deleteImage);
+
+// 访问日志管理
+router.get('/visits', visitController.getVisits);
+router.get('/visits/stats', visitController.getVisitStats);
+router.delete('/visits', visitController.clearAllVisits);
 
 module.exports = router;
