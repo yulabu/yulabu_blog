@@ -12,7 +12,6 @@
                 <PostList :category-id="activeCategoryId" :search-query="searchQuery" @clear="onClear" @loaded="onSectionLoaded" />
             </main>
             <aside class="right-sidebar">
-                <AnnouncementBoard @loaded="onSectionLoaded" />
             </aside>
         </div>  
     </SitePageFrame>
@@ -26,7 +25,6 @@ import PersonalCard from '@/components/home/PersonalCard.vue';
 import TagBox from '@/components/home/TagBox.vue';
 import HomeHero from '@/components/home/HomeHero.vue';
 import PostList from '@/components/home/PostList.vue';
-import AnnouncementBoard from '@/components/home/AnnouncementBoard.vue';
 import SitePageFrame from '@/components/common/SitePageFrame.vue';
 
 const route = useRoute()
@@ -36,8 +34,8 @@ const uiStore = useUiStore()
 const activeCategoryId = ref(null)
 const searchQuery = computed(() => (route.query.q ? String(route.query.q) : ''))
 
-// 首页加载：等待文章列表 / 标签 / 公告全部就绪后熄灭加载遮罩与进度条
-const PENDING_SECTIONS = 3
+// 首页加载：等待文章列表 / 标签全部就绪后熄灭加载遮罩与进度条
+const PENDING_SECTIONS = 2
 const pendingSections = ref(PENDING_SECTIONS)
 let loadingTimeout = null
 

@@ -46,15 +46,6 @@ export interface ArchiveYear {
   months: ArchiveMonth[]
 }
 
-export interface Notice {
-  notice_id: number
-  notice_title: string
-  notice_content: string
-  notice_status: 'show' | 'hide'
-  notice_is_pinned: boolean
-  notice_created_at: string
-}
-
 export interface Tag {
   id: number
   name: string
