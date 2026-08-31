@@ -1,7 +1,9 @@
 <template>
   <div class="music-player" :class="{ expanded, collapsed: !expanded }">
     <!-- 展开态：完整面板 -->
-    <div v-show="expanded" class="panel">
+    <div class="panel-wrapper" v-show="expanded">
+      <img class="nahida-deco" src="@/assets/img/nahida_music.png" alt="" />
+      <div class="panel">
       <div class="panel-header">
         <div>
           <span class="panel-kicker">NOW PLAYING</span>
@@ -60,6 +62,7 @@
             @input="onVolumeChange"
           >
         </div>
+      </div>
       </div>
     </div>
 
@@ -122,6 +125,24 @@ function onVolumeChange(e) {
 
 .music-player.expanded {
   width: 300px;
+}
+
+/* ===== 纳西妲装饰 ===== */
+.panel-wrapper {
+  position: relative;
+  overflow: visible;
+}
+
+.nahida-deco {
+  position: absolute;
+  bottom: 100%;
+  left: 25%;
+  transform: translateX(-50%);
+  width: 55%;
+  max-width: 150px;
+  margin-bottom: -102px;
+  z-index: 10;
+  pointer-events: none;
 }
 
 /* ===== 展开态面板 ===== */
