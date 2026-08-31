@@ -40,12 +40,12 @@
           <i></i>
         </div>
         <p class="more-text">
-          一名热爱技术与生活的开发者，喜欢折腾新鲜事物，偶尔写点东西记录成长。
+          一名喜欢纳西妲的开发者，胡乱写些小文章，分享生活与技术，持续更新中～
         </p>
         <div class="more-tags">
-          <span>技术探索</span>
-          <span>生活记录</span>
-          <span>保持好奇</span>
+          <span>随机昏迷一下</span>
+          <span>胡乱吃到撑死</span>
+          <span>保存一些图片</span>
         </div>
       </div>
     </div>

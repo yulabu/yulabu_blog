@@ -16,14 +16,19 @@ const CURSOR_MAP: Record<string, string> = {
 
 const LOADING_SELECTOR = '.is-loading, .is-loading *'
 const LOADING_CURSOR = '/cursor/busy.ani'
+const LOADING_OFF_DELAY = 300
+
+const NO_SELECT_CSS = `
+a, button, [role="link"], [role="button"], [draggable="true"], canvas {
+  -webkit-user-select: none;
+  user-select: none;
+}`
 
 const FRAME_URL_RE = /url\((data:image\/x-win-bitmap;base64,[^)]+)\)/g
 
-interface CursorEntry {
-  selector: string
-  frames: string[]
-  styleEl: HTMLStyleElement
-  frameIndex: number
+interface BuiltCursor {
+  css: string
+  firstFrame: string
 }
 
 async function fetchAni(url: string): Promise<Uint8Array> {
@@ -36,10 +41,43 @@ function extractFrameUrls(css: string): string[] {
   const frames: string[] = []
   let match: RegExpExecArray | null
   while ((match = FRAME_URL_RE.exec(css)) !== null) {
-    const url = match[1]
-    if (url) frames.push(url)
+    if (match[1]) frames.push(match[1])
   }
   return frames
+}
+
+function extractKeyframesBlock(css: string): string | null {
+  const start = css.indexOf('@keyframes')
+  if (start === -1) return null
+  const braceStart = css.indexOf('{', start)
+  if (braceStart === -1) return null
+  let depth = 1
+  for (let i = braceStart + 1; i < css.length; i++) {
+    if (css[i] === '{') depth++
+    else if (css[i] === '}') {
+      depth--
+      if (depth === 0) return css.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
+function extractAnimName(css: string): string | null {
+  const m = /@keyframes\s+([^{]+)\{/.exec(css)
+  return m?.[1]?.trim() ?? null
+}
+
+function extractDurationMs(css: string): number | null {
+  const m = /([0-9]+(?:\.[0-9]+)?)ms/.exec(css)
+  const raw = m?.[1]
+  return raw ? Math.round(parseFloat(raw) * 100) / 100 : null
+}
+
+function splitSelectors(selector: string): string[] {
+  return selector
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 function injectStyle(css: string): HTMLStyleElement {
@@ -49,96 +87,127 @@ function injectStyle(css: string): HTMLStyleElement {
   return el
 }
 
-function buildStaticCSS(selector: string, dataUri: string): string {
-  return `${selector} { cursor: url(${dataUri}), auto !important; }`
+function buildCursorCSS(selector: string, data: Uint8Array): BuiltCursor {
+  const generated = convertAniBinaryToCSS(selector, data)
+  const frames = extractFrameUrls(generated)
+  const firstFrame = frames[0] ?? ''
+  if (!firstFrame) return { css: '', firstFrame: '' }
+
+  const atoms = splitSelectors(selector)
+  const staticRules = atoms.map((s) => `\n${s} { cursor: url(${firstFrame}), auto; }`).join('')
+
+  if (frames.length <= 1) {
+    return { css: staticRules, firstFrame }
+  }
+
+  const keyframes = extractKeyframesBlock(generated)
+  const animName = extractAnimName(generated)
+  const duration = extractDurationMs(generated)
+  if (!keyframes || !animName || duration === null) {
+    return { css: staticRules, firstFrame }
+  }
+
+  const animRules = atoms
+    .map((s) => `\n${s}:hover { animation: ${animName} ${duration}ms step-end infinite; }`)
+    .join('')
+
+  return { css: `${keyframes}${animRules}${staticRules}`, firstFrame }
 }
 
 export function useAnimatedCursor() {
-  const entries: CursorEntry[] = []
-  let loadingEntry: CursorEntry | null = null
-  let animTimer: ReturnType<typeof setInterval> | null = null
+  let initialized = false
+  let styleEl: HTMLStyleElement | null = null
+  let loadingStyleEl: HTMLStyleElement | null = null
+  let pendingLoadingEl: HTMLStyleElement | null = null
+  let loadingOffTimer: ReturnType<typeof setTimeout> | null = null
+  let loadingToken = 0
+  let loadingCss: string | null = null
 
   async function initCursors() {
+    if (initialized) return
+    initialized = true
     const tasks = Object.entries(CURSOR_MAP).map(async ([selector, aniUrl]) => {
       try {
         const data = await fetchAni(aniUrl)
-        const css = convertAniBinaryToCSS(selector, data)
-        const frames = extractFrameUrls(css)
-        return { selector, frames }
+        return buildCursorCSS(selector, data).css
       } catch (e) {
         console.warn(`[cursor] 加载失败: ${aniUrl}`, e)
-        return null
+        return ''
       }
     })
 
-    const results = await Promise.all(tasks)
-
-    for (const result of results) {
-      if (!result || result.frames.length === 0) continue
-
-      const { selector, frames } = result
-      const firstFrame = frames[0]
-      if (!firstFrame) continue
-      const styleEl = injectStyle(buildStaticCSS(selector, firstFrame))
-
-      entries.push({ selector, frames, styleEl, frameIndex: 0 })
-    }
-
-    if (entries.length > 0) {
-      startAnimation()
-    }
+    const cssList = await Promise.all(tasks)
+    const css = [NO_SELECT_CSS, ...cssList.filter(Boolean)].join('\n')
+    if (css) styleEl = injectStyle(css)
   }
 
-  function startAnimation() {
-    if (animTimer) return
-    animTimer = setInterval(() => {
-      for (const entry of entries) {
-        if (entry.frames.length <= 1) continue
-        entry.frameIndex = (entry.frameIndex + 1) % entry.frames.length
-        const frame = entry.frames[entry.frameIndex]
-        if (frame) {
-          entry.styleEl.textContent = buildStaticCSS(entry.selector, frame)
-        }
-      }
-    }, 100)
+  async function loadBusyCss(): Promise<string | null> {
+    if (loadingCss) return loadingCss
+    try {
+      const data = await fetchAni(LOADING_CURSOR)
+      loadingCss = buildCursorCSS(LOADING_SELECTOR, data).css || null
+    } catch (e) {
+      console.warn(`[cursor] 加载失败: ${LOADING_CURSOR}`, e)
+      loadingCss = null
+    }
+    return loadingCss
   }
 
   function setLoadingCursor(active: boolean) {
     if (active) {
-      if (loadingEntry) return
-      fetchAni(LOADING_CURSOR)
-        .then((data) => {
-          const css = convertAniBinaryToCSS(LOADING_SELECTOR, data)
-          const frames = extractFrameUrls(css)
-          const firstFrame = frames[0]
-          if (!firstFrame) return
-          const styleEl = injectStyle(buildStaticCSS(LOADING_SELECTOR, firstFrame))
-          loadingEntry = { selector: LOADING_SELECTOR, frames, styleEl, frameIndex: 0 }
-          document.documentElement.classList.add('is-loading')
-        })
-        .catch(() => {})
-    } else {
-      document.documentElement.classList.remove('is-loading')
-      if (loadingEntry) {
-        loadingEntry.styleEl.remove()
-        loadingEntry = null
+      if (loadingOffTimer) {
+        clearTimeout(loadingOffTimer)
+        loadingOffTimer = null
       }
+      if (pendingLoadingEl) {
+        loadingStyleEl = pendingLoadingEl
+        pendingLoadingEl = null
+      }
+      document.documentElement.classList.add('is-loading')
+      if (loadingStyleEl) return
+      const token = ++loadingToken
+      loadBusyCss().then((css) => {
+        if (!css || token !== loadingToken || loadingStyleEl) return
+        loadingStyleEl = injectStyle(css)
+      })
+    } else {
+      loadingToken++
+      document.documentElement.classList.remove('is-loading')
+      if (loadingOffTimer) {
+        clearTimeout(loadingOffTimer)
+        loadingOffTimer = null
+      }
+      const el = loadingStyleEl
+      if (!el) return
+      loadingStyleEl = null
+      pendingLoadingEl = el
+      loadingOffTimer = setTimeout(() => {
+        el.remove()
+        if (pendingLoadingEl === el) pendingLoadingEl = null
+        loadingOffTimer = null
+      }, LOADING_OFF_DELAY)
     }
   }
 
   function destroy() {
-    if (animTimer) {
-      clearInterval(animTimer)
-      animTimer = null
+    initialized = false
+    if (loadingOffTimer) {
+      clearTimeout(loadingOffTimer)
+      loadingOffTimer = null
     }
-    for (const entry of entries) {
-      entry.styleEl.remove()
+    if (styleEl) {
+      styleEl.remove()
+      styleEl = null
     }
-    entries.length = 0
-    if (loadingEntry) {
-      loadingEntry.styleEl.remove()
-      loadingEntry = null
+    if (loadingStyleEl) {
+      loadingStyleEl.remove()
+      loadingStyleEl = null
     }
+    if (pendingLoadingEl) {
+      pendingLoadingEl.remove()
+      pendingLoadingEl = null
+    }
+    loadingToken++
     document.documentElement.classList.remove('is-loading')
   }
 
