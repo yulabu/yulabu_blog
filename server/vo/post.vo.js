@@ -9,6 +9,7 @@ function postDetail(post) {
     column: post.columnPost && post.columnPost.column ? toColumn(post.columnPost.column) : null,
     cover: post.post_cover || null,
     status: post.post_status,
+    viewCount: post.view_count || 0,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
   };

@@ -1,3 +1,4 @@
+const { fn, col } = require('sequelize');
 const AppError = require('@middleware/AppError');
 const { recordVisitDTO, listVisitsDTO } = require('@dto/visit.dto');
 const { VisitLog, Post } = require('@models');
@@ -48,7 +49,7 @@ exports.getVisits = async (req, res) => {
 
   const { rows: visits, count: total } = await VisitLog.findAndCountAll({
     where,
-    include: { model: Post, attributes: ['post_id', 'post_title'] },
+    include: { model: Post, as: 'Post', attributes: ['post_id', 'post_title'] },
     order: [['created_at', 'DESC']],
     limit,
     offset
@@ -74,7 +75,7 @@ exports.getVisitStats = async (req, res) => {
 
   // 今日 UV（去重 IP）
   const todayUVResult = await VisitLog.findAll({
-    attributes: [[require('sequelize').fn('COUNT', require('sequelize').fn('DISTINCT', require('sequelize').col('ip_address'))), 'uv']],
+    attributes: [[fn('COUNT', fn('DISTINCT', col('ip_address'))), 'uv']],
     where: { created_at: { [Op.gte]: todayStart } },
     plain: true
   });
@@ -85,7 +86,7 @@ exports.getVisitStats = async (req, res) => {
 
   // 总 UV
   const totalUVResult = await VisitLog.findAll({
-    attributes: [[require('sequelize').fn('COUNT', require('sequelize').fn('DISTINCT', require('sequelize').col('ip_address'))), 'uv']],
+    attributes: [[fn('COUNT', fn('DISTINCT', col('ip_address'))), 'uv']],
     plain: true
   });
   const totalUV = totalUVResult ? Number(totalUVResult.get('uv')) : 0;

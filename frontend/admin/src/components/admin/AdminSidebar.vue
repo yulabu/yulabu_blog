@@ -30,6 +30,14 @@
         </router-link>
       </div>
 
+      <div class="menu-group">
+        <span class="group-title">数据分析</span>
+        <router-link to="/admin/visits" class="menu-item" active-class="active">
+          <Icon icon="material-symbols:history-outline" class="menu-icon" />
+          <span>访问日志</span>
+        </router-link>
+      </div>
+
       <router-link to="/admin/users" class="menu-item" active-class="active">
         <Icon icon="material-symbols:shield-person-outline" class="menu-icon" />
         <span>用户与权限</span>

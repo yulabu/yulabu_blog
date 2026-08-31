@@ -149,3 +149,28 @@ export interface ColumnPostsData {
   posts: ColumnPostItem[]
   candidates: ColumnCandidate[]
 }
+
+export interface VisitLog {
+  id: number
+  postId: number | null
+  postTitle: string | null
+  ip: string
+  userAgent: string | null
+  referrer: string | null
+  path: string
+  createdAt: string
+}
+
+export interface PaginatedVisitLogs {
+  visits: VisitLog[]
+  total: number
+  page: number
+  totalPages: number
+}
+
+export interface VisitStats {
+  todayPV: number
+  todayUV: number
+  totalPV: number
+  totalUV: number
+}

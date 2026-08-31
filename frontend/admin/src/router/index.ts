@@ -14,6 +14,7 @@ const AdminFriendLinkList = () => import('@/views/admin/AdminFriendLinkList.vue'
 const AdminColumnList = () => import('@/views/admin/AdminColumnList.vue');
 const AdminColumnEdit = () => import('@/views/admin/AdminColumnEdit.vue');
 const AdminColumnPosts = () => import('@/views/admin/AdminColumnPosts.vue');
+const AdminVisitLogList = () => import('@/views/admin/AdminVisitLogList.vue');
 
 const routes = [
   { path: '/', redirect: '/admin' },
@@ -35,7 +36,8 @@ const routes = [
       { path: 'columns/new', component: AdminColumnEdit },
       { path: 'columns/:id/edit', component: AdminColumnEdit },
       { path: 'columns/:id/posts', component: AdminColumnPosts },
-      { path: 'settings', component: AdminSettings }
+      { path: 'settings', component: AdminSettings },
+      { path: 'visits', component: AdminVisitLogList }
     ]
   },
   { path: '/:pathMatch(.*)*', redirect: '/admin' }
