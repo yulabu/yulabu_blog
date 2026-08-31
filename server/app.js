@@ -21,9 +21,6 @@ app.use('/api/auth', authRoutes);
 // tag路由
 const tagRoutes = require('@routes/tagRoutes');
 app.use('/api/tags', publicLimiter, tagRoutes);
-// notice路由
-const noticeRoutes = require('@routes/noticeRoutes');
-app.use('/api/notices', publicLimiter, noticeRoutes);
 // friendlink路由
 const friendLinkRoutes = require('@routes/friendLinkRoutes');
 app.use('/api/friendlinks', publicLimiter, friendLinkRoutes);
@@ -45,7 +42,7 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
 // 图片 GC：孤儿回收 + 废弃草稿清理 + 上传临时文件兜底
 const { runGC } = require('@utils/gc');
 // 导入模型
-const { Post, Tag, Admin, Notice, FriendLink, Column, ColumnPost, Image } = require('@models');
+const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image } = require('@models');
 
 // 同步数据库（创建表）
 // 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。

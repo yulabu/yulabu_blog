@@ -4,7 +4,6 @@ const DataTypes = require('sequelize').DataTypes;
 const Tag = require('./Tag')(sequelize, DataTypes);
 const Post = require('./Post')(sequelize, DataTypes);
 const Admin = require('./Admin')(sequelize, DataTypes);
-const Notice = require('./Notice')(sequelize, DataTypes);
 const FriendLink = require('./FriendLink')(sequelize, DataTypes);
 const Column = require('./Column')(sequelize, DataTypes);
 const ColumnPost = require('./ColumnPost')(sequelize, DataTypes);
@@ -20,4 +19,4 @@ ColumnPost.belongsTo(Column, { foreignKey: 'column_id', as: 'column' });
 Post.hasOne(ColumnPost, { foreignKey: 'post_id', as: 'columnPost' });
 ColumnPost.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
 
-module.exports = { sequelize, Post, Tag, Admin, Notice, FriendLink, Column, ColumnPost, Image };
+module.exports = { sequelize, Post, Tag, Admin, FriendLink, Column, ColumnPost, Image };

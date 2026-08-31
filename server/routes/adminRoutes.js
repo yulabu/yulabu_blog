@@ -5,7 +5,6 @@ const upload = require('@middleware/imageUpload');
 const adminController = require('@controllers/adminController');
 const adminAccountController = require('@controllers/adminAccountController');
 const postController = require('@controllers/postController');
-const noticeController = require('@controllers/noticeController');
 const friendLinkController = require('@controllers/friendLinkController');
 const columnController = require('@controllers/columnController');
 const imageController = require('@controllers/imageController');
@@ -28,14 +27,6 @@ router.get('/posts', postController.getAdminPosts);
 router.get('/posts/:id', postController.getAdminPostById);
 router.put('/posts/:id/restore', postController.restorePost);
 router.delete('/posts/:id/force', postController.forceDeletePost);
-
-// 公告管理
-router.get('/notices', noticeController.getAdminNotices);
-router.get('/notices/:id', noticeController.getNoticeById);
-router.post('/notices', noticeController.createNotice);
-router.put('/notices/:id', noticeController.updateNotice);
-router.delete('/notices/:id', noticeController.deleteNotice);
-router.put('/notices/:id/pin', noticeController.togglePin);
 
 // 友链管理
 router.get('/friendlinks', friendLinkController.getAdminLinks);
