@@ -44,10 +44,10 @@
               <div class="card-actions">
                 <AdminButton variant="text" @click="goEdit(post.id)">编辑</AdminButton>
                 <template v-if="post.status === 'trash'">
-                  <AdminButton variant="text" @click="onRestore(post.id)">恢复</AdminButton>
-                  <AdminButton variant="danger" @click="onForceDelete(post.id)">彻底删除</AdminButton>
+                  <AdminButton variant="text" :loading="restoreLoading" @click="onRestore(post.id)">恢复</AdminButton>
+                  <AdminButton variant="danger" :loading="forceDeleteLoading" @click="onForceDelete(post.id)">彻底删除</AdminButton>
                 </template>
-                <AdminButton v-else variant="danger" @click="onDelete(post.id)">删除</AdminButton>
+                <AdminButton v-else variant="danger" :loading="deleteLoading" @click="onDelete(post.id)">删除</AdminButton>
               </div>
             </div>
           </div>
@@ -138,13 +138,13 @@ function goEdit(id) {
   router.push({ path: `/admin/posts/${id}/edit`, query: { fromStatus: activeTab.value || undefined } })
 }
 
-const { confirmDelete: onDelete } = useConfirmDelete(deletePost, {
+const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(deletePost, {
   message: '确定要删除这篇文章吗？删除后可在回收站恢复。',
   successMessage: '删除成功',
   onSuccess: refresh
 })
 
-const { run: doRestore } = useAsyncAction(restorePost, {
+const { run: doRestore, loading: restoreLoading } = useAsyncAction(restorePost, {
   successMessage: '已恢复至草稿',
   onSuccess: refresh
 })
@@ -155,7 +155,7 @@ async function onRestore(id) {
   doRestore(id)
 }
 
-const { confirmDelete: onForceDelete } = useConfirmDelete(forceDeletePost, {
+const { confirmDelete: onForceDelete, loading: forceDeleteLoading } = useConfirmDelete(forceDeletePost, {
   title: '彻底删除确认',
   message: '彻底删除后无法恢复，确定要删除这篇文章吗？',
   successMessage: '已彻底删除',

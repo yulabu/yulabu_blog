@@ -20,7 +20,7 @@
         <template #cell-actions="{ row }">
           <AdminDataTableCellActions>
             <AdminButton variant="text" @click="openModal(row)">编辑</AdminButton>
-            <AdminButton variant="danger" @click="onDelete(row.id)">删除</AdminButton>
+            <AdminButton variant="danger" :loading="deleteLoading" @click="onDelete(row.id)">删除</AdminButton>
           </AdminDataTableCellActions>
         </template>
       </AdminDataTable>
@@ -133,8 +133,8 @@ async function onSave() {
   }
 }
 
-const { confirmDelete: onDelete } = useConfirmDelete(deleteTag, {
-  message: '确定要删除这个标签吗？',
+const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(deleteTag, {
+  message: tag => `确定要删除标签「${tag.name}」吗？标签下的文章不会被删除。`,
   successMessage: '删除成功',
   onSuccess: refresh
 })

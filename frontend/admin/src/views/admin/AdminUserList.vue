@@ -28,7 +28,7 @@
         <template #cell-actions="{ row }">
           <AdminDataTableCellActions>
             <AdminButton variant="text" @click="openEdit(row)">编辑</AdminButton>
-            <AdminButton variant="danger" @click="onDelete(row)">删除</AdminButton>
+            <AdminButton variant="danger" :loading="deleteLoading" @click="onDelete(row)">删除</AdminButton>
           </AdminDataTableCellActions>
         </template>
       </AdminDataTable>
@@ -191,7 +191,7 @@ async function submitForm() {
   }
 }
 
-const { confirmDelete: onDelete } = useConfirmDelete(
+const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(
   async (admin) => {
     if (admin.id === currentAdmin.value.id) {
       throw new Error('不能删除自己')

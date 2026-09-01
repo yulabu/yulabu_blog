@@ -39,7 +39,7 @@
             <div class="card-actions">
               <AdminButton variant="text" @click="goPosts(col)">管理文章</AdminButton>
               <AdminButton variant="text" @click="goEdit(col.id)">编辑</AdminButton>
-              <AdminButton variant="danger" @click="onDelete(col.id)">删除</AdminButton>
+              <AdminButton variant="danger" :loading="deleteLoading" @click="onDelete(col.id)">删除</AdminButton>
             </div>
           </div>
         </div>
@@ -98,8 +98,8 @@ function goPosts(row) {
   router.push(`/admin/columns/${row.id}/posts`)
 }
 
-const { confirmDelete: onDelete } = useConfirmDelete(deleteColumn, {
-  message: '确定要删除这个专栏吗？专栏内文章不会被删除。',
+const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(deleteColumn, {
+  message: '确定要删除这个专栏吗？专栏下的文章不会被删除。',
   successMessage: '删除成功',
   onSuccess: refresh
 })

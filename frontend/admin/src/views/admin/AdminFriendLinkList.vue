@@ -38,7 +38,7 @@
             <AdminButton variant="text" :disabled="previewLoading" @click="onFetchPreview(row.id)">
               {{ previewLoading ? '抓取中...' : '抓图' }}
             </AdminButton>
-            <AdminButton variant="danger" @click="onDelete(row.id)">删除</AdminButton>
+            <AdminButton variant="danger" :loading="deleteLoading" @click="onDelete(row.id)">删除</AdminButton>
           </AdminDataTableCellActions>
         </template>
       </AdminDataTable>
@@ -226,7 +226,7 @@ async function onSave() {
   }
 }
 
-const { confirmDelete: onDelete } = useConfirmDelete(deleteFriendLink, {
+const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(deleteFriendLink, {
   message: '确定要删除这个友链吗？',
   successMessage: '删除成功',
   onSuccess: refresh
