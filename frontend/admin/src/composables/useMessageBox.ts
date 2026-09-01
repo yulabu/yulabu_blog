@@ -21,7 +21,18 @@ const state = reactive<MessageBoxState>({
   resolve: null
 })
 
+// 用于存储 toast 定时器 ID
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearToastTimer() {
+  if (toastTimer !== null) {
+    clearTimeout(toastTimer)
+    toastTimer = null
+  }
+}
+
 function show(type: MessageBoxType, title: string, message: string) {
+  clearToastTimer() // 显示新对话框时清除旧的 toast 定时器
   state.type = type
   state.title = title
   state.message = message
@@ -43,11 +54,13 @@ export function useMessageBox() {
     toast(message: string, toastType: ToastType = 'success') {
       state.toastType = toastType
       show('toast', '', message)
-      setTimeout(() => {
+      toastTimer = setTimeout(() => {
         state.visible = false
+        toastTimer = null
       }, 2000)
     },
     close(result: boolean) {
+      clearToastTimer()
       state.visible = false
       if (state.resolve) {
         state.resolve(result)
