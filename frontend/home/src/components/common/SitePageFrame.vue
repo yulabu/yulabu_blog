@@ -29,6 +29,7 @@ defineProps({
   width: 100%;
   min-height: 100vh;
   background-color: var(--bg-page);
+  overflow: hidden;
 }
 
 .site-page-frame__banner {

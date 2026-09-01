@@ -3,7 +3,7 @@
     <section class="about-intro">
       <GlassPanel as="div" class="intro-card">
         <p class="intro-text">
-          大家好，我是 Yulabu。这里是我记录技术学习、生活随笔和个人想法的小天地。下面这条小径，带你看看我在世界里行走的样子。
+          大家好，我是 Yulabu。这里是我记录技术学习、生活随笔和个人想法的小天地。
         </p>
       </GlassPanel>
     </section>
@@ -58,21 +58,21 @@ const nodes = [
   {
     title: '你好，我是 Yulabu',
     icon: 'mdi:account-heart',
-    summary: '一名热爱技术与生活的开发者，喜欢折腾新鲜事物，偶尔写点东西记录成长。',
+    summary: '一名喜欢纳西妲的开发者，喜欢折腾新鲜事物，偶尔写点东西记录成长。',
     image: avatarImg,
     detail: '我偏爱用代码解决生活中的小麻烦，也喜欢把遇到的坑和学到的东西整理成笔记。如果你也对编程、开源和有趣的小工具有兴趣，我们应该会聊得来。'
   },
   {
     title: '技能树',
     icon: 'mdi:school',
-    summary: '在 Vue 3、Node.js、TypeScript 和 MySQL 的世界里挖呀挖。',
+    summary: '没什么技能',
     image: skillsImg,
-    detail: '前端重心在 Vue 3 生态，后端用 Node.js + Express 维持日常需求；数据库用的是 MariaDB/MySQL。习惯 TypeScript，偶尔折腾点原生脚本和性能优化。'
+    detail: '……'
   },
   {
     title: '关于本站',
     icon: 'mdi:notebook',
-    summary: "Yulabu's Blog 是一个用于记录学习笔记、技术探索和日常碎碎念的个人空间。",
+    summary: "Yulabu's Blog 是一个用于记录学习笔记、技术探索和日常的个人空间。",
     image: blogImg,
     detail: '我会在这里持续更新：前端/后端实践的踩坑记录、一些生活见闻、读书思考，以及自己写的小工具。站的内容慢慢丰富，就像一座自建的花园。'
   },
