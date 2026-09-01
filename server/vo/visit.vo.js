@@ -8,7 +8,7 @@ function visitLogVO(visit) {
     userAgent: visit.user_agent || null,
     referrer: visit.referrer || null,
     path: visit.page_path,
-    createdAt: visit.created_at
+    createdAt: visit.createdAt
   };
 }
 

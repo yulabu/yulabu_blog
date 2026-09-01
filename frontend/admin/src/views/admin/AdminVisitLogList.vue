@@ -81,22 +81,31 @@
 
       <AdminDataTable :columns="columns" :data="visits">
         <template #cell-created_at="{ row }">
-          <AdminDataTableCellText>{{ formatDateTime(row.createdAt) }}</AdminDataTableCellText>
+          <AdminDataTableCellText :title="formatDateTimeFull(row.createdAt)">
+            {{ formatShortDateTime(row.createdAt) }}
+          </AdminDataTableCellText>
         </template>
 
         <template #cell-postTitle="{ row }">
-          <AdminDataTableCellText>
+          <AdminDataTableCellText :title="row.postTitle || '未关联文章'">
             <span v-if="row.postTitle" class="post-title-link">{{ row.postTitle }}</span>
             <span v-else class="muted-text">—</span>
           </AdminDataTableCellText>
         </template>
 
+        <template #cell-path="{ row }">
+          <AdminDataTableCellText :title="row.path || '无路径'" class="path-cell">
+            <code v-if="row.path" class="path-code">{{ row.path }}</code>
+            <span v-else class="muted-text">—</span>
+          </AdminDataTableCellText>
+        </template>
+
         <template #cell-ip="{ row }">
-          <AdminDataTableCellText class="ip-text">{{ row.ip }}</AdminDataTableCellText>
+          <AdminDataTableCellText :title="row.ip" class="ip-text">{{ row.ip }}</AdminDataTableCellText>
         </template>
 
         <template #cell-referrer="{ row }">
-          <AdminDataTableCellText>
+          <AdminDataTableCellText :title="row.referrer || '直接访问'">
             <a
               v-if="isExternalLink(row.referrer)"
               :href="row.referrer"
@@ -113,7 +122,7 @@
 
         <template #cell-userAgent="{ row }">
           <AdminDataTableCellText
-            :title="row.userAgent || ''"
+            :title="row.userAgent || '未知浏览器'"
             class="browser-cell"
           >
             {{ parseBrowser(row.userAgent) }}
@@ -132,7 +141,7 @@ import { Icon } from '@iconify/vue'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useAdminList } from '@/composables/useAdminList'
 import { getAdminVisits, getVisitStats, clearAllVisits } from '@/api/visit'
-import { formatDateTime } from '@/utils/date'
+import { formatShortDateTime, formatDateTimeFull } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
@@ -161,6 +170,7 @@ const stats = ref({ todayPV: 0, todayUV: 0, totalPV: 0, totalUV: 0 })
 const columns = [
   { key: 'created_at', label: '时间', class: 'col-time' },
   { key: 'postTitle', label: '文章', class: 'col-post' },
+  { key: 'path', label: '路径', class: 'col-path' },
   { key: 'ip', label: 'IP', class: 'col-ip' },
   { key: 'referrer', label: '来源', class: 'col-source' },
   { key: 'userAgent', label: '浏览器', class: 'col-browser' }
@@ -387,9 +397,21 @@ onMounted(() => {
   font-size: 13px;
 }
 
+.path-cell {
+  font-size: 13px;
+}
+
+.path-code {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--color-heading);
+}
+
 :deep(.col-time) {
-  width: 160px;
-  min-width: 160px;
+  width: 110px;
+  min-width: 110px;
 }
 
 :deep(.col-ip) {
@@ -398,17 +420,22 @@ onMounted(() => {
 }
 
 :deep(.col-source) {
-  width: 140px;
-  min-width: 140px;
+  width: 120px;
+  min-width: 120px;
 }
 
 :deep(.col-browser) {
-  width: 90px;
-  min-width: 90px;
+  width: 80px;
+  min-width: 80px;
+}
+
+:deep(.col-path) {
+  width: 120px;
+  min-width: 120px;
 }
 
 :deep(.col-post) {
-  min-width: 200px;
+  min-width: 160px;
 }
 
 @media (max-width: 768px) {
@@ -428,9 +455,9 @@ onMounted(() => {
     display: none;
   }
 
-  :deep(.col-time),
   :deep(.col-source),
-  :deep(.col-browser) {
+  :deep(.col-browser),
+  :deep(.col-path) {
     display: none;
   }
 }
