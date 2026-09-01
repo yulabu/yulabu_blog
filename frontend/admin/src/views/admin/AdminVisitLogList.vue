@@ -46,45 +46,42 @@
       :empty="!loading && visits.length === 0"
       empty-text="暂无访问记录"
     >
-      <!-- 筛选区 -->
-      <template #search>
-        <div class="filter-bar">
-          <div class="filter-group">
-            <label class="filter-label">时间范围</label>
-            <select v-model="dateRange" class="filter-select" @change="onDateRangeChange">
+      <template #actions>
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <label class="toolbar-label">时间</label>
+            <select v-model="dateRange" class="toolbar-select" @change="onDateRangeChange">
               <option value="today">今天</option>
               <option value="7days">近7天</option>
               <option value="30days">近30天</option>
               <option value="all">全部</option>
             </select>
           </div>
-          <div class="filter-group">
-            <label class="filter-label">IP 地址</label>
+          <div class="toolbar-group">
+            <label class="toolbar-label">IP</label>
             <input
               v-model="ipFilter"
               type="text"
-              class="filter-input"
-              placeholder="输入 IP 筛选..."
+              class="toolbar-input"
+              placeholder="输入 IP..."
               @keyup.enter="onSearch"
             />
           </div>
-          <AdminButton variant="primary" class="search-btn" @click="onSearch">
+          <AdminButton variant="primary" @click="onSearch">
             <Icon icon="material-symbols:search" style="margin-right: 4px" />
             查询
+          </AdminButton>
+          <div class="toolbar-divider" />
+          <AdminButton variant="danger" @click="onClearAll">
+            <Icon icon="material-symbols:delete-sweep-outline" style="margin-right: 4px" />
+            清空日志
           </AdminButton>
         </div>
       </template>
 
-      <template #actions>
-        <AdminButton variant="danger" @click="onClearAll">
-          <Icon icon="material-symbols:delete-sweep-outline" style="margin-right: 4px" />
-          清空日志
-        </AdminButton>
-      </template>
-
       <AdminDataTable :columns="columns" :data="visits">
         <template #cell-created_at="{ row }">
-          <AdminDataTableCellText muted>{{ formatDateTime(row.createdAt) }}</AdminDataTableCellText>
+          <AdminDataTableCellText>{{ formatDateTime(row.createdAt) }}</AdminDataTableCellText>
         </template>
 
         <template #cell-postTitle="{ row }">
@@ -95,22 +92,31 @@
         </template>
 
         <template #cell-ip="{ row }">
-          <AdminDataTableCellText>{{ row.ip }}</AdminDataTableCellText>
+          <AdminDataTableCellText class="ip-text">{{ row.ip }}</AdminDataTableCellText>
         </template>
 
         <template #cell-referrer="{ row }">
-          <AdminDataTableCellText muted>
-            {{ extractDomain(row.referrer) || '直接访问' }}
+          <AdminDataTableCellText>
+            <a
+              v-if="isExternalLink(row.referrer)"
+              :href="row.referrer"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="source-link"
+              @click.stop
+            >
+              {{ extractDomain(row.referrer) }}
+            </a>
+            <span v-else class="muted-text">{{ extractDomain(row.referrer) || '直接访问' }}</span>
           </AdminDataTableCellText>
         </template>
 
         <template #cell-userAgent="{ row }">
           <AdminDataTableCellText
             :title="row.userAgent || ''"
-            muted
-            class="ua-cell"
+            class="browser-cell"
           >
-            {{ truncateUA(row.userAgent) }}
+            {{ parseBrowser(row.userAgent) }}
           </AdminDataTableCellText>
         </template>
       </AdminDataTable>
@@ -153,11 +159,11 @@ const { items: visits, loading, page, totalPages, fetch: fetchVisits, refresh } 
 const stats = ref({ todayPV: 0, todayUV: 0, totalPV: 0, totalUV: 0 })
 
 const columns = [
-  { key: 'created_at', label: '时间' },
-  { key: 'postTitle', label: '文章' },
-  { key: 'ip', label: 'IP 地址' },
-  { key: 'referrer', label: '来源' },
-  { key: 'userAgent', label: '浏览器' }
+  { key: 'created_at', label: '时间', class: 'col-time' },
+  { key: 'postTitle', label: '文章', class: 'col-post' },
+  { key: 'ip', label: 'IP', class: 'col-ip' },
+  { key: 'referrer', label: '来源', class: 'col-source' },
+  { key: 'userAgent', label: '浏览器', class: 'col-browser' }
 ]
 
 function formatNumber(n) {
@@ -174,9 +180,33 @@ function extractDomain(url) {
   }
 }
 
-function truncateUA(ua) {
+function isExternalLink(url) {
+  if (!url) return false
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function parseBrowser(ua) {
   if (!ua) return '—'
-  return ua.length > 50 ? ua.slice(0, 50) + '...' : ua
+  const rules = [
+    { key: 'Edg/', name: 'Edge' },
+    { key: 'Edge/', name: 'Edge' },
+    { key: 'OPR/', name: 'Opera' },
+    { key: 'Opera/', name: 'Opera' },
+    { key: 'Chrome/', name: 'Chrome' },
+    { key: 'Safari/', name: 'Safari' },
+    { key: 'Firefox/', name: 'Firefox' },
+    { key: 'MSIE ', name: 'IE' },
+    { key: 'Trident/', name: 'IE' }
+  ]
+  for (const rule of rules) {
+    if (ua.includes(rule.key)) return rule.name
+  }
+  return ua.length > 12 ? ua.slice(0, 12) + '...' : ua
 }
 
 function onDateRangeChange() {
@@ -283,34 +313,29 @@ onMounted(() => {
   color: var(--color-heading);
 }
 
-.filter-bar {
+.toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.filter-group {
+.toolbar-group {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.filter-label {
+.toolbar-label {
   font-size: 13px;
   color: var(--color-muted);
   font-weight: 500;
   white-space: nowrap;
 }
 
-.search-btn {
-  align-self: center;
-}
-
-.filter-select,
-.filter-input {
-  padding: 8px 12px;
+.toolbar-select,
+.toolbar-input {
+  padding: 6px 10px;
   border: 1px solid var(--border-light, rgba(0, 0, 0, 0.1));
   border-radius: 8px;
   font-size: 13px;
@@ -320,13 +345,19 @@ onMounted(() => {
   transition: border-color 0.2s;
 }
 
-.filter-select:focus,
-.filter-input:focus {
+.toolbar-select:focus,
+.toolbar-input:focus {
   border-color: var(--color-primary);
 }
 
-.filter-input {
-  width: 180px;
+.toolbar-input {
+  width: 140px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .post-title-link {
@@ -338,11 +369,46 @@ onMounted(() => {
   color: var(--color-muted);
 }
 
-.ua-cell {
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.ip-text {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.source-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.browser-cell {
+  font-size: 13px;
+}
+
+:deep(.col-time) {
+  width: 160px;
+  min-width: 160px;
+}
+
+:deep(.col-ip) {
+  width: 120px;
+  min-width: 120px;
+}
+
+:deep(.col-source) {
+  width: 140px;
+  min-width: 140px;
+}
+
+:deep(.col-browser) {
+  width: 90px;
+  min-width: 90px;
+}
+
+:deep(.col-post) {
+  min-width: 200px;
 }
 
 @media (max-width: 768px) {
@@ -350,27 +416,41 @@ onMounted(() => {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .filter-bar {
-    align-items: stretch;
+  .toolbar {
+    gap: 10px;
   }
 
-  .filter-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+  .toolbar-input {
+    width: 120px;
   }
 
-  .filter-label {
-    white-space: normal;
+  .toolbar-divider {
+    display: none;
   }
 
-  .filter-input,
-  .filter-select {
+  :deep(.col-time),
+  :deep(.col-source),
+  :deep(.col-browser) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar {
     width: 100%;
   }
 
-  .search-btn {
-    align-self: flex-start;
+  .toolbar-group {
+    flex: 1;
+  }
+
+  .toolbar-select,
+  .toolbar-input {
+    width: 100%;
   }
 }
 </style>
