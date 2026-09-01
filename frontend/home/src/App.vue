@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { useAnimatedCursor } from '@/composables/useAnimatedCursor'
+import { useDayPeriod } from '@/composables/useDayPeriod'
 import Navbar from '@/components/common/Navbar.vue'
 import MusicPlayer from '@/components/common/MusicPlayer.vue'
 import MessageBox from '@/components/common/MessageBox.vue'
@@ -13,13 +14,16 @@ const route = useRoute()
 const router = useRouter()
 const uiStore = useUiStore()
 const { initCursors, setLoadingCursor, destroy } = useAnimatedCursor()
+const { start: startDayPeriod, stop: stopDayPeriod } = useDayPeriod()
 
 onMounted(() => {
   initCursors()
+  startDayPeriod()
 })
 
 onUnmounted(() => {
   destroy()
+  stopDayPeriod()
 })
 
 watch(() => uiStore.pageLoading, (loading) => {

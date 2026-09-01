@@ -112,6 +112,24 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
+[data-period="dawn"] .banner::before {
+  background:
+    linear-gradient(180deg, rgba(10, 28, 26, .14), transparent 42%, rgba(10, 26, 28, .30)),
+    radial-gradient(circle at 50% 42%, transparent 0, rgba(8, 22, 26, .22) 100%);
+}
+
+[data-period="dusk"] .banner::before {
+  background:
+    linear-gradient(180deg, rgba(26, 24, 12, .13), transparent 42%, rgba(34, 24, 10, .32)),
+    radial-gradient(circle at 50% 42%, transparent 0, rgba(28, 20, 10, .22) 100%);
+}
+
+[data-period="night"] .banner::before {
+  background:
+    linear-gradient(180deg, rgba(6, 14, 26, .18), transparent 42%, rgba(4, 10, 22, .42)),
+    radial-gradient(circle at 50% 42%, transparent 0, rgba(6, 12, 24, .30) 100%);
+}
+
 .bg {
   position: absolute;
   z-index: 0;
@@ -122,8 +140,25 @@ onUnmounted(() => {
   background-image: url('@/assets/img/banner2.png');
   background-size: cover;
   background-position: center;
-  filter: brightness(0.72) saturate(.92);
+  filter: brightness(0.72) saturate(0.92) hue-rotate(0deg);
   transform: scale(1.015);
+  transition: filter 1.2s ease;
+}
+
+[data-period="dawn"] .bg {
+  filter: brightness(0.70) saturate(0.88) hue-rotate(-6deg);
+}
+
+[data-period="day"] .bg {
+  filter: brightness(0.72) saturate(0.92) hue-rotate(0deg);
+}
+
+[data-period="dusk"] .bg {
+  filter: brightness(0.66) saturate(0.96) hue-rotate(14deg);
+}
+
+[data-period="night"] .bg {
+  filter: brightness(0.44) saturate(0.82) hue-rotate(-12deg);
 }
 
 .content {
