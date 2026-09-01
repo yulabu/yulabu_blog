@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { useAnimatedCursor } from '@/composables/useAnimatedCursor'
@@ -12,10 +12,14 @@ import TopProgressBar from '@/components/common/TopProgressBar.vue'
 const route = useRoute()
 const router = useRouter()
 const uiStore = useUiStore()
-const { initCursors, setLoadingCursor } = useAnimatedCursor()
+const { initCursors, setLoadingCursor, destroy } = useAnimatedCursor()
 
 onMounted(() => {
   initCursors()
+})
+
+onUnmounted(() => {
+  destroy()
 })
 
 watch(() => uiStore.pageLoading, (loading) => {
