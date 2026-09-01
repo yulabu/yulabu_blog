@@ -13,6 +13,7 @@
   "dependencies": {
     "@iconify/vue": "^5.0.1",
     "axios": "^1.18.1",
+    "echarts": "^6.1.0",
     "md-editor-v3": "^6.5.4",
     "pinia": "^4.0.2",
     "sortablejs": "^1.15.7",

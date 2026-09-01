@@ -1,6 +1,7 @@
 import http from '@/utils/http'
 import type {
   DashboardStats,
+  DashboardChartData,
   PaginatedAdmins,
   Admin,
   AdminForm,
@@ -9,6 +10,10 @@ import type {
 
 export function getDashboard() {
   return http.get<DashboardStats>('/admin/dashboard')
+}
+
+export function getDashboardCharts(range: '7days' | '30days' = '7days') {
+  return http.get<DashboardChartData>('/admin/dashboard/charts', { params: { range } })
 }
 
 export function getCurrentAdmin() {

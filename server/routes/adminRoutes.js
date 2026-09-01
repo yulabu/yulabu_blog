@@ -22,6 +22,7 @@ router.delete('/admins/:id', adminAccountController.deleteAdmin);
 
 // 工作台
 router.get('/dashboard', adminController.getDashboard);
+router.get('/dashboard/charts', adminController.getDashboardCharts);
 
 // 文章管理（三种状态统一列表，前端按 status 切换；回收站操作归此）
 router.get('/posts', postController.getAdminPosts);

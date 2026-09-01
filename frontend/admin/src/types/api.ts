@@ -78,6 +78,12 @@ export interface DashboardStats {
   recentPosts: Post[]
 }
 
+export interface DashboardChartData {
+  postsByDate: { date: string; count: number }[]
+  visitsByDate: { date: string; pv: number; uv: number }[]
+  tagsDistribution: { name: string; value: number }[]
+}
+
 export interface PaginatedAdmins {
   admins: Admin[]
   total: number

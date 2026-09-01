@@ -7,7 +7,7 @@
           <Icon icon="material-symbols:visibility-outline" />
         </div>
         <div class="stat-info">
-          <div class="stat-label">今日 PV</div>
+          <div class="stat-label">今日浏览量</div>
           <div class="stat-value">{{ stats.todayPV }}</div>
         </div>
       </div>
@@ -16,7 +16,7 @@
           <Icon icon="material-symbols:person-outline" />
         </div>
         <div class="stat-info">
-          <div class="stat-label">今日 UV</div>
+          <div class="stat-label">今日独立访客</div>
           <div class="stat-value">{{ stats.todayUV }}</div>
         </div>
       </div>
@@ -25,7 +25,7 @@
           <Icon icon="material-symbols:bar-chart-outline" />
         </div>
         <div class="stat-info">
-          <div class="stat-label">总 PV</div>
+          <div class="stat-label">总浏览量</div>
           <div class="stat-value">{{ formatNumber(stats.totalPV) }}</div>
         </div>
       </div>
@@ -34,7 +34,7 @@
           <Icon icon="material-symbols:group-outline" />
         </div>
         <div class="stat-info">
-          <div class="stat-label">总 UV</div>
+          <div class="stat-label">总独立访客</div>
           <div class="stat-value">{{ formatNumber(stats.totalUV) }}</div>
         </div>
       </div>
@@ -68,6 +68,10 @@
               @keyup.enter="onSearch"
             />
           </div>
+          <AdminButton variant="primary" class="search-btn" @click="onSearch">
+            <Icon icon="material-symbols:search" style="margin-right: 4px" />
+            查询
+          </AdminButton>
         </div>
       </template>
 
@@ -281,21 +285,27 @@ onMounted(() => {
 
 .filter-bar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
 }
 
 .filter-group {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 
 .filter-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-muted);
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.search-btn {
+  align-self: center;
 }
 
 .filter-select,
@@ -341,12 +351,26 @@ onMounted(() => {
   }
 
   .filter-bar {
-    flex-direction: column;
     align-items: stretch;
   }
 
-  .filter-input {
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .filter-label {
+    white-space: normal;
+  }
+
+  .filter-input,
+  .filter-select {
     width: 100%;
+  }
+
+  .search-btn {
+    align-self: flex-start;
   }
 }
 </style>

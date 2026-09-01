@@ -46,6 +46,11 @@
       </div>
     </section>
 
+    <section class="charts-section">
+      <DashboardTrendChart v-model:range="chartRange" :data="chartData" />
+      <DashboardTagPieChart :data="chartData" />
+    </section>
+
     <section class="main-grid">
       <div class="card recent-posts">
         <div class="card-header">
@@ -100,15 +105,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMessageBox } from '@/composables/useMessageBox'
-import { getDashboard } from '@/api/admin'
+import { getDashboard, getDashboardCharts } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import Calendar from '@/components/admin/Calendar.vue'
 import DashboardWelcomeCard from '@/components/admin/DashboardWelcomeCard.vue'
+import DashboardTrendChart from '@/components/admin/DashboardTrendChart.vue'
+import DashboardTagPieChart from '@/components/admin/DashboardTagPieChart.vue'
 import AdminButton from '@/components/admin/AdminButton.vue'
 
 const router = useRouter()
@@ -125,8 +132,11 @@ const stats = ref({
 })
 const recentPosts = ref([])
 
-onMounted(() => {
-  fetchDashboard()
+const chartRange = ref('7days')
+const chartData = ref({
+  postsByDate: [],
+  visitsByDate: [],
+  tagsDistribution: []
 })
 
 async function fetchDashboard() {
@@ -146,6 +156,21 @@ async function fetchDashboard() {
     loading.value = false
   }
 }
+
+async function fetchCharts() {
+  try {
+    chartData.value = await getDashboardCharts(chartRange.value)
+  } catch (e) {
+    toast('获取图表数据失败', 'error')
+  }
+}
+
+watch(chartRange, fetchCharts)
+
+onMounted(() => {
+  fetchDashboard()
+  fetchCharts()
+})
 
 </script>
 
@@ -215,6 +240,14 @@ async function fetchDashboard() {
   font-size: 24px;
   font-weight: 700;
   color: var(--color-heading);
+}
+
+.charts-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+  align-items: stretch;
 }
 
 .main-grid {
@@ -364,6 +397,12 @@ async function fetchDashboard() {
 
 .action-btn span {
   font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+  .charts-section {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 960px) {

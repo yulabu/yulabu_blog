@@ -96,22 +96,7 @@ function buildCursorCSS(selector: string, data: Uint8Array): BuiltCursor {
   const atoms = splitSelectors(selector)
   const staticRules = atoms.map((s) => `\n${s} { cursor: url(${firstFrame}), auto; }`).join('')
 
-  if (frames.length <= 1) {
-    return { css: staticRules, firstFrame }
-  }
-
-  const keyframes = extractKeyframesBlock(generated)
-  const animName = extractAnimName(generated)
-  const duration = extractDurationMs(generated)
-  if (!keyframes || !animName || duration === null) {
-    return { css: staticRules, firstFrame }
-  }
-
-  const animRules = atoms
-    .map((s) => `\n${s}:hover { animation: ${animName} ${duration}ms step-end infinite; }`)
-    .join('')
-
-  return { css: `${keyframes}${animRules}${staticRules}`, firstFrame }
+  return { css: staticRules, firstFrame }
 }
 
 export function useAnimatedCursor() {
