@@ -9,6 +9,7 @@ const friendLinkController = require('@controllers/friendLinkController');
 const visitController = require('@controllers/visitController');
 const columnController = require('@controllers/columnController');
 const imageController = require('@controllers/imageController');
+const diaryController = require('@controllers/diaryController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);
@@ -59,5 +60,12 @@ router.delete('/images/:id', imageController.deleteImage);
 router.get('/visits', visitController.getVisits);
 router.get('/visits/stats', visitController.getVisitStats);
 router.delete('/visits', visitController.clearAllVisits);
+
+// 日记管理
+router.get('/diaries', diaryController.getAdminDiaries);
+router.get('/diaries/:id', diaryController.getDiaryById);
+router.post('/diaries', diaryController.createDiary);
+router.put('/diaries/:id', diaryController.updateDiary);
+router.delete('/diaries/:id', diaryController.deleteDiary);
 
 module.exports = router;

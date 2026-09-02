@@ -36,6 +36,9 @@ app.use('/api/images', adminLimiter, imageRoutes);
 // 访问记录路由
 const visitRoutes = require('@routes/visitRoutes');
 app.use('/api/visits', publicLimiter, visitRoutes);
+// 日记路由
+const diaryRoutes = require('@routes/diaryRoutes');
+app.use('/api/diaries', publicLimiter, diaryRoutes);
 const { UPLOAD_DIR } = require('@config/image');
 // 静态图片服务
 app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
@@ -45,7 +48,7 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
 // 图片 GC：孤儿回收 + 废弃草稿清理 + 上传临时文件兜底
 const { runGC } = require('@utils/gc');
 // 导入模型
-const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog } = require('@models');
+const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary } = require('@models');
 
 // 同步数据库（创建表）
 // 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。

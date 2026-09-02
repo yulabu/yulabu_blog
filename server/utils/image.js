@@ -69,6 +69,14 @@ async function markPostImagesOrphan(postId) {
   )
 }
 
+// 将日记全部图片解绑为孤儿（删除日记用）
+async function markDiaryImagesOrphan(diaryId) {
+  await Image.update(
+    { reference_id: null },
+    { where: { reference_type: 'cover', reference_id: diaryId } }
+  )
+}
+
 // 封面差集解绑：post_cover 未引用的 cover 图置为孤儿
 // 无保护窗口：封面上传后未保存视为放弃（孤儿由 24h GC 回收）
 // 外链/null 视为未引用（全部解绑）；幂等
@@ -99,6 +107,7 @@ module.exports = {
   extractReferencedImages,
   unbindUnusedFiles,
   markPostImagesOrphan,
+  markDiaryImagesOrphan,
   unbindCover,
   UNBIND_GRACE_MS
 }

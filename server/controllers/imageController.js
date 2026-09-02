@@ -2,13 +2,13 @@ const fs = require('fs').promises
 const { Op } = require('sequelize')
 const AppError = require('@middleware/AppError')
 const { saveImageFile, deleteImageFiles } = require('@utils/imageStorage')
-const { Image, Post } = require('@models')
+const { Image, Post, Diary } = require('@models')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
 const { imageVO } = require('@vo/image.vo')
 const { MAX_TOTAL_SIZE } = require('@middleware/imageUpload')
 
-// 批量上传图片（文章专用）：转码落盘 + 写入 Image 记录（绑定 post），返回图片信息
-// type 参数：post_content（默认，正文图）/ cover（文章封面）；两类型均绑定 post
+// 批量上传图片：转码落盘 + 写入 Image 记录（绑定 post 或 diary），返回图片信息
+// type 参数：post_content（默认，正文图）/ cover（文章封面或日记图片）
 const UPLOAD_TYPES = ['post_content', 'cover']
 
 exports.uploadBatch = async (req, res) => {
@@ -24,13 +24,20 @@ exports.uploadBatch = async (req, res) => {
     }
 
     const postId = Number(req.body.post_id)
-    if (!postId || postId < 1) {
-      throw new AppError(400, '缺少有效的 post_id')
-    }
+    const diaryId = Number(req.body.diary_id)
 
-    const post = await Post.findByPk(postId)
-    if (!post) {
-      throw new AppError(400, '关联的文章不存在')
+    let referenceId = null
+
+    if (postId && postId > 0) {
+      const post = await Post.findByPk(postId)
+      if (!post) throw new AppError(400, '关联的文章不存在')
+      referenceId = postId
+    } else if (diaryId && diaryId > 0) {
+      const diary = await Diary.findByPk(diaryId)
+      if (!diary) throw new AppError(400, '关联的日记不存在')
+      referenceId = diaryId
+    } else {
+      throw new AppError(400, '缺少有效的 post_id 或 diary_id')
     }
 
     // 单请求总量限制
@@ -47,7 +54,7 @@ exports.uploadBatch = async (req, res) => {
       const info = await saveImageFile(file.path)
       const record = await Image.create({
         reference_type: type,
-        reference_id: postId,
+        reference_id: referenceId,
         storage_path: info.storagePath,
         thumb_path: info.thumbPath,
         file_size: info.fileSize
@@ -61,7 +68,6 @@ exports.uploadBatch = async (req, res) => {
 
     res.json({ images })
   } finally {
-    // 清理本请求 multer 落盘的临时文件（逐个删除，防并发误删他人文件）
     for (const file of files) {
       try {
         await fs.unlink(file.path)
