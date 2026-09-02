@@ -103,11 +103,37 @@ async function unbindCover(postId, coverUrl) {
   return { unbound: unbindIds.length }
 }
 
+// 日记封面差集解绑：保存日记时把 images 中未引用的 cover 图置为孤儿
+// 幂等；外链/null 视为未引用（全部解绑）
+async function unbindDiaryCovers(diaryId, images) {
+  const usedKeys = (images || [])
+    .filter(url => url && url.startsWith('/uploads/'))
+    .map(url => decodeURIComponent(url.slice('/uploads/'.length)))
+
+  const bound = await Image.findAll({
+    where: { reference_type: 'cover', reference_id: diaryId }
+  })
+
+  const unbindIds = bound
+    .filter(img => !usedKeys.includes(img.storage_path))
+    .map(img => img.image_id)
+
+  if (unbindIds.length > 0) {
+    await Image.update(
+      { reference_id: null },
+      { where: { image_id: { [Op.in]: unbindIds } } }
+    )
+  }
+
+  return { unbound: unbindIds.length }
+}
+
 module.exports = {
   extractReferencedImages,
   unbindUnusedFiles,
   markPostImagesOrphan,
   markDiaryImagesOrphan,
   unbindCover,
+  unbindDiaryCovers,
   UNBIND_GRACE_MS
 }

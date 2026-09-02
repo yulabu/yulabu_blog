@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { Diary, Image } = require('@models');
 const { createDiaryDTO, updateDiaryDTO, diaryIdDTO } = require('@dto/diary.dto');
 const { diaryDetail, diaryList } = require('@vo/diary.vo');
+const { unbindDiaryCovers } = require('@utils/image');
 const { deleteImageFiles } = require('@utils/imageStorage');
 
 exports.getPublicDiaries = async (req, res) => {
@@ -53,6 +54,7 @@ exports.getDiaryById = async (req, res) => {
 exports.createDiary = async (req, res) => {
   const data = createDiaryDTO(req.body);
   const diary = await Diary.create(data);
+  await unbindDiaryCovers(diary.diary_id, data.images);
   res.status(201).json({ id: diary.diary_id, message: '创建成功' });
 };
 
@@ -62,6 +64,7 @@ exports.updateDiary = async (req, res) => {
   if (!diary) throw new AppError(404, '日记不存在');
   const data = updateDiaryDTO(req.body);
   await diary.update(data);
+  await unbindDiaryCovers(id, data.images);
   res.json({ id: diary.diary_id, message: '更新成功' });
 };
 
