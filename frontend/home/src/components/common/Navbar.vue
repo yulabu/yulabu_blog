@@ -8,6 +8,7 @@
       <router-link to="/columns" class="nav-link">专栏</router-link>
       <router-link to="/friends" class="nav-link">友链</router-link>
       <router-link to="/archive" class="nav-link">归档</router-link>
+      <router-link to="/diary" class="nav-link">日记</router-link>
       <router-link to="/about" class="nav-link">关于</router-link>
       <div class="nav-indicator" ref="indicatorRef"></div>
     </div>
@@ -37,6 +38,7 @@
         <router-link to="/columns" class="mobile-link" @click="closeMenu">专栏</router-link>
         <router-link to="/friends" class="mobile-link" @click="closeMenu">友链</router-link>
         <router-link to="/archive" class="mobile-link" @click="closeMenu">归档</router-link>
+        <router-link to="/diary" class="mobile-link" @click="closeMenu">日记</router-link>
         <router-link to="/about" class="mobile-link" @click="closeMenu">关于</router-link>
       </div>
     </transition>

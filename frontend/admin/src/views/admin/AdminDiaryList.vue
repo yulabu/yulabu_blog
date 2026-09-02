@@ -13,16 +13,25 @@
 
       <div class="diary-grid">
         <div v-for="diary in diaries" :key="diary.id" class="diary-card">
-          <div class="diary-content">{{ diary.content }}</div>
-          <div v-if="diary.images && diary.images.length" class="diary-images">
-            <img v-for="(img, idx) in diary.images.slice(0, 3)" :key="idx" :src="img" class="diary-image" />
-            <span v-if="diary.images.length > 3" class="diary-more">+{{ diary.images.length - 3 }}</span>
+          <div class="card-cover" :class="{ 'is-empty': !firstImage(diary) }">
+            <img
+              v-if="firstImage(diary)"
+              :src="firstImage(diary)"
+              :alt="diaryTitle(diary)"
+              loading="lazy"
+            />
+            <span v-else>暂无图片</span>
           </div>
-          <div class="diary-footer">
-            <span class="diary-date">{{ formatDate(diary.created_at) }}</span>
-            <div class="diary-actions">
-              <AdminButton variant="text" @click="goEdit(diary.id)">编辑</AdminButton>
-              <AdminButton variant="danger" :loading="deleteLoading" @click="onDelete(diary.id)">删除</AdminButton>
+
+          <div class="card-body">
+            <span class="card-title" :title="diaryTitle(diary)">{{ diaryTitle(diary) }}</span>
+            <p v-if="diaryBody(diary)" class="card-excerpt">{{ diaryBody(diary) }}</p>
+            <div class="card-bottom">
+              <span class="card-date">🕐 {{ formatDate(diary.created_at) }}</span>
+              <div class="card-actions">
+                <AdminButton variant="text" @click="goEdit(diary.id)">编辑</AdminButton>
+                <AdminButton variant="danger" :loading="deleteLoading" @click="onDelete(diary.id)">删除</AdminButton>
+              </div>
             </div>
           </div>
         </div>
@@ -38,6 +47,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
+import { useAdminList } from '@/composables/useAdminList'
 import { getDiaries, deleteDiary } from '@/api/diary'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
@@ -47,25 +57,28 @@ import Pagination from '@/components/common/Pagination.vue'
 const router = useRouter()
 const { toast } = useMessageBox()
 
-const diaries = ref([])
-const loading = ref(false)
-const page = ref(1)
-const totalPages = ref(1)
-
-async function fetchDiaries() {
-  loading.value = true
-  try {
-    const res = await getDiaries(page.value)
-    diaries.value = res.diaries
-    totalPages.value = res.totalPages
-  } catch (e) {
-    toast(e.message || '获取日记列表失败', 'error')
-  } finally {
-    loading.value = false
+const { items: diaries, loading, page, totalPages, refresh } = useAdminList(
+  (pageNum, pageSize) => getDiaries(pageNum, pageSize),
+  {
+    errorMessage: '获取日记列表失败',
+    extractList: data => data.diaries,
+    extractTotalPages: data => data.totalPages || 1
   }
+)
+
+function diaryTitle(diary) {
+  const firstLine = diary.content.split('\n')[0].trim()
+  return firstLine.slice(0, 30)
 }
 
-fetchDiaries()
+function diaryBody(diary) {
+  const rest = diary.content.split('\n').slice(1).join('\n').trim()
+  return rest
+}
+
+function firstImage(diary) {
+  return diary.images && diary.images.length ? diary.images[0] : ''
+}
 
 function goNew() {
   router.push('/admin/diaries/new')
@@ -78,7 +91,7 @@ function goEdit(id) {
 const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(deleteDiary, {
   message: '确定要删除这条日记吗？',
   successMessage: '删除成功',
-  onSuccess: fetchDiaries
+  onSuccess: refresh
 })
 </script>
 
@@ -89,18 +102,17 @@ const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(del
 
 .diary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
   padding: 8px 0 16px;
 }
 
 .diary-card {
   border: 1px solid var(--color-border, #e5e6eb);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #ffffff;
-  padding: 16px;
+  overflow: hidden;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
 }
 
 .diary-card:hover {
@@ -108,55 +120,68 @@ const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(del
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-.diary-content {
-  font-size: 14px;
-  color: var(--color-text);
-  line-height: 1.6;
-  margin-bottom: 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 120px;
+.card-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #f2f3f5;
   overflow: hidden;
-}
-
-.diary-images {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.diary-image {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
-.diary-more {
-  width: 80px;
-  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  font-size: 14px;
   color: var(--color-muted);
+  font-size: 13px;
 }
 
-.diary-footer {
+.card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-body {
+  padding: 10px 12px 12px;
+}
+
+.card-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.card-excerpt {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.card-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
-.diary-date {
+.card-date {
   font-size: 12px;
   color: var(--color-muted);
+  white-space: nowrap;
 }
 
-.diary-actions {
+.card-actions {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
 }
 </style>

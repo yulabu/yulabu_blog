@@ -8,6 +8,7 @@ const AboutView = () => import('@/views/AboutView.vue')
 const FriendsView = () => import('@/views/FriendsView.vue')
 const ColumnsView = () => import('@/views/ColumnsView.vue')
 const ColumnDetailView = () => import('@/views/ColumnDetailView.vue')
+const DiaryView = () => import('@/views/DiaryView.vue')
 
 const routes = [
   {
@@ -44,6 +45,11 @@ const routes = [
     path: '/columns/:id',
     name: 'ColumnDetail',
     component: ColumnDetailView,
+  },
+  {
+    path: '/diary',
+    name: 'Diary',
+    component: DiaryView,
   },
 ]
 
