@@ -13,7 +13,14 @@ module.exports = (sequelize, DataTypes) => {
     images: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: '图片URL数组'
+      comment: '图片URL数组',
+      get() {
+        const raw = this.getDataValue('images');
+        if (typeof raw === 'string') {
+          try { return JSON.parse(raw); } catch { return []; }
+        }
+        return raw || [];
+      }
     }
   }, {
     tableName: 'diary',
