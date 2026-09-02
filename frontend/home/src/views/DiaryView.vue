@@ -97,7 +97,7 @@ const lightboxIndex = ref(0)
 
 function diaryTitle(diary) {
   const firstLine = diary.content.split('\n')[0].trim()
-  return firstLine.slice(0, 40)
+  return firstLine
 }
 
 function diaryBody(diary) {
