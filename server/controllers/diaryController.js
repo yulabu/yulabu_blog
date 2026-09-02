@@ -1,8 +1,9 @@
 const AppError = require('@middleware/AppError');
-const { Diary } = require('@models');
+const { Op } = require('sequelize');
+const { Diary, Image } = require('@models');
 const { createDiaryDTO, updateDiaryDTO, diaryIdDTO } = require('@dto/diary.dto');
 const { diaryDetail, diaryList } = require('@vo/diary.vo');
-const { markDiaryImagesOrphan } = require('@utils/image');
+const { deleteImageFiles } = require('@utils/imageStorage');
 
 exports.getPublicDiaries = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -69,7 +70,18 @@ exports.deleteDiary = async (req, res) => {
   const diary = await Diary.findByPk(id);
   if (!diary) throw new AppError(404, '日记不存在');
 
-  await markDiaryImagesOrphan(id);
+  const images = await Image.findAll({
+    where: { reference_type: 'cover', reference_id: id }
+  });
+
+  for (const image of images) {
+    await deleteImageFiles(image.storage_path, image.thumb_path);
+  }
+
+  if (images.length > 0) {
+    await Image.destroy({ where: { image_id: { [Op.in]: images.map(i => i.image_id) } } });
+  }
+
   await diary.destroy();
 
   res.json({ id: diary.diary_id, message: '删除成功' });

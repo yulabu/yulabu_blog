@@ -28,6 +28,10 @@
           <Icon icon="material-symbols:bookmarks-outline" class="menu-icon" />
           <span>专栏管理</span>
         </router-link>
+        <router-link to="/admin/diaries" class="menu-item" active-class="active">
+          <Icon icon="material-symbols:edit-note" class="menu-icon" />
+          <span>日记管理</span>
+        </router-link>
       </div>
 
       <div class="menu-group">

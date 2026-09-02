@@ -3,14 +3,20 @@ import type { UploadResult } from '@/types/api'
 
 export interface UploadOptions {
   files: File[]
-  postId: number
+  postId?: number
+  diaryId?: number
   type?: string
 }
 
 export function uploadImages(options: UploadOptions) {
   const formData = new FormData()
   options.files.forEach((file) => formData.append('images', file))
-  formData.append('post_id', String(options.postId))
+  if (options.postId) {
+    formData.append('post_id', String(options.postId))
+  }
+  if (options.diaryId) {
+    formData.append('diary_id', String(options.diaryId))
+  }
   formData.append('type', options.type || 'post_content')
 
   return http.post<UploadResult>('/images/upload', formData)

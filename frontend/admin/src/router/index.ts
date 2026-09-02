@@ -15,6 +15,8 @@ const AdminColumnList = () => import('@/views/admin/AdminColumnList.vue');
 const AdminColumnEdit = () => import('@/views/admin/AdminColumnEdit.vue');
 const AdminColumnPosts = () => import('@/views/admin/AdminColumnPosts.vue');
 const AdminVisitLogList = () => import('@/views/admin/AdminVisitLogList.vue');
+const AdminDiaryList = () => import('@/views/admin/AdminDiaryList.vue');
+const AdminDiaryEdit = () => import('@/views/admin/AdminDiaryEdit.vue');
 
 const routes = [
   { path: '/', redirect: '/admin' },
@@ -37,7 +39,10 @@ const routes = [
       { path: 'columns/:id/edit', component: AdminColumnEdit },
       { path: 'columns/:id/posts', component: AdminColumnPosts },
       { path: 'settings', component: AdminSettings },
-      { path: 'visits', component: AdminVisitLogList }
+      { path: 'visits', component: AdminVisitLogList },
+      { path: 'diaries', component: AdminDiaryList },
+      { path: 'diaries/new', component: AdminDiaryEdit },
+      { path: 'diaries/:id/edit', component: AdminDiaryEdit }
     ]
   },
   { path: '/:pathMatch(.*)*', redirect: '/admin' }
