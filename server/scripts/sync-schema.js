@@ -117,6 +117,25 @@ async function syncSchema() {
     }
   }
 
+  // diary 表（与 models/Diary.js 保持一致；sync() 兜底，表存在则跳过）
+  {
+    const [tables] = await sequelize.query(
+      `SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'diary' LIMIT 1`
+    );
+    if (tables.length === 0) {
+      await sequelize.query(`
+        CREATE TABLE \`diary\` (
+          \`diary_id\` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          \`content\` TEXT NOT NULL COMMENT '日记内容（最多3000字）',
+          \`images\` JSON NULL COMMENT '图片URL数组',
+          \`created_at\` DATETIME NOT NULL,
+          \`updated_at\` DATETIME NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      console.log('[sync-schema] diary 表已创建');
+    }
+  }
+
   console.log('[sync-schema] 结构同步完成');
 }
 

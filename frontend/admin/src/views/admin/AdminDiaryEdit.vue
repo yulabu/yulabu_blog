@@ -82,7 +82,7 @@ async function ensureDraft() {
 
   draftPromise = (async () => {
     try {
-      const res = await createDiary({ content: form.value.content || ' ' })
+      const res = await createDiary({ content: form.value.content.trim() || '未命名日记' })
       diaryId.value = res.id
       return res.id
     } finally {
