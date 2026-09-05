@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { useAnimatedCursor } from '@/composables/useAnimatedCursor'
@@ -30,8 +30,27 @@ watch(() => uiStore.pageLoading, (loading) => {
   setLoadingCursor(loading)
 })
 const isHomeRoute = computed(() => route.name === 'Home')
+
+// 移动端无 Hero，导航栏始终显示；桌面端等 Hero 折叠后才显示
+const isMobile = ref(false)
+let mql: MediaQueryList | null = null
+
+function updateMobile() {
+  isMobile.value = mql?.matches ?? false
+}
+
+onMounted(() => {
+  mql = window.matchMedia('(max-width: 768px)')
+  updateMobile()
+  mql.addEventListener('change', updateMobile)
+})
+
+onUnmounted(() => {
+  mql?.removeEventListener('change', updateMobile)
+})
+
 const showNavbar = computed(() => {
-  if (isHomeRoute.value && !uiStore.homeHeroCollapsed) return false
+  if (isHomeRoute.value && !isMobile.value && !uiStore.homeHeroCollapsed) return false
   return true
 })
 

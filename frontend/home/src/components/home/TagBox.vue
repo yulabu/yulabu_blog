@@ -232,4 +232,44 @@ onMounted(() => {
   text-decoration: underline;
 }
 
+/* ===== 移动端：水平滚动标签栏 ===== */
+@media (max-width: 768px) {
+  .card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .header {
+    display: none;
+  }
+
+  .body {
+    margin: 0;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px 0;
+  }
+
+  .tag-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tag {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .tag-count {
+    font-size: 11px;
+  }
+}
 </style>

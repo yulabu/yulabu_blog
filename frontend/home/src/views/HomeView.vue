@@ -9,6 +9,7 @@
                 <TagBox :active-id="activeCategoryId" @select="onTagSelect" @loaded="onSectionLoaded" />
             </aside>
             <main class="center">
+                <TagBox class="mobile-tag-box" :active-id="activeCategoryId" @select="onTagSelect" @loaded="onSectionLoaded" />
                 <PostList :category-id="activeCategoryId" :search-query="searchQuery" @clear="onClear" @loaded="onSectionLoaded" />
             </main>
             <aside class="right-sidebar">
@@ -129,6 +130,10 @@ function onClear() {
   position: relative;
   z-index: 1;
 }
+
+.mobile-tag-box {
+  display: none;
+}
 /* 响应式降级
  * @md 1024px  平板/窄屏：隐藏左栏，内容 + 右栏两列
  * @sm 768px   手机：只保留中间的 PostList，两侧栏隐藏
@@ -151,6 +156,11 @@ function onClear() {
 
   .right-sidebar {
     display: none;
+  }
+
+  .mobile-tag-box {
+    display: block;
+    margin-bottom: 16px;
   }
 }
 

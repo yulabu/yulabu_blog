@@ -365,7 +365,13 @@ const vClickOutside = {
 
 @media (max-width: 768px) {
   .navbar {
+    position: sticky;
+    top: 0;
     padding: 0 16px;
+    background: var(--navbar-bg);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--navbar-border);
+    box-shadow: 0 4px 12px var(--shadow-color);
   }
 
   .nav-links {

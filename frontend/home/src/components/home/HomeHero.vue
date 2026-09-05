@@ -149,27 +149,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .home-hero {
-    height: 320px;
-  }
-
-  .home-hero.collapsed {
-    height: 280px;
-  }
-
-  .home-hero :deep(.banner) {
-    height: 320px;
-  }
-
-  .home-hero.collapsed :deep(.banner) {
-    height: 280px;
-  }
-
-.home-hero :deep(.content) {
-    padding-top: 40px;
-  }
-
-  .scroll-hint {
-    bottom: 24px;
+    display: none;
   }
 }
 </style>

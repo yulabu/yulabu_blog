@@ -35,4 +35,10 @@ defineProps({
 .site-page-frame__banner {
   width: 100%;
 }
+
+@media (max-width: 768px) {
+  .site-page-frame__banner {
+    display: none;
+  }
+}
 </style>

@@ -32,8 +32,8 @@
   --shadow-color: rgba(0, 0, 0, 0.1);
   --image-border: rgb(139, 194, 155);
   --overlay-bg: rgba(202, 242, 203, 0.6);
-  --navbar-bg: rgba(255, 255, 255, 0.3);
-  --navbar-border: rgba(255, 255, 255, 0.5);
+  --navbar-bg: rgba(255, 255, 255, 0.75);
+  --navbar-border: rgba(80, 140, 134, 0.25);
 
   --wave-1-color: #2d5a27;
   --wave-2-color: #4a8b3c;
@@ -63,8 +63,8 @@
   --shadow-color: rgba(0, 0, 0, 0.3);
   --image-border: rgb(90, 140, 110);
   --overlay-bg: rgba(25, 35, 30, 0.85);
-  --navbar-bg: rgba(40, 55, 50, 0.7);
-  --navbar-border: rgba(255, 255, 255, 0.12);
+  --navbar-bg: rgba(40, 55, 50, 0.85);
+  --navbar-border: rgba(120, 160, 140, 0.25);
 
   --wave-1-color: #142018;
   --wave-2-color: #1f3025;
