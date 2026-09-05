@@ -85,7 +85,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useMusicStore } from '@/stores/music'
@@ -94,10 +94,30 @@ const route = useRoute()
 const musicStore = useMusicStore()
 
 const isHome = computed(() => route.name === 'Home')
-const expanded = ref(true)
 
-watch(isHome, (val) => {
-  expanded.value = val
+// 响应式检测：768px 以下为移动端（遵循项目 @sm 断点约定）
+const isMobile = ref(false)
+let mql = null
+
+function updateMobile() {
+  isMobile.value = mql ? mql.matches : false
+}
+
+onMounted(() => {
+  mql = window.matchMedia('(max-width: 768px)')
+  updateMobile()
+  mql.addEventListener('change', updateMobile)
+})
+
+onUnmounted(() => {
+  mql?.removeEventListener('change', updateMobile)
+})
+
+// 展开逻辑：桌面端 + 首页才展开，移动端始终收起迷你条
+const expanded = ref(false)
+
+watch([isHome, isMobile], ([home, mobile]) => {
+  expanded.value = home && !mobile
 }, { immediate: true })
 
 function onSeek(e) {
