@@ -35,5 +35,5 @@ export function deleteFriendLink(id: number) {
 }
 
 export function fetchFriendLinkPreview(id: number) {
-  return http.put<{ preview_image: string | null; message: string }>(`/admin/friendlinks/${id}/preview`)
+  return http.put<{ avatar: string | null; title: string | null; description: string | null; message: string }>(`/admin/friendlinks/${id}/preview`)
 }

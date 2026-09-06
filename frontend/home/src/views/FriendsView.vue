@@ -20,21 +20,15 @@
         >
           <div class="card-preview">
             <img
-              v-if="link.preview_image || link.avatar"
-              :src="link.preview_image || link.avatar"
+              v-if="link.avatar && !failedAvatars.has(link.avatar)"
+              :src="link.avatar"
               :alt="link.name"
               class="preview-img"
               loading="lazy"
+              @error="failedAvatars.add(link.avatar)"
             />
             <div v-else class="preview-fallback">{{ link.name.charAt(0) }}</div>
           </div>
-
-          <img
-            v-if="link.avatar"
-            :src="link.avatar"
-            class="card-avatar"
-            loading="lazy"
-          />
 
           <div class="card-info">
             <h3 class="card-name">{{ link.name }}</h3>
@@ -57,6 +51,8 @@ import SitePageFrame from '@/components/common/SitePageFrame.vue'
 const { toast } = useMessageBox()
 const links = ref([])
 const loading = ref(true)
+// 外链头像加载失败的 URL（回落站名首字；友链头像一律外链，防盗链/死链不可避免）
+const failedAvatars = ref(new Set())
 
 onMounted(async () => {
   try {
@@ -124,19 +120,6 @@ onMounted(async () => {
   font-size: 56px;
   font-weight: 700;
   color: rgba(var(--color-primary-rgb), 0.4);
-}
-
-.card-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 3px solid var(--bg-card-strong);
-  margin-top: -26px;
-  margin-left: 16px;
-  position: relative;
-  z-index: 1;
-  background: var(--bg-card-strong);
-  object-fit: cover;
 }
 
 .card-info {

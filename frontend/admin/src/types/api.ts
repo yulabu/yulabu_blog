@@ -116,7 +116,6 @@ export interface FriendLink {
   url: string
   avatar: string | null
   description: string | null
-  preview_image: string | null
   sort_order: number
   status: 'show' | 'hide'
   created_at: string

@@ -20,14 +20,15 @@
         <template #cell-url="{ row }">
           <AdminDataTableCellText muted>{{ row.url }}</AdminDataTableCellText>
         </template>
-        <template #cell-preview_image="{ row }">
+        <template #cell-avatar="{ row }">
           <img
-            v-if="row.preview_image"
-            :src="row.preview_image"
+            v-if="row.avatar && !avatarFailed.has(row.avatar)"
+            :src="row.avatar"
             :alt="row.name"
             class="preview-thumb"
+            @error="avatarFailed.add(row.avatar)"
           />
-          <span v-else class="preview-empty">未抓取</span>
+          <span v-else class="preview-empty">{{ row.avatar ? '加载失败' : '未设置' }}</span>
         </template>
         <template #cell-status="{ row }">
           <AdminStatusBadge :type="row.status" />
@@ -66,10 +67,10 @@
         />
       </AdminFormField>
 
-      <AdminFormField label="头像" hint="图片URL，可选">
+      <AdminFormField label="头像" hint="图片外链 URL，可手填或用列表里的「抓图」自动获取">
         <AdminFormInput
           v-model="form.avatar"
-          placeholder="请输入头像图片URL"
+          placeholder="https://..."
         />
       </AdminFormField>
 
@@ -141,11 +142,14 @@ const links = computed(() => {
 const columns = [
   { key: 'name', label: '名称' },
   { key: 'url', label: '链接' },
-  { key: 'preview_image', label: '预览图' },
+  { key: 'avatar', label: '头像' },
   { key: 'sort_order', label: '排序', class: 'text-center' },
   { key: 'status', label: '状态', class: 'text-center' },
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
+
+// 外链头像加载失败的 URL（展示兜底文案，避免列表出现破图图标；按 URL 追踪，重新抓图后自动重试）
+const avatarFailed = ref(new Set())
 
 const modalVisible = ref(false)
 const editingLink = ref(null)
@@ -206,8 +210,9 @@ async function onSave() {
     const payload = {
       name,
       url,
-      avatar: form.value.avatar.trim() || undefined,
-      description: form.value.description.trim() || undefined,
+      // 空值必须显式传 null：undefined 会被 JSON 序列化丢弃，导致填过的字段清不掉
+      avatar: form.value.avatar.trim() || null,
+      description: form.value.description.trim() || null,
       sort_order: form.value.sort_order,
       status: form.value.status
     }

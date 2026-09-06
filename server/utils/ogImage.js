@@ -1,5 +1,4 @@
 const TIMEOUT_MS = 8000;
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 function normalizeImageUrl(imageUrl, pageUrl) {
   try {
@@ -118,79 +117,4 @@ async function fetchOgMeta(targetUrl) {
   }
 }
 
-// 下载图片为 buffer（content-type 校验 + 大小限制）
-async function downloadImage(imageUrl) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-  try {
-    const response = await fetch(imageUrl, {
-      signal: controller.signal,
-      redirect: 'follow',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; BlogFriendLinkBot/1.0)'
-      }
-    });
-
-    if (!response.ok) return null;
-
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('image/')) return null;
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length === 0 || buffer.length > MAX_IMAGE_SIZE) return null;
-
-    return { buffer, mimeType: contentType };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// 下载后的 buffer 格式分流：统一转成 png（或原样返回标准格式），供 saveImageFile 落盘
-// - png/jpg/jpeg/webp：原样返回
-// - svg：sharp 原生支持，直接转 png（限宽 800，favicon 一般很小，防超大 svg 转码开销）
-// - ico：sharp 不支持，用 icojs 解码取最大帧 png
-// - 其他/不可读：null
-async function decodeImageBuffer(buffer) {
-  const sharp = require('sharp');
-
-  let format = null;
-  try {
-    const meta = await sharp(buffer).metadata();
-    format = meta.format;
-  } catch {
-    format = null;
-  }
-
-  if (['jpeg', 'jpg', 'png', 'webp'].includes(format)) {
-    return buffer;
-  }
-
-  if (format === 'svg') {
-    return sharp(buffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .png()
-      .toBuffer();
-  }
-
-  if (format === null) {
-    // ico 头魔数校验（00 00 01 00）
-    if (buffer.length >= 4 && buffer[0] === 0 && buffer[1] === 0 && buffer[2] === 1 && buffer[3] === 0) {
-      const icojs = require('icojs');
-      try {
-        const images = await icojs.decodeIco(buffer);
-        if (!images || images.length === 0) return null;
-        const largest = images.reduce((a, b) => (a.width >= b.width ? a : b));
-        return Buffer.from(largest.buffer);
-      } catch {
-        return null;
-      }
-    }
-  }
-
-  return null;
-}
-
-module.exports = { fetchOgMeta, downloadImage, decodeImageBuffer };
+module.exports = { fetchOgMeta };

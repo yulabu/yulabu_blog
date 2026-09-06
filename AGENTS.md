@@ -98,7 +98,7 @@ certbot renew --dry-run
 
 ### 4. 图片系统（2026-09 重构：引用归业务表，image 只存元数据）
 - image 表仅存 storage_path / thumb_path / file_size / orphan_since，**无引用语义**；引用由业务表持 image_id：
-  - 1:1 单列：post.cover_image_id、blog_column.cover_image_id、diary.cover_image_id、friend_link.preview_image_id
+  - 1:1 单列：post.cover_image_id、blog_column.cover_image_id、diary.cover_image_id、friend_link.preview_image_id（友链已退出图片系统，此列仅存量保留）
   - 1:N 关联表：post_image(post_id, image_id)，仅文章正文图使用
 - 双层语义：业务表里的 URL（post_cover / diary.images / 正文内嵌）是输入真相源；*_image_id 是保存时由 URL 派生的引用指针（utils/image.js 的 resolveImageIdByUrl / syncPostImages 全量 replace），仅供 GC 对账。API 契约全是 URL，前端无感知，DB 内部才用 id
 - URL→key 派生统一走 utils/image.js 的 storageKeyFromUrl（唯一入口，勿另写副本）：兼容相对路径 / 本站绝对域名 / 协议相对 //host / markdown title 后缀 / &amp; 实体，query、hash 丢弃；不校验 host（任意域名接受，storage_path 精确匹配把关）。派生失败只会在保存时以 console.warn（[image-ref]）暴露——"图显示着却被 GC 删"类问题先查这里
@@ -107,7 +107,7 @@ certbot renew --dry-run
 - 删除文章/专栏/日记/友链**不再即时删图**：引用随行消失，物理文件由 GC 延迟回收；后台图片库会短暂出现无主图，属正常
 - 新增持图业务的标准步骤（缺③④会把在用图误判为孤儿）：① 业务表加 *_image_id 列（1:1）或建关联表（1:N）→ ② 保存逻辑派生 image_id → ③ gc.js 对账 SQL 加一行 LEFT JOIN + IS NULL 判断 → ④ imageController 的 findReferencedImageIds / attachReferences 加同类型分支
 - 旧 image.reference_type / reference_id 列已废弃但保留库中未删（回滚保障），代码禁止再读写；稳定后可 DROP。勿再往 image 表加业务语义/枚举
-- 友链预览图本地化：ogImage.js（fetchOgMeta→downloadImage→decodeImageBuffer；ico 用 icojs、svg 用 sharp 转 png）→ saveImageFile → Image.create 后回填 preview_image_id；重复抓取旧图由 GC 回收；抓取失败静默吞为 null，定位看 pm2 logs blog-server
+- 友链头像一律外链（2026-09 起**退出图片系统**）：后台「抓图」= ogImage.js 的 fetchOgMeta 取 og:image/favicon 外部 URL 直接写 avatar（不下载、无 image 记录）；自定义 = avatar 输入框；DTO 只接受 http(s):// 或 // 开头（防手填 /uploads/ 造出无指针引用被 GC 误删）。抓取失败静默返回 null，定位看 pm2 logs blog-server。存量 preview_image/preview_image_id 已由 migrate-image-ref.js 归一进 avatar（指针不变量：有值 ⇔ avatar 是仍存在的本地图）；GC 对账 SQL 的 friend_link JOIN 保留用于保护存量本地图
 - 图片统一落 uploads/，saveImageFile 转 webp + thumb；frontend/home/public/ 静态资源（og-image.jpg 等）随 vite build 进 dist/；缩略图 *.thumb.webp 前端未消费（勿新增依赖它）
 - 涉及图片结构变更的部署顺序：sync-schema.js → migrate-image-ref.js（均幂等，迁移以 URL 匹配为准、不盲信旧 reference_id）→ pm2 restart
 
@@ -119,7 +119,7 @@ certbot renew --dry-run
 - 分层：routes/*Routes.js → controllers/*Controller.js → models/* + dto/* + vo/*
 
 ### 6. 前端代码约定
-- 复用既有组件，不引入新依赖/复杂度（必要例外：icojs 用于 favicon 解码）
+- 复用既有组件，不引入新依赖/复杂度
 - 列表/编辑页三态状态机：文章 draft / published / trash；编辑页按 currentStatus 分流按钮，trash 只读
 - 列表返回保留 tab：列表 activeTab ↔ route.query.status 双向同步
 - 加载体验：首页 TopProgressBar + LoadingOverlay 双加载；admin 登录页预加载遮罩

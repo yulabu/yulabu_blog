@@ -69,20 +69,38 @@ async function migrateColumnCovers(idByKey, misses) {
   return updated;
 }
 
-async function migrateFriendLinkPreviews(idByKey, misses) {
-  const links = await FriendLink.findAll({ attributes: ['friend_link_id', 'preview_image', 'preview_image_id'] });
+// 友链头像归一：友链已退出图片系统（avatar 一律外链，不再落盘）。
+// 存量收敛建立在一个不变量上：preview_image_id 有值 ⇔ 当前展示的 avatar 是仍存在的本地图
+// - avatar 为空且 preview_image 有值 → 归一为完整路径拷入 avatar（外链原样、死链置 null）
+// - avatar 已有的行不覆盖手填值；preview_image 弃用清空（列保留不删）
+// - 指针随最终展示值重算：展示外链/死链 → 置 null（旧本地图由 GC 延迟回收）；展示本地图 → 指向对应 image
+async function migrateFriendLinkAvatars(idByKey, misses) {
+  const links = await FriendLink.findAll({ attributes: ['friend_link_id', 'avatar', 'preview_image', 'preview_image_id'] });
   let updated = 0;
   for (const link of links) {
-    // 友链 preview_image 存裸 key（无 /uploads/ 前缀），外链为 http(s) 全 URL，均直查
-    if (!link.preview_image || /^https?:\/\//i.test(link.preview_image)) continue;
-    if (!idByKey.has(link.preview_image)) {
-      misses.push(`friend_link#${link.friend_link_id} 预览图: ${link.preview_image}`);
+    let finalAvatar = link.avatar || null;
+    if (!finalAvatar && link.preview_image) {
+      if (/^https?:\/\//i.test(link.preview_image)) {
+        finalAvatar = link.preview_image;
+      } else {
+        // 旧 preview_image 存裸 key（无 /uploads/ 前缀），补前缀后走统一归一
+        const key = storageKeyFromUrl(link.preview_image.startsWith('/uploads/') ? link.preview_image : `/uploads/${link.preview_image}`);
+        if (!key || !idByKey.has(key)) {
+          misses.push(`friend_link#${link.friend_link_id} 旧预览图(死链): ${link.preview_image}`);
+        }
+        finalAvatar = key && idByKey.has(key) ? `/uploads/${key}` : null;
+      }
     }
-    const imageId = idByKey.get(link.preview_image) || null;
-    if (imageId && link.preview_image_id !== imageId) {
-      await link.update({ preview_image_id: imageId });
-      updated++;
+
+    const finalKey = finalAvatar ? storageKeyFromUrl(finalAvatar) : null;
+    const finalImageId = finalKey ? (idByKey.get(finalKey) || null) : null;
+
+    if (link.avatar === finalAvatar && link.preview_image === null && Number(link.preview_image_id || 0) === Number(finalImageId || 0)) {
+      continue;
     }
+
+    await link.update({ avatar: finalAvatar, preview_image: null, preview_image_id: finalImageId });
+    updated++;
   }
   return updated;
 }
@@ -152,8 +170,8 @@ async function migrate() {
   const columnCount = await migrateColumnCovers(idByKey, misses);
   console.log(`[migrate] 专栏封面引用迁移：${columnCount} 个`);
 
-  const linkCount = await migrateFriendLinkPreviews(idByKey, misses);
-  console.log(`[migrate] 友链预览图引用迁移：${linkCount} 条`);
+  const linkCount = await migrateFriendLinkAvatars(idByKey, misses);
+  console.log(`[migrate] 友链头像归一：${linkCount} 条`);
 
   const { updated: diaryCount, trimmed: diaryTrimmed } = await migrateDiaryCovers(idByKey, misses);
   console.log(`[migrate] 日记封面引用迁移：${diaryCount} 条（死链清除/截断多图 ${diaryTrimmed} 条）`);

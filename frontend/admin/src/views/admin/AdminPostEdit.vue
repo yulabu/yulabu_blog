@@ -148,6 +148,7 @@ const form = ref({
   author: '匿名',
   content: '',
   columnId: '',
+  lastColumnId: '',
   cover: ''
 })
 
@@ -230,7 +231,6 @@ const tagOptions = computed(() =>
 
 const columns = ref([])
 const columnSaving = ref(false)
-const columnInitialized = ref(false)
 const currentStatus = ref('draft')
 const isTrash = computed(() => currentStatus.value === 'trash')
 
@@ -254,26 +254,33 @@ async function fetchColumns() {
   }
 }
 
+// 专栏切换立即生效（新建/编辑一致）：新建时草稿未建则先 ensureDraft 再入列，
+// 与封面上传同一模式。val === lastColumnId 说明是回显赋值或失败回滚触发的假变更，
+// 非用户操作；连续快速切换用循环以 form.columnId 最新值收敛，不丢更新
 watch(() => form.value.columnId, async (val) => {
-  if (!columnInitialized.value || !isEdit.value) return
-  const postId = Number(route.params.id)
   if (columnSaving.value) return
+  if (val === form.value.lastColumnId) return
 
   columnSaving.value = true
   try {
-    if (val) {
-      await addColumnPost(Number(val), postId)
-      toast('已加入专栏')
-    } else {
-      await removeColumnPost(form.value.lastColumnId, postId)
-      toast('已移出专栏')
+    const postId = isEdit.value ? Number(route.params.id) : await ensureDraft()
+
+    while (form.value.columnId !== form.value.lastColumnId) {
+      const target = form.value.columnId
+      if (target) {
+        await addColumnPost(Number(target), postId)
+        toast('已加入专栏')
+      } else {
+        await removeColumnPost(form.value.lastColumnId, postId)
+        toast('已移出专栏')
+      }
+      form.value.lastColumnId = target
     }
   } catch (e) {
     toast(e.message || '专栏更新失败', 'error')
     form.value.columnId = form.value.lastColumnId
   } finally {
     columnSaving.value = false
-    form.value.lastColumnId = form.value.columnId
   }
 })
 
@@ -422,7 +429,6 @@ async function fetchPost() {
       lastColumnId: post.column?.id || '',
       cover: post.cover || ''
     }
-    columnInitialized.value = true
     currentStatus.value = post.status || 'draft'
     originalData.value = snapshotForm()
   } catch (e) {
