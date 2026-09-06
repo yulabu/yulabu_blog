@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
     images: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: '图片URL数组',
+      comment: '图片URL数组（单图：images[0] 即封面）',
       get() {
         const raw = this.getDataValue('images');
         if (typeof raw === 'string') {
@@ -21,6 +21,11 @@ module.exports = (sequelize, DataTypes) => {
         }
         return raw || [];
       }
+    },
+    cover_image_id: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: true,
+      comment: '封面图片ID（由 images[0] 派生，供 GC 对账）'
     }
   }, {
     tableName: 'diary',

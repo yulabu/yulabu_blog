@@ -6,17 +6,6 @@ module.exports = (sequelize, DataTypes) => {
             autoIncrement: true,
             comment: '主键'
         },
-        reference_type: {
-            type: DataTypes.ENUM('post_content', 'cover', 'friend_link', 'other'),
-            allowNull: false,
-            defaultValue: 'post_content',
-            comment: '引用类型'
-        },
-        reference_id: {
-            type: DataTypes.BIGINT.UNSIGNED,
-            allowNull: true,
-            comment: '引用对象ID，NULL 表示已解绑（孤儿）'
-        },
         storage_path: {
             type: DataTypes.STRING(255),
             allowNull: false,
@@ -31,13 +20,19 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: true,
             comment: '原图字节数（统计存储占用）'
+        },
+        orphan_since: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            comment: '孤儿标记时间：GC 对账无引用时打标，超宽限期物理删除；重新被引用时清除'
         }
     }, {
         tableName: 'image',
         timestamps: true,
         underscored: true,
         indexes: [
-            { fields: ['reference_type', 'reference_id'] },
+            { fields: ['storage_path'] },
+            { fields: ['orphan_since'] },
             { fields: ['created_at'] }
         ]
     });

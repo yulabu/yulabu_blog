@@ -1,5 +1,13 @@
 const AppError = require('@middleware/AppError');
 
+// 日记单图契约：images 最多 1 张（images[0] 即封面，与 cover_image_id 一一对应）。
+// 超出必须报错而非静默截断——静默丢弃会让多出的图片变成无指针孤儿被 GC 回收
+function validDiaryImages(images) {
+  if (!Array.isArray(images)) throw new AppError(400, 'images 必须是数组');
+  if (images.length > 1) throw new AppError(400, '日记最多支持1张图片');
+  return images;
+}
+
 function createDiaryDTO(body) {
   const content = body.content?.trim();
 
@@ -9,7 +17,7 @@ function createDiaryDTO(body) {
   const dto = { content };
 
   if (body.images !== undefined) {
-    dto.images = Array.isArray(body.images) ? body.images : [];
+    dto.images = validDiaryImages(body.images);
   }
 
   return dto;
@@ -25,7 +33,7 @@ function updateDiaryDTO(body) {
     dto.content = content;
   }
   if (body.images !== undefined) {
-    dto.images = Array.isArray(body.images) ? body.images : [];
+    dto.images = validDiaryImages(body.images);
   }
 
   if (Object.keys(dto).length === 0) throw new AppError(400, '没有需要更新的字段');

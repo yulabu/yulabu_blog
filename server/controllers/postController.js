@@ -1,12 +1,11 @@
 const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { parseId, paginate } = require('@dto/common.dto');
-const { Post, Tag, ColumnPost, Column, Image } = require('@models');
+const { sequelize, Post, Tag, ColumnPost, Column, PostImage } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
-const { unbindUnusedFiles, unbindCover } = require('@utils/image');
-const { deleteImageFiles } = require('@utils/imageStorage');
+const { syncPostImages, resolveImageIdByUrl } = require('@utils/image');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
@@ -127,7 +126,11 @@ exports.getArchive = async (req, res) => {
 // 创建文章
 exports.createPost = async (req, res) => {
   const data = createPostDTO(req.body);
+  if (data.post_cover !== undefined) {
+    data.cover_image_id = await resolveImageIdByUrl(data.post_cover);
+  }
   const post = await Post.create(data);
+  await syncPostImages(post.post_id, post.post_content);
 
   res.status(201).json({ id: post.post_id, message: '创建成功' });
 };
@@ -139,26 +142,27 @@ exports.updatePost = async (req, res) => {
   if (!post) throw new AppError(404, '文章不存在');
 
   const data = updatePostDTO(req.body);
+  if (data.post_cover !== undefined) {
+    data.cover_image_id = await resolveImageIdByUrl(data.post_cover);
+  }
   await post.update(data);
 
-  // 正文变更后差集解绑：正文不再引用的图片置为孤儿（24h 宽限期后由 GC 物理删除）
+  // 正文变更后按正文重新同步图片关联（幂等）；解引用的图片由 GC 对账回收
   if (data.post_content !== undefined) {
-    await unbindUnusedFiles(postId);
-  }
-
-  // 封面变更后差集解绑：post_cover 不再引用的封面图置为孤儿
-  if (data.post_cover !== undefined) {
-    await unbindCover(postId, data.post_cover);
+    await syncPostImages(postId, data.post_content);
   }
 
   res.json({ id: post.post_id, message: '更新成功' });
 };
 
-// 差集解绑接口：前端离开编辑页时兜底调用（幂等）
+// 图片关联同步接口：前端离开编辑页时兜底调用（按已保存正文重新同步，幂等）
 exports.unbindImages = async (req, res) => {
   const postId = postIdDTO(req.params);
-  const { unbound } = await unbindUnusedFiles(postId);
-  res.json({ message: `已解绑 ${unbound} 张` });
+  const post = await Post.findByPk(postId);
+  if (!post) throw new AppError(404, '文章不存在');
+
+  const synced = await syncPostImages(postId, post.post_content);
+  res.json({ message: `已同步 ${synced} 张` });
 };
 
 // 删除文章（软删除，改为 trash 状态；顺带移出专栏）
@@ -229,31 +233,19 @@ exports.restorePost = async (req, res) => {
   res.json({ message: '已恢复至草稿' });
 };
 
-// 彻底删除文章：按图片常规生命周期全流程清理
-// ① 按字段路径删除 uploads 物理文件（原图 + 缩略图，正文图 + 封面图）
-// ② 删除 image 表对应行
-// ③ 删除 post 及关联
+// 彻底删除文章：仅清理文章自身与关联行
+// 图片引用（正文关联行、封面外键）随行消失，物理文件由 GC 对账宽限后回收
 exports.forceDeletePost = async (req, res) => {
   const postId = parseId(req.params, '文章');
 
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
-  // ① 根据 storage_path / thumb_path 删除物理文件（失败不阻塞主流程）
-  const images = await Image.findAll({
-    where: { reference_type: { [Op.in]: ['post_content', 'cover'] }, reference_id: postId }
+  await sequelize.transaction(async (t) => {
+    await PostImage.destroy({ where: { post_id: postId }, transaction: t });
+    await ColumnPost.destroy({ where: { post_id: postId }, transaction: t });
+    await post.destroy({ transaction: t });
   });
-  for (const image of images) {
-    await deleteImageFiles(image.storage_path, image.thumb_path);
-  }
 
-  // ② 删除 image 表对应行
-  if (images.length > 0) {
-    await Image.destroy({ where: { image_id: { [Op.in]: images.map(i => i.image_id) } } });
-  }
-
-  // ③ 删除 post 及关联
-  await post.destroy();
-  await ColumnPost.destroy({ where: { post_id: postId } });
   res.json({ message: '已彻底删除' });
 };

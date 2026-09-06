@@ -2,44 +2,19 @@ const fs = require('fs').promises
 const { Op } = require('sequelize')
 const AppError = require('@middleware/AppError')
 const { saveImageFile, deleteImageFiles } = require('@utils/imageStorage')
-const { Image, Post, Diary } = require('@models')
+const { Image, Post, Column, FriendLink, PostImage, Diary } = require('@models')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
 const { imageVO } = require('@vo/image.vo')
 const { MAX_TOTAL_SIZE } = require('@middleware/imageUpload')
 
-// 批量上传图片：转码落盘 + 写入 Image 记录（绑定 post 或 diary），返回图片信息
-// type 参数：post_content（默认，正文图）/ cover（文章封面或日记图片）
-const UPLOAD_TYPES = ['post_content', 'cover']
-
-exports.uploadBatch = async (req, res) => {
+// 批量上传图片：转码落盘 + 写入 image 记录（纯上传，不绑定业务；引用由业务表持有）
+const uploadBatch = async (req, res) => {
   const files = req.files
   if (!files || files.length === 0) {
     throw new AppError(400, '没有上传文件')
   }
 
   try {
-    const type = req.body.type || 'post_content'
-    if (!UPLOAD_TYPES.includes(type)) {
-      throw new AppError(400, '不支持的引用类型')
-    }
-
-    const postId = Number(req.body.post_id)
-    const diaryId = Number(req.body.diary_id)
-
-    let referenceId = null
-
-    if (postId && postId > 0) {
-      const post = await Post.findByPk(postId)
-      if (!post) throw new AppError(400, '关联的文章不存在')
-      referenceId = postId
-    } else if (diaryId && diaryId > 0) {
-      const diary = await Diary.findByPk(diaryId)
-      if (!diary) throw new AppError(400, '关联的日记不存在')
-      referenceId = diaryId
-    } else {
-      throw new AppError(400, '缺少有效的 post_id 或 diary_id')
-    }
-
     // 单请求总量限制
     let totalSize = 0
     for (const file of files) {
@@ -53,8 +28,6 @@ exports.uploadBatch = async (req, res) => {
     for (const file of files) {
       const info = await saveImageFile(file.path)
       const record = await Image.create({
-        reference_type: type,
-        reference_id: referenceId,
         storage_path: info.storagePath,
         thumb_path: info.thumbPath,
         file_size: info.fileSize
@@ -78,36 +51,132 @@ exports.uploadBatch = async (req, res) => {
   }
 }
 
-// 为图片补充引用文章标题（reference_type=post_content 时）
-// 同一查找确认文章id，避免逐条带来的开销
-async function attachReferenceTitles(images) {
-  const postIds = [...new Set(
-    images
-      .filter(img => img.reference_type === 'post_content' && img.reference_id)
-      .map(img => img.reference_id)
-  )]
-  // 无数据提前退出
-  if (postIds.length === 0) return
+// 指定引用类型的图片 ID 集合；type='other' 返回全部被引用 ID（供差集筛孤儿）
+async function findReferencedImageIds(type) {
+  if (type === 'post_content') {
+    const rows = await PostImage.findAll({ attributes: ['image_id'] })
+    return rows.map(r => r.image_id)
+  }
+  if (type === 'cover') {
+    const [posts, columns] = await Promise.all([
+      Post.findAll({ where: { cover_image_id: { [Op.ne]: null } }, attributes: ['cover_image_id'] }),
+      Column.findAll({ where: { cover_image_id: { [Op.ne]: null } }, attributes: ['cover_image_id'] })
+    ])
+    return [
+      ...posts.map(p => p.cover_image_id),
+      ...columns.map(c => c.cover_image_id)
+    ]
+  }
+  if (type === 'friend_link') {
+    const rows = await FriendLink.findAll({
+      where: { preview_image_id: { [Op.ne]: null } },
+      attributes: ['preview_image_id']
+    })
+    return rows.map(r => r.preview_image_id)
+  }
+  if (type === 'diary') {
+    const rows = await Diary.findAll({
+      where: { cover_image_id: { [Op.ne]: null } },
+      attributes: ['cover_image_id']
+    })
+    return rows.map(r => r.cover_image_id)
+  }
+  if (type === 'other') {
+    const referenced = new Set()
+    for (const group of await Promise.all([
+      findReferencedImageIds('post_content'),
+      findReferencedImageIds('cover'),
+      findReferencedImageIds('friend_link'),
+      findReferencedImageIds('diary')
+    ])) {
+      for (const id of group) referenced.add(Number(id))
+    }
+    return [...referenced]
+  }
+  return []
+}
 
-  const posts = await Post.findAll({
-    where: { post_id: { [Op.in]: postIds } },
-    attributes: ['post_id', 'post_title']
-  })
-  const titleMap = new Map(posts.map(p => [p.post_id, p.post_title]))
+// 批量派生图片的引用位置（优先级：正文图 > 文章封面 > 专栏封面 > 日记图 > 友链预览图）
+async function attachReferences(images) {
+  if (images.length === 0) return
+  const ids = images.map(img => img.image_id)
+
+  const [postImages, postCovers, columnCovers, linkPreviews, diaryCovers] = await Promise.all([
+    PostImage.findAll({
+      where: { image_id: { [Op.in]: ids } },
+      attributes: ['post_id', 'image_id'],
+      order: [['post_image_id', 'ASC']]
+    }),
+    Post.findAll({ where: { cover_image_id: { [Op.in]: ids } }, attributes: ['post_id', 'post_title', 'cover_image_id'] }),
+    Column.findAll({ where: { cover_image_id: { [Op.in]: ids } }, attributes: ['column_id', 'cover_image_id'] }),
+    FriendLink.findAll({ where: { preview_image_id: { [Op.in]: ids } }, attributes: ['friend_link_id', 'preview_image_id'] }),
+    Diary.findAll({ where: { cover_image_id: { [Op.in]: ids } }, attributes: ['diary_id', 'cover_image_id'] })
+  ])
+
+  const contentPostByImage = new Map()
+  for (const pi of postImages) {
+    if (!contentPostByImage.has(pi.image_id)) contentPostByImage.set(pi.image_id, pi.post_id)
+  }
+  const coverPostByImage = new Map(postCovers.map(p => [p.cover_image_id, p]))
+  const coverColumnByImage = new Map(columnCovers.map(c => [c.cover_image_id, c.column_id]))
+  const linkByImage = new Map(linkPreviews.map(f => [f.preview_image_id, f.friend_link_id]))
+  const diaryByImage = new Map(diaryCovers.map(d => [d.cover_image_id, d.diary_id]))
+
+  const relatedPostIds = [...new Set([
+    ...contentPostByImage.values(),
+    ...postCovers.map(p => p.post_id)
+  ])]
+  const posts = relatedPostIds.length
+    ? await Post.findAll({ where: { post_id: { [Op.in]: relatedPostIds } }, attributes: ['post_id', 'post_title'] })
+    : []
+  const titleById = new Map(posts.map(p => [p.post_id, p.post_title]))
 
   for (const img of images) {
-    if (img.reference_type === 'post_content' && img.reference_id) {
-      img.reference_title = titleMap.get(img.reference_id) || null
+    if (contentPostByImage.has(img.image_id)) {
+      img.reference_type = 'post_content'
+      img.reference_id = contentPostByImage.get(img.image_id)
+      img.reference_title = titleById.get(img.reference_id) || null
+    } else if (coverPostByImage.has(img.image_id)) {
+      img.reference_type = 'cover'
+      img.reference_id = coverPostByImage.get(img.image_id).post_id
+      img.reference_title = coverPostByImage.get(img.image_id).post_title
+    } else if (coverColumnByImage.has(img.image_id)) {
+      img.reference_type = 'cover'
+      img.reference_id = coverColumnByImage.get(img.image_id)
+      img.reference_title = null
+    } else if (diaryByImage.has(img.image_id)) {
+      img.reference_type = 'cover'
+      img.reference_id = diaryByImage.get(img.image_id)
+      img.reference_title = null
+    } else if (linkByImage.has(img.image_id)) {
+      img.reference_type = 'friend_link'
+      img.reference_id = linkByImage.get(img.image_id)
+      img.reference_title = null
+    } else {
+      img.reference_type = null
+      img.reference_id = null
+      img.reference_title = null
     }
   }
 }
 
-// 图片库列表：分页 + 分类筛选，附引用文章标题
-exports.getImages = async (req, res) => {
+// 图片库列表：分页 + 引用类型筛选（other = 无引用孤儿）
+const getImages = async (req, res) => {
   const { page, limit, offset, type } = imageListDTO(req.query)
 
   const where = {}
-  if (type) where.reference_type = type
+  if (type && type !== 'other') {
+    const ids = await findReferencedImageIds(type)
+    if (ids.length === 0) {
+      return res.json({ images: [], total: 0, page, totalPages: 0 })
+    }
+    where.image_id = { [Op.in]: ids }
+  } else if (type === 'other') {
+    const ids = await findReferencedImageIds('other')
+    if (ids.length > 0) {
+      where.image_id = { [Op.notIn]: ids }
+    }
+  }
 
   const { rows, count } = await Image.findAndCountAll({
     where,
@@ -116,7 +185,7 @@ exports.getImages = async (req, res) => {
     offset
   })
 
-  await attachReferenceTitles(rows)
+  await attachReferences(rows)
   res.json({
     images: rows.map(imageVO),
     total: count,
@@ -126,21 +195,23 @@ exports.getImages = async (req, res) => {
 }
 
 // 单张图片详情
-exports.getImageById = async (req, res) => {
+const getImageById = async (req, res) => {
   const id = imageIdDTO(req.params)
   const image = await Image.findByPk(id)
   if (!image) throw new AppError(404, '图片不存在')
 
-  await attachReferenceTitles([image])
+  await attachReferences([image])
   res.json(imageVO(image))
 }
 
-// 删除单张图片（仅孤儿可删，被引用拒绝）
-exports.deleteImage = async (req, res) => {
+// 删除单张图片（仅无引用可删，被引用拒绝）
+const deleteImage = async (req, res) => {
   const id = imageIdDTO(req.params)
   const image = await Image.findByPk(id)
   if (!image) throw new AppError(404, '图片不存在')
-  if (image.reference_id !== null) {
+
+  const referenced = await findReferencedImageIds('other')
+  if (referenced.includes(Number(id))) {
     throw new AppError(400, '该图片仍被引用，无法删除')
   }
 
@@ -150,13 +221,17 @@ exports.deleteImage = async (req, res) => {
 }
 
 // 批量删除（任一被引用则整体拒绝）
-exports.deleteImagesBatch = async (req, res) => {
+const deleteImagesBatch = async (req, res) => {
   const ids = imageIdsDTO(req.body)
   const images = await Image.findAll({ where: { image_id: { [Op.in]: ids } } })
+  if (images.length === 0) {
+    throw new AppError(404, '图片不存在')
+  }
 
-  const bound = images.filter(img => img.reference_id !== null)
-  if (bound.length > 0) {
-    throw new AppError(400, `有 ${bound.length} 张图片仍被引用，无法删除`)
+  const referenced = await findReferencedImageIds('other')
+  const boundImages = images.filter(img => referenced.includes(Number(img.image_id)))
+  if (boundImages.length > 0) {
+    throw new AppError(400, `有 ${boundImages.length} 张图片仍被引用，无法删除`)
   }
 
   for (const image of images) {
@@ -165,3 +240,5 @@ exports.deleteImagesBatch = async (req, res) => {
   await Image.destroy({ where: { image_id: { [Op.in]: images.map(img => img.image_id) } } })
   res.json({ message: `已删除 ${images.length} 张图片` })
 }
+
+module.exports = { uploadBatch, getImages, getImageById, deleteImage, deleteImagesBatch }

@@ -1,10 +1,8 @@
 const AppError = require('@middleware/AppError');
-const { Op } = require('sequelize');
-const { Diary, Image } = require('@models');
+const { Diary } = require('@models');
 const { createDiaryDTO, updateDiaryDTO, diaryIdDTO } = require('@dto/diary.dto');
 const { diaryDetail, diaryList } = require('@vo/diary.vo');
-const { unbindDiaryCovers } = require('@utils/image');
-const { deleteImageFiles } = require('@utils/imageStorage');
+const { resolveImageIdByUrl } = require('@utils/image');
 
 exports.getPublicDiaries = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -53,8 +51,15 @@ exports.getDiaryById = async (req, res) => {
 
 exports.createDiary = async (req, res) => {
   const data = createDiaryDTO(req.body);
-  const diary = await Diary.create(data);
-  await unbindDiaryCovers(diary.diary_id, data.images);
+  const payload = { content: data.content };
+
+  // images[0] 即封面：URL → image_id 派生（外链/无效 URL 为 null）
+  if (data.images !== undefined) {
+    payload.images = data.images;
+    payload.cover_image_id = await resolveImageIdByUrl(data.images[0]);
+  }
+
+  const diary = await Diary.create(payload);
   res.status(201).json({ id: diary.diary_id, message: '创建成功' });
 };
 
@@ -63,8 +68,13 @@ exports.updateDiary = async (req, res) => {
   const diary = await Diary.findByPk(id);
   if (!diary) throw new AppError(404, '日记不存在');
   const data = updateDiaryDTO(req.body);
+
+  // 封面变更后旧图失去引用，由 GC 对账回收
+  if (data.images !== undefined) {
+    data.cover_image_id = await resolveImageIdByUrl(data.images[0]);
+  }
+
   await diary.update(data);
-  await unbindDiaryCovers(id, data.images);
   res.json({ id: diary.diary_id, message: '更新成功' });
 };
 
@@ -73,18 +83,7 @@ exports.deleteDiary = async (req, res) => {
   const diary = await Diary.findByPk(id);
   if (!diary) throw new AppError(404, '日记不存在');
 
-  const images = await Image.findAll({
-    where: { reference_type: 'cover', reference_id: id }
-  });
-
-  for (const image of images) {
-    await deleteImageFiles(image.storage_path, image.thumb_path);
-  }
-
-  if (images.length > 0) {
-    await Image.destroy({ where: { image_id: { [Op.in]: images.map(i => i.image_id) } } });
-  }
-
+  // cover_image_id 引用随行消失，物理文件由 GC 对账宽限后回收
   await diary.destroy();
 
   res.json({ id: diary.diary_id, message: '删除成功' });

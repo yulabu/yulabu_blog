@@ -27,7 +27,8 @@ certbot 2.1.0（Let's Encrypt，certbot.timer 自动续期，证书有效期至 
 │   ├── .env               # 环境变量（数据库/密钥/上传目录/seed）
 │   ├── seed.js            # 管理员创建（读 .env 的 SEED_ADMIN_*）
 │   └── scripts/
-│       └── sync-schema.js # 幂等结构同步（补齐 sync() 不做的 ALTER）
+│       ├── sync-schema.js      # 幂等结构同步（补齐 sync() 不做的 ALTER）
+│       └── migrate-image-ref.js # 图片引用一次性迁移（幂等；新环境/漂移时可重跑）
 ├── frontend/
 │   ├── home/dist/         # 主站静态产物（yulabu.cn 与 blog.yulabu.cn 共用）
 │   └── admin/dist/        # 后台静态产物（admin.yulabu.cn）
@@ -85,7 +86,7 @@ certbot renew --dry-run
 
 ### 2. 数据库迁移
 - sequelize.sync() 仅建表（表不存在时），不会 ALTER 已有表 / 追加 ENUM 值
-- 新增字段或 ENUM 值必须手动 ALTER，或跑 server/scripts/sync-schema.js（幂等、可重复执行）
+- 新增字段或 ENUM 值必须手动 ALTER，或跑 server/scripts/sync-schema.js（幂等、可重复执行）；涉及图片引用结构的变更还需跑 migrate-image-ref.js（见第 4 节）
 - 上线前自查：新模型字段 / 新 ENUM 值是否已在生产库存在
 - ENUM 追加新值必须放末尾（MySQL 按索引存储，插前面会让存量数据错位，见 models/Post.js:40）
 - 连接用 blog_user@localhost（utf8mb4）；root 走 unix_socket，不可密码登录
@@ -95,12 +96,20 @@ certbot renew --dry-run
 - frontend/home/index.html 的 og:url / og:image 必须指向可抓的有效域名（blog 子域），否则微信/QQ 卡片与友链抓图失败
 - 改 OG 标签后必须重 npm run build（home），否则 dist/index.html 不更新
 
-### 4. 图片与资源
-- 文章/友链图片统一落 uploads/，经 server/utils/imageStorage.js 的 saveImageFile 转 webp + thumb；Image 表 reference_type 区分 post / friend_link
-- 友链预览图本地化：server/utils/ogImage.js（fetchOgMeta→downloadImage→decodeImageBuffer；ico 用 icojs、svg 用 sharp 转 png，favicon 兜底）→ saveImageFile → Image.create(reference_type='friend_link')
-- 抓取失败静默吞为 null，前端统一显示「未找到可用的预览图」，定位看 pm2 logs blog-server
-- frontend/home/public/ 静态资源（og-image.jpg、nahida.ico）随 vite build 进 dist/，由 Nginx 静态托管
-- 缩略图 *.thumb.webp 当前前端未消费（清理方案待定，勿新增依赖它）
+### 4. 图片系统（2026-09 重构：引用归业务表，image 只存元数据）
+- image 表仅存 storage_path / thumb_path / file_size / orphan_since，**无引用语义**；引用由业务表持 image_id：
+  - 1:1 单列：post.cover_image_id、blog_column.cover_image_id、diary.cover_image_id、friend_link.preview_image_id
+  - 1:N 关联表：post_image(post_id, image_id)，仅文章正文图使用
+- 双层语义：业务表里的 URL（post_cover / diary.images / 正文内嵌）是输入真相源；*_image_id 是保存时由 URL 派生的引用指针（utils/image.js 的 resolveImageIdByUrl / syncPostImages 全量 replace），仅供 GC 对账。API 契约全是 URL，前端无感知，DB 内部才用 id
+- URL→key 派生统一走 utils/image.js 的 storageKeyFromUrl（唯一入口，勿另写副本）：兼容相对路径 / 本站绝对域名 / 协议相对 //host / markdown title 后缀 / &amp; 实体，query、hash 丢弃；不校验 host（任意域名接受，storage_path 精确匹配把关）。派生失败只会在保存时以 console.warn（[image-ref]）暴露——"图显示着却被 GC 删"类问题先查这里
+- diary 为单图契约：DTO 拒绝 images 超过 1 张（400），images[0] ↔ cover_image_id 一一对应；存量多图由 migrate-image-ref.js 截断
+- GC（utils/gc.js 的 ORPHAN_RECONCILE_SQL）：LEFT JOIN 各业务表判定引用，三态处理——有引用清 orphan_since（复活）/ 无引用打标 / 标记超 24h（ORPHAN_GRACE_MS）**且文件创建超 72h（ORPHAN_MIN_AGE_MS）** 才删文件+记录。服务启动时 + 每 24h 跑
+- 删除文章/专栏/日记/友链**不再即时删图**：引用随行消失，物理文件由 GC 延迟回收；后台图片库会短暂出现无主图，属正常
+- 新增持图业务的标准步骤（缺③④会把在用图误判为孤儿）：① 业务表加 *_image_id 列（1:1）或建关联表（1:N）→ ② 保存逻辑派生 image_id → ③ gc.js 对账 SQL 加一行 LEFT JOIN + IS NULL 判断 → ④ imageController 的 findReferencedImageIds / attachReferences 加同类型分支
+- 旧 image.reference_type / reference_id 列已废弃但保留库中未删（回滚保障），代码禁止再读写；稳定后可 DROP。勿再往 image 表加业务语义/枚举
+- 友链预览图本地化：ogImage.js（fetchOgMeta→downloadImage→decodeImageBuffer；ico 用 icojs、svg 用 sharp 转 png）→ saveImageFile → Image.create 后回填 preview_image_id；重复抓取旧图由 GC 回收；抓取失败静默吞为 null，定位看 pm2 logs blog-server
+- 图片统一落 uploads/，saveImageFile 转 webp + thumb；frontend/home/public/ 静态资源（og-image.jpg 等）随 vite build 进 dist/；缩略图 *.thumb.webp 前端未消费（勿新增依赖它）
+- 涉及图片结构变更的部署顺序：sync-schema.js → migrate-image-ref.js（均幂等，迁移以 URL 匹配为准、不盲信旧 reference_id）→ pm2 restart
 
 ### 5. 后端代码约定
 - 校验集中在 server/dto/*.dto.js（白名单过滤）；异常用 server/middleware/AppError.js 抛 400/404

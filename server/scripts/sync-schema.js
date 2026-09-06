@@ -127,12 +127,83 @@ async function syncSchema() {
         CREATE TABLE \`diary\` (
           \`diary_id\` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
           \`content\` TEXT NOT NULL COMMENT '日记内容（最多3000字）',
-          \`images\` JSON NULL COMMENT '图片URL数组',
+          \`images\` JSON NULL COMMENT '图片URL数组（单图：images[0] 即封面）',
+          \`cover_image_id\` BIGINT UNSIGNED NULL COMMENT '封面图片ID（由 images[0] 派生）',
           \`created_at\` DATETIME NOT NULL,
           \`updated_at\` DATETIME NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
       console.log('[sync-schema] diary 表已创建');
+    }
+  }
+
+  // ========== 图片引用重构（业务表持 image_id，image 表纯元数据） ==========
+
+  // image.orphan_since：GC 对账孤儿标记
+  if (!(await hasColumn('image', 'orphan_since'))) {
+    await sequelize.query(
+      `ALTER TABLE \`image\` ADD COLUMN \`orphan_since\` DATETIME NULL COMMENT '孤儿标记时间：GC 对账无引用时打标，超宽限期物理删除'`
+    );
+    console.log('[sync-schema] image.orphan_since 已添加');
+  }
+
+  // post.cover_image_id
+  if (!(await hasColumn('post', 'cover_image_id'))) {
+    await sequelize.query(
+      `ALTER TABLE \`post\` ADD COLUMN \`cover_image_id\` BIGINT UNSIGNED NULL COMMENT '封面图片ID（由 post_cover 派生）' AFTER \`post_cover\``
+    );
+    console.log('[sync-schema] post.cover_image_id 已添加');
+  }
+
+  // blog_column.cover_image_id（表名大小写兼容同上）
+  {
+    const table = (await hasColumn('blog_column', 'column_id')) ? 'blog_column' : 'column';
+    try {
+      if (!(await hasColumn(table, 'cover_image_id'))) {
+        await sequelize.query(
+          `ALTER TABLE \`${table}\` ADD COLUMN \`cover_image_id\` BIGINT UNSIGNED NULL COMMENT '封面图片ID（由 column_cover 派生）' AFTER \`column_cover\``
+        );
+        console.log(`[sync-schema] ${table}.cover_image_id 已添加`);
+      }
+    } catch (e) {
+      if (!e.message.includes("doesn't exist") && !e.message.includes('Unknown table')) throw e;
+    }
+  }
+
+  // friend_link.preview_image_id
+  if (!(await hasColumn('friend_link', 'preview_image_id'))) {
+    await sequelize.query(
+      `ALTER TABLE \`friend_link\` ADD COLUMN \`preview_image_id\` BIGINT UNSIGNED NULL COMMENT '预览图图片ID（本地抓图时写入）' AFTER \`preview_image\``
+    );
+    console.log('[sync-schema] friend_link.preview_image_id 已添加');
+  }
+
+  // diary.cover_image_id（单列引用，与 post/column 对称）
+  if (!(await hasColumn('diary', 'cover_image_id'))) {
+    await sequelize.query(
+      `ALTER TABLE \`diary\` ADD COLUMN \`cover_image_id\` BIGINT UNSIGNED NULL COMMENT '封面图片ID（由 images[0] 派生）' AFTER \`images\``
+    );
+    console.log('[sync-schema] diary.cover_image_id 已添加');
+  }
+
+  // post_image 关联表（文章正文图片，保存文章时全量同步）
+  {
+    const [tables] = await sequelize.query(
+      `SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'post_image' LIMIT 1`
+    );
+    if (tables.length === 0) {
+      await sequelize.query(`
+        CREATE TABLE \`post_image\` (
+          \`post_image_id\` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          \`post_id\` BIGINT UNSIGNED NOT NULL COMMENT '文章ID',
+          \`image_id\` BIGINT UNSIGNED NOT NULL COMMENT '正文图片ID',
+          \`created_at\` DATETIME NOT NULL,
+          \`updated_at\` DATETIME NOT NULL,
+          UNIQUE KEY \`post_image_unique\` (\`post_id\`, \`image_id\`),
+          INDEX \`idx_image_id\` (\`image_id\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      console.log('[sync-schema] post_image 表已创建');
     }
   }
 

@@ -36,6 +36,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: '封面图URL'
     },
+    cover_image_id: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: true,
+      comment: '封面图片ID（引用 image 表，由 post_cover 派生，供 GC 对账）'
+    },
     post_status: {
       // draft 必须追加在末尾：MySQL ENUM 按索引存储，插入前面会导致现有数据错位
       type: DataTypes.ENUM('published', 'trash', 'draft'),

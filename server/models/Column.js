@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: '封面图URL'
     },
+    cover_image_id: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: true,
+      comment: '封面图片ID（引用 image 表，由 column_cover 派生，供 GC 对账）'
+    },
     sort_order: {
       type: DataTypes.INTEGER,
       defaultValue: 0,

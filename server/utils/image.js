@@ -1,139 +1,107 @@
 const { Op } = require('sequelize')
-const { Image, Post } = require('@models')
+const { sequelize, Image, PostImage } = require('@models')
+
+// URL → uploads 存储 key 归一化（所有引用派生的唯一入口）
+// 兼容：相对路径 /uploads/...、本站任意绝对域名、协议相对 //host/...；
+// &amp; 实体还原；query/hash 丢弃（URL API 只取 pathname）。
+// 不校验 host：任意域名的 /uploads/ 路径都接受，能否建立引用由
+// image.storage_path 精确匹配把关——域名白名单在换域名/走 IP 访问时会
+// 静默失效，而"派生失败 → GC 误删"正是要消灭的故障模式。
+function storageKeyFromUrl(url) {
+  if (!url) return null
+  try {
+    const parsed = new URL(String(url).trim().replace(/&amp;/g, '&'), 'https://yulabu.cn')
+    if (!parsed.pathname.startsWith('/uploads/')) return null
+    return decodeURIComponent(parsed.pathname.slice('/uploads/'.length)) || null
+  } catch (err) {
+    return null
+  }
+}
 
 // 从正文中提取本系统图片的存储 key 集合（去重）
-// 支持 Markdown 图片语法与 <img> 标签，只匹配 /uploads/ 开头的相对路径
+// 支持 Markdown 图片语法与 <img> 标签；URL 统一走 storageKeyFromUrl 归一化
 function extractReferencedImages(content) {
   const refs = new Set()
   if (!content) return refs
 
+  // Markdown：URL 捕获组排除空白，兼容 "title" / 'title' 后缀与 <url> 包裹形式，
+  // 否则 title 会被并进 URL 导致派生失败（图显示着却被 GC 当孤儿回收）
   const patterns = [
-    /!\[[^\]]*\]\(([^)]+)\)/g,
+    /!\[[^\]]*\]\(\s*(<[^>]*>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g,
     /<img\s+[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi
   ]
 
   for (const regex of patterns) {
     let match
     while ((match = regex.exec(content)) !== null) {
-      const url = match[1]
-      if (url.startsWith('/uploads/')) {
-        try {
-          const key = decodeURIComponent(url.slice('/uploads/'.length))
-          if (key) refs.add(key)
-        } catch (err) {
-          // 忽略无法解码的 URL
-        }
-      }
+      const raw = match[1]
+      const url = raw.startsWith('<') && raw.endsWith('>') ? raw.slice(1, -1) : raw
+      const key = storageKeyFromUrl(url)
+      if (key) refs.add(key)
     }
   }
 
   return refs
 }
 
-// 差集解绑：将绑定到文章但正文中已不引用的图片置为孤儿（reference_id = NULL）
-// 幂等：重复调用（保存 + 离开兜底）无副作用
-// 保护窗口：绑定后 GRACE 内的图片不解绑——粘贴/拖拽上传与正文插入 URL 存在
-// 异步时序窗口，保存时正文可能暂未引用该图，留待窗口过后再进差集，避免误伤。
-const UNBIND_GRACE_MS = 60 * 1000
+// 存储 key 集合 → 图片 ID 列表（保持传入顺序、去重；不存在的 key 跳过）
+// warnContext 传入时（如 post#3），未命中 image 表的本站引用会打告警：
+// 这类引用建立不了指针，图片会在 GC 宽限后被物理删除，属于必须当场暴露的静默失败
+async function resolveImageIdsByKeys(keys, warnContext) {
+  const list = [...new Set(keys || [])].filter(Boolean)
+  if (list.length === 0) return []
 
-async function unbindUnusedFiles(postId) {
-  const post = await Post.findByPk(postId)
-  if (!post) return { unbound: 0 }
-
-  const used = extractReferencedImages(post.post_content)
-  const bound = await Image.findAll({
-    where: { reference_type: 'post_content', reference_id: postId }
+  const images = await Image.findAll({
+    where: { storage_path: { [Op.in]: list } },
+    attributes: ['image_id', 'storage_path']
   })
+  const idByKey = new Map(images.map(img => [img.storage_path, img.image_id]))
 
-  const graceCutoff = new Date(Date.now() - UNBIND_GRACE_MS)
-  const unbindIds = bound
-    .filter(img => !used.has(img.storage_path))
-    .filter(img => img.createdAt <= graceCutoff)
-    .map(img => img.image_id)
-
-  if (unbindIds.length > 0) {
-    await Image.update(
-      { reference_id: null },
-      { where: { image_id: { [Op.in]: unbindIds } } }
-    )
+  if (warnContext) {
+    const missing = list.filter(key => !idByKey.has(key))
+    if (missing.length > 0) {
+      console.warn(`[image-ref] [${warnContext}] ${missing.length} 个本站图片引用未命中 image 表（可能已被 GC 回收或 URL 有误）: ${missing.join(', ')}`)
+    }
   }
 
-  return { unbound: unbindIds.length }
+  return list.map(key => idByKey.get(key)).filter(Boolean)
 }
 
-// 将文章全部图片解绑为孤儿（废弃草稿清理用）
-async function markPostImagesOrphan(postId) {
-  await Image.update(
-    { reference_id: null },
-    { where: { reference_type: 'post_content', reference_id: postId } }
-  )
+// URL 列表 → 本系统图片 ID 列表（保持传入顺序、去重；外链或 image 表中不存在的 URL 跳过）
+async function resolveImageIdsByUrls(urls, warnContext) {
+  const keys = (urls || []).map(storageKeyFromUrl).filter(Boolean)
+  return resolveImageIdsByKeys(keys, warnContext)
 }
 
-// 将日记全部图片解绑为孤儿（删除日记用）
-async function markDiaryImagesOrphan(diaryId) {
-  await Image.update(
-    { reference_id: null },
-    { where: { reference_type: 'cover', reference_id: diaryId } }
-  )
+// 单个图片 URL → image_id（外链或无效返回 null）
+// 当前所有调用点都是封面派生（post/column/diary），告警上下文统一标"封面"
+async function resolveImageIdByUrl(url) {
+  const ids = await resolveImageIdsByUrls(url ? [url] : [], '封面')
+  return ids[0] || null
 }
 
-// 封面差集解绑：post_cover 未引用的 cover 图置为孤儿
-// 无保护窗口：封面上传后未保存视为放弃（孤儿由 24h GC 回收）
-// 外链/null 视为未引用（全部解绑）；幂等
-async function unbindCover(postId, coverUrl) {
-  const usedKey = coverUrl && coverUrl.startsWith('/uploads/')
-    ? decodeURIComponent(coverUrl.slice('/uploads/'.length))
-    : null
+// 同步文章正文图片关联：以正文为真相源全量 replace（幂等），返回关联图片数
+async function syncPostImages(postId, content) {
+  const imageIds = await resolveImageIdsByKeys(extractReferencedImages(content), `post#${postId}`)
 
-  const bound = await Image.findAll({
-    where: { reference_type: 'cover', reference_id: postId }
+  await sequelize.transaction(async (t) => {
+    await PostImage.destroy({ where: { post_id: postId }, transaction: t })
+    if (imageIds.length > 0) {
+      await PostImage.bulkCreate(
+        imageIds.map(id => ({ post_id: postId, image_id: id })),
+        { transaction: t }
+      )
+    }
   })
 
-  const unbindIds = bound
-    .filter(img => img.storage_path !== usedKey)
-    .map(img => img.image_id)
-
-  if (unbindIds.length > 0) {
-    await Image.update(
-      { reference_id: null },
-      { where: { image_id: { [Op.in]: unbindIds } } }
-    )
-  }
-
-  return { unbound: unbindIds.length }
-}
-
-// 日记封面差集解绑：保存日记时把 images 中未引用的 cover 图置为孤儿
-// 幂等；外链/null 视为未引用（全部解绑）
-async function unbindDiaryCovers(diaryId, images) {
-  const usedKeys = (images || [])
-    .filter(url => url && url.startsWith('/uploads/'))
-    .map(url => decodeURIComponent(url.slice('/uploads/'.length)))
-
-  const bound = await Image.findAll({
-    where: { reference_type: 'cover', reference_id: diaryId }
-  })
-
-  const unbindIds = bound
-    .filter(img => !usedKeys.includes(img.storage_path))
-    .map(img => img.image_id)
-
-  if (unbindIds.length > 0) {
-    await Image.update(
-      { reference_id: null },
-      { where: { image_id: { [Op.in]: unbindIds } } }
-    )
-  }
-
-  return { unbound: unbindIds.length }
+  return imageIds.length
 }
 
 module.exports = {
+  storageKeyFromUrl,
   extractReferencedImages,
-  unbindUnusedFiles,
-  markPostImagesOrphan,
-  markDiaryImagesOrphan,
-  unbindCover,
-  unbindDiaryCovers,
-  UNBIND_GRACE_MS
+  resolveImageIdsByKeys,
+  resolveImageIdsByUrls,
+  resolveImageIdByUrl,
+  syncPostImages
 }
