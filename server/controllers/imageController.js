@@ -2,7 +2,7 @@ const fs = require('fs').promises
 const { Op } = require('sequelize')
 const AppError = require('@middleware/AppError')
 const { saveImageFile, deleteImageFiles } = require('@utils/imageStorage')
-const { Image, Post, Column, FriendLink, PostImage, Diary } = require('@models')
+const { Image, Post, Column, PostImage, Diary } = require('@models')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
 const { imageVO } = require('@vo/image.vo')
 const { MAX_TOTAL_SIZE } = require('@middleware/imageUpload')
@@ -67,13 +67,6 @@ async function findReferencedImageIds(type) {
       ...columns.map(c => c.cover_image_id)
     ]
   }
-  if (type === 'friend_link') {
-    const rows = await FriendLink.findAll({
-      where: { preview_image_id: { [Op.ne]: null } },
-      attributes: ['preview_image_id']
-    })
-    return rows.map(r => r.preview_image_id)
-  }
   if (type === 'diary') {
     const rows = await Diary.findAll({
       where: { cover_image_id: { [Op.ne]: null } },
@@ -86,7 +79,6 @@ async function findReferencedImageIds(type) {
     for (const group of await Promise.all([
       findReferencedImageIds('post_content'),
       findReferencedImageIds('cover'),
-      findReferencedImageIds('friend_link'),
       findReferencedImageIds('diary')
     ])) {
       for (const id of group) referenced.add(Number(id))
@@ -96,12 +88,12 @@ async function findReferencedImageIds(type) {
   return []
 }
 
-// 批量派生图片的引用位置（优先级：正文图 > 文章封面 > 专栏封面 > 日记图 > 友链预览图）
+// 批量派生图片的引用位置（优先级：正文图 > 文章封面 > 专栏封面 > 日记图）
 async function attachReferences(images) {
   if (images.length === 0) return
   const ids = images.map(img => img.image_id)
 
-  const [postImages, postCovers, columnCovers, linkPreviews, diaryCovers] = await Promise.all([
+  const [postImages, postCovers, columnCovers, diaryCovers] = await Promise.all([
     PostImage.findAll({
       where: { image_id: { [Op.in]: ids } },
       attributes: ['post_id', 'image_id'],
@@ -109,7 +101,6 @@ async function attachReferences(images) {
     }),
     Post.findAll({ where: { cover_image_id: { [Op.in]: ids } }, attributes: ['post_id', 'post_title', 'cover_image_id'] }),
     Column.findAll({ where: { cover_image_id: { [Op.in]: ids } }, attributes: ['column_id', 'cover_image_id'] }),
-    FriendLink.findAll({ where: { preview_image_id: { [Op.in]: ids } }, attributes: ['friend_link_id', 'preview_image_id'] }),
     Diary.findAll({ where: { cover_image_id: { [Op.in]: ids } }, attributes: ['diary_id', 'cover_image_id'] })
   ])
 
@@ -119,7 +110,6 @@ async function attachReferences(images) {
   }
   const coverPostByImage = new Map(postCovers.map(p => [p.cover_image_id, p]))
   const coverColumnByImage = new Map(columnCovers.map(c => [c.cover_image_id, c.column_id]))
-  const linkByImage = new Map(linkPreviews.map(f => [f.preview_image_id, f.friend_link_id]))
   const diaryByImage = new Map(diaryCovers.map(d => [d.cover_image_id, d.diary_id]))
 
   const relatedPostIds = [...new Set([
@@ -147,10 +137,6 @@ async function attachReferences(images) {
     } else if (diaryByImage.has(img.image_id)) {
       img.reference_type = 'cover'
       img.reference_id = diaryByImage.get(img.image_id)
-      img.reference_title = null
-    } else if (linkByImage.has(img.image_id)) {
-      img.reference_type = 'friend_link'
-      img.reference_id = linkByImage.get(img.image_id)
       img.reference_title = null
     } else {
       img.reference_type = null

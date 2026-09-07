@@ -2,7 +2,7 @@ require('module-alias/register');
 require('dotenv').config();
 const { QueryTypes } = require('sequelize');
 const sequelize = require('@config/database');
-const { Image, Post, Column, FriendLink, PostImage } = require('@models');
+const { Image, Post, Column, PostImage } = require('@models');
 const { extractReferencedImages, storageKeyFromUrl } = require('@utils/image');
 const { ORPHAN_RECONCILE_SQL } = require('@utils/gc');
 
@@ -69,40 +69,40 @@ async function migrateColumnCovers(idByKey, misses) {
   return updated;
 }
 
-// 友链头像归一：友链已退出图片系统（avatar 一律外链，不再落盘）。
-// 存量收敛建立在一个不变量上：preview_image_id 有值 ⇔ 当前展示的 avatar 是仍存在的本地图
-// - avatar 为空且 preview_image 有值 → 归一为完整路径拷入 avatar（外链原样、死链置 null）
-// - avatar 已有的行不覆盖手填值；preview_image 弃用清空（列保留不删）
-// - 指针随最终展示值重算：展示外链/死链 → 置 null（旧本地图由 GC 延迟回收）；展示本地图 → 指向对应 image
-async function migrateFriendLinkAvatars(idByKey, misses) {
-  const links = await FriendLink.findAll({ attributes: ['friend_link_id', 'avatar', 'preview_image', 'preview_image_id'] });
+// 友链头像/背景归一（v2：彻底外链化）：
+// - avatar / preview_image 只保留 http(s) 或 // 外链值；本地路径（/uploads/ 全路径、裸 key）
+//   一律清空——含 v1 曾挪进 avatar 的旧背景图，交 GC 宽限回收，后台重新「抓图」即以外链恢复
+// - preview_image_id 指针无条件归零（友链已退出图片系统，列留库待 DROP）
+// - 兼容 v1 已跑与从未迁移的原始遗留数据，重复执行收敛
+async function migrateFriendLinkAvatars() {
+  const rows = await sequelize.query(
+    `SELECT friend_link_id, avatar, preview_image FROM friend_link`,
+    { type: QueryTypes.SELECT }
+  );
+  const isExternal = v => typeof v === 'string' && /^(https?:\/\/|\/\/)/i.test(v);
+
   let updated = 0;
-  for (const link of links) {
-    let finalAvatar = link.avatar || null;
-    if (!finalAvatar && link.preview_image) {
-      if (/^https?:\/\//i.test(link.preview_image)) {
-        finalAvatar = link.preview_image;
-      } else {
-        // 旧 preview_image 存裸 key（无 /uploads/ 前缀），补前缀后走统一归一
-        const key = storageKeyFromUrl(link.preview_image.startsWith('/uploads/') ? link.preview_image : `/uploads/${link.preview_image}`);
-        if (!key || !idByKey.has(key)) {
-          misses.push(`friend_link#${link.friend_link_id} 旧预览图(死链): ${link.preview_image}`);
-        }
-        finalAvatar = key && idByKey.has(key) ? `/uploads/${key}` : null;
-      }
-    }
+  let droppedLocal = 0;
+  for (const row of rows) {
+    const avatar = isExternal(row.avatar) ? row.avatar : null;
+    const preview = isExternal(row.preview_image) ? row.preview_image : null;
+    droppedLocal += (row.avatar && !avatar ? 1 : 0) + (row.preview_image && !preview ? 1 : 0);
 
-    const finalKey = finalAvatar ? storageKeyFromUrl(finalAvatar) : null;
-    const finalImageId = finalKey ? (idByKey.get(finalKey) || null) : null;
-
-    if (link.avatar === finalAvatar && link.preview_image === null && Number(link.preview_image_id || 0) === Number(finalImageId || 0)) {
-      continue;
-    }
-
-    await link.update({ avatar: finalAvatar, preview_image: null, preview_image_id: finalImageId });
+    if (row.avatar === avatar && row.preview_image === preview) continue;
+    await sequelize.query(
+      `UPDATE friend_link SET avatar = :avatar, preview_image = :preview WHERE friend_link_id = :id`,
+      { replacements: { avatar, preview, id: row.friend_link_id } }
+    );
     updated++;
   }
-  return updated;
+
+  // 指针批量归零（幂等；模型已无此字段，走 raw SQL）
+  const [result] = await sequelize.query(
+    `UPDATE friend_link SET preview_image_id = NULL WHERE preview_image_id IS NOT NULL`
+  );
+  const clearedPointers = result?.affectedRows || 0;
+
+  return { updated, droppedLocal, clearedPointers };
 }
 
 async function migrateDiaryCovers(idByKey, misses) {
@@ -170,8 +170,8 @@ async function migrate() {
   const columnCount = await migrateColumnCovers(idByKey, misses);
   console.log(`[migrate] 专栏封面引用迁移：${columnCount} 个`);
 
-  const linkCount = await migrateFriendLinkAvatars(idByKey, misses);
-  console.log(`[migrate] 友链头像归一：${linkCount} 条`);
+  const { updated: linkUpdated, droppedLocal, clearedPointers } = await migrateFriendLinkAvatars();
+  console.log(`[migrate] 友链头像/背景外链归一：${linkUpdated} 条（移除本地留存图引用 ${droppedLocal} 处，指针清零 ${clearedPointers} 条）`);
 
   const { updated: diaryCount, trimmed: diaryTrimmed } = await migrateDiaryCovers(idByKey, misses);
   console.log(`[migrate] 日记封面引用迁移：${diaryCount} 条（死链清除/截断多图 ${diaryTrimmed} 条）`);

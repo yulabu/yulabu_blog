@@ -59,6 +59,7 @@ export interface FriendLink {
   name: string
   url: string
   avatar: string | null
+  preview_image: string | null
   description: string | null
   sort_order: number
   status: 'show' | 'hide'

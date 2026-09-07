@@ -17,6 +17,7 @@ const TMP_MAX_AGE_MS = 60 * 60 * 1000
 
 // 孤儿对账：image 是否被任一业务引用
 // 新增持有图片的业务表时，在此追加一行 LEFT JOIN + 对应 IS NULL 判断即可
+// （友链已退出图片系统：只被友链引用过的图会被正常回收）
 const ORPHAN_RECONCILE_SQL = `
   SELECT i.image_id AS imageId,
          i.storage_path AS storagePath,
@@ -25,13 +26,11 @@ const ORPHAN_RECONCILE_SQL = `
          i.created_at AS createdAt,
          (p.post_id IS NOT NULL
           OR c.column_id IS NOT NULL
-          OR f.friend_link_id IS NOT NULL
           OR pi.post_image_id IS NOT NULL
           OR d.diary_id IS NOT NULL) AS referenced
   FROM image i
   LEFT JOIN post p ON p.cover_image_id = i.image_id
   LEFT JOIN blog_column c ON c.cover_image_id = i.image_id
-  LEFT JOIN friend_link f ON f.preview_image_id = i.image_id
   LEFT JOIN post_image pi ON pi.image_id = i.image_id
   LEFT JOIN diary d ON d.cover_image_id = i.image_id
 `

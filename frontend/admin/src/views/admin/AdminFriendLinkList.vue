@@ -22,13 +22,23 @@
         </template>
         <template #cell-avatar="{ row }">
           <img
-            v-if="row.avatar && !avatarFailed.has(row.avatar)"
+            v-if="row.avatar && !imgFailed.has(row.avatar)"
             :src="row.avatar"
             :alt="row.name"
-            class="preview-thumb"
-            @error="avatarFailed.add(row.avatar)"
+            class="avatar-thumb"
+            @error="imgFailed.add(row.avatar)"
           />
           <span v-else class="preview-empty">{{ row.avatar ? '加载失败' : '未设置' }}</span>
+        </template>
+        <template #cell-preview_image="{ row }">
+          <img
+            v-if="row.preview_image && !imgFailed.has(row.preview_image)"
+            :src="row.preview_image"
+            :alt="row.name"
+            class="preview-thumb"
+            @error="imgFailed.add(row.preview_image)"
+          />
+          <span v-else class="preview-empty">{{ row.preview_image ? '加载失败' : '未设置' }}</span>
         </template>
         <template #cell-status="{ row }">
           <AdminStatusBadge :type="row.status" />
@@ -36,8 +46,8 @@
         <template #cell-actions="{ row }">
           <AdminDataTableCellActions>
             <AdminButton variant="text" @click="openModal(row)">编辑</AdminButton>
-            <AdminButton variant="text" :disabled="previewLoading" @click="onFetchPreview(row.id)">
-              {{ previewLoading ? '抓取中...' : '抓图' }}
+            <AdminButton variant="text" :disabled="fetchingIds.size > 0" @click="onFetchPreview(row.id)">
+              {{ fetchingIds.has(row.id) ? '抓取中...' : '抓图' }}
             </AdminButton>
             <AdminButton variant="danger" :loading="deleteLoading" @click="onDelete(row.id)">删除</AdminButton>
           </AdminDataTableCellActions>
@@ -67,9 +77,16 @@
         />
       </AdminFormField>
 
-      <AdminFormField label="头像" hint="图片外链 URL，可手填或用列表里的「抓图」自动获取">
+      <AdminFormField label="头像" hint="圆形头像外链 URL，可手填或用「抓图」自动获取">
         <AdminFormInput
           v-model="form.avatar"
+          placeholder="https://..."
+        />
+      </AdminFormField>
+
+      <AdminFormField label="背景图" hint="卡片封面外链 URL，「抓图」会覆盖此字段">
+        <AdminFormInput
+          v-model="form.preview_image"
           placeholder="https://..."
         />
       </AdminFormField>
@@ -143,13 +160,14 @@ const columns = [
   { key: 'name', label: '名称' },
   { key: 'url', label: '链接' },
   { key: 'avatar', label: '头像' },
+  { key: 'preview_image', label: '背景图' },
   { key: 'sort_order', label: '排序', class: 'text-center' },
   { key: 'status', label: '状态', class: 'text-center' },
   { key: 'actions', label: '操作', class: 'text-center' }
 ]
 
-// 外链头像加载失败的 URL（展示兜底文案，避免列表出现破图图标；按 URL 追踪，重新抓图后自动重试）
-const avatarFailed = ref(new Set())
+// 外链图加载失败的 URL（展示兜底文案，避免列表出现破图图标；按 URL 追踪，重新抓图后自动重试）
+const imgFailed = ref(new Set())
 
 const modalVisible = ref(false)
 const editingLink = ref(null)
@@ -157,6 +175,7 @@ const form = ref({
   name: '',
   url: '',
   avatar: '',
+  preview_image: '',
   description: '',
   sort_order: 0,
   status: 'show'
@@ -175,12 +194,13 @@ function openModal(link = null) {
       name: link.name,
       url: link.url,
       avatar: link.avatar || '',
+      preview_image: link.preview_image || '',
       description: link.description || '',
       sort_order: link.sort_order,
       status: link.status
     }
   } else {
-    form.value = { name: '', url: '', avatar: '', description: '', sort_order: 0, status: 'show' }
+    form.value = { name: '', url: '', avatar: '', preview_image: '', description: '', sort_order: 0, status: 'show' }
   }
   modalVisible.value = true
   nextTick(() => {
@@ -212,6 +232,7 @@ async function onSave() {
       url,
       // 空值必须显式传 null：undefined 会被 JSON 序列化丢弃，导致填过的字段清不掉
       avatar: form.value.avatar.trim() || null,
+      preview_image: form.value.preview_image.trim() || null,
       description: form.value.description.trim() || null,
       sort_order: form.value.sort_order,
       status: form.value.status
@@ -237,15 +258,37 @@ const { confirmDelete: onDelete, loading: deleteLoading } = useConfirmDelete(del
   onSuccess: refresh
 })
 
-const { run: onFetchPreview, loading: previewLoading } = useAsyncAction(fetchFriendLinkPreview, {
+// 逐行抓图 loading：正在抓取的行显示「抓取中...」，其余行按钮置灰
+// （useAsyncAction 单实例有并发守卫，置灰防"点了静默没反应"与重复提交）
+const fetchingIds = ref(new Set())
+
+const { run: runFetchPreview } = useAsyncAction(fetchFriendLinkPreview, {
   successMessage: (result) => result.message,
   onSuccess: refresh
 })
+
+async function onFetchPreview(id) {
+  if (fetchingIds.value.has(id)) return
+  fetchingIds.value.add(id)
+  try {
+    await runFetchPreview(id)
+  } finally {
+    fetchingIds.value.delete(id)
+  }
+}
 </script>
 
 <style scoped>
 .friend-link-list-page {
   width: 100%;
+}
+
+.avatar-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .preview-thumb {

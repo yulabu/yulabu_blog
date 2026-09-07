@@ -50,39 +50,50 @@ exports.deleteLink = async (req, res) => {
   const link = await FriendLink.findByPk(id);
   if (!link) throw new AppError(404, '友链不存在');
 
-  // preview_image_id 引用随行消失，物理文件由 GC 对账宽限后回收
+  // 友链不持任何图片引用（头像/背景均外链），直接删行即可
   await link.destroy();
 
   res.json({ id: link.friend_link_id, message: '删除成功' });
 };
 
-// 抓取友链图片（外链模式）：og:image / favicon 的外部 URL 直接写入 avatar，
-// 不再下载落盘——友链不进图片系统，无 image 记录无引用指针；
-// 覆盖抓取时置空 preview_image_id，旧本地图失去引用由 GC 延迟回收
+// 抓取友链图片（全外链，不落盘）：og:image → 背景图覆盖写（是刷新背景的手段）；
+// favicon → 头像仅空时填（手填的不覆盖，清空后可重抓）。皆无则不动数据。
 exports.fetchPreview = async (req, res) => {
   const id = friendLinkIdDTO(req.params);
   const link = await FriendLink.findByPk(id);
   if (!link) throw new AppError(404, '友链不存在');
 
   const meta = await fetchOgMeta(link.url);
-  const imageUrl = meta?.image;
+  const avatarFilled = Boolean(meta?.favicon) && !link.avatar;
 
-  if (!imageUrl) {
-    return res.json({ avatar: null, title: null, description: null, message: '未找到可用的图片' });
+  if (!meta?.image && !avatarFilled) {
+    return res.json({
+      avatar: link.avatar || null,
+      preview_image: link.preview_image || null,
+      title: null,
+      description: null,
+      message: '未找到可用的图片'
+    });
   }
 
   // 空字段自动填充 OG 抓到的标题/简介（手动填过的不覆盖）
   const title = meta.title ? truncate(meta.title.trim(), 32) : null;
   const description = meta.description ? truncate(meta.description.trim(), 128) : null;
-  const updateData = { avatar: imageUrl, preview_image: null, preview_image_id: null };
+  const updateData = {};
+  if (meta.image) updateData.preview_image = meta.image;
+  if (avatarFilled) updateData.avatar = meta.favicon;
   if (!link.name && title) updateData.name = title;
   if (!link.description && description) updateData.description = description;
   await link.update(updateData);
 
+  let message = `已抓取${[meta.image ? '背景图' : null, avatarFilled ? '头像' : null].filter(Boolean).join('、')}`;
+  if (meta.favicon && !avatarFilled) message += '（头像保留手填值，清空后可重抓）';
+
   res.json({
     title,
     description,
-    avatar: imageUrl,
-    message: '图片抓取成功'
+    avatar: link.avatar || null,
+    preview_image: link.preview_image || null,
+    message
   });
 };

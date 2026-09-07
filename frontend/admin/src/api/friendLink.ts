@@ -9,6 +9,7 @@ export function createFriendLink(data: {
   name: string
   url: string
   avatar?: string
+  preview_image?: string
   description?: string
   sort_order?: number
   status?: string
@@ -22,6 +23,7 @@ export function updateFriendLink(
     name: string
     url: string
     avatar: string
+    preview_image: string
     description: string
     sort_order: number
     status: string
@@ -35,5 +37,11 @@ export function deleteFriendLink(id: number) {
 }
 
 export function fetchFriendLinkPreview(id: number) {
-  return http.put<{ avatar: string | null; title: string | null; description: string | null; message: string }>(`/admin/friendlinks/${id}/preview`)
+  return http.put<{
+    avatar: string | null
+    preview_image: string | null
+    title: string | null
+    description: string | null
+    message: string
+  }>(`/admin/friendlinks/${id}/preview`)
 }

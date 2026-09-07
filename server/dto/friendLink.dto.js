@@ -1,14 +1,14 @@
 const AppError = require('@middleware/AppError');
 const { parseId } = require('./common.dto');
 
-// 头像一律外链：只接受 http(s):// 或协议相对 //。
-// 拒绝 /uploads/ 路径——友链不进图片系统、无引用指针，手填本站路径会被 GC 当孤儿回收
-function normalizeAvatar(value) {
-  const avatar = value?.trim() || null;
-  if (!avatar) return null;
-  if (avatar.length > 512) throw new AppError(400, '头像URL不能超过512个字符');
-  if (!/^(https?:\/\/|\/\/)/i.test(avatar)) throw new AppError(400, '头像必须是 http(s) 外链地址');
-  return avatar;
+// 友链图片一律外链：只接受 http(s):// 或协议相对 //。
+// 友链已彻底退出图片系统、无引用指针，拒绝 /uploads/ 路径——手填本站路径会被 GC 当孤儿回收
+function normalizeExternalUrl(value, label) {
+  const url = value?.trim() || null;
+  if (!url) return null;
+  if (url.length > 512) throw new AppError(400, `${label}不能超过512个字符`);
+  if (!/^(https?:\/\/|\/\/)/i.test(url)) throw new AppError(400, `${label}必须是 http(s) 外链地址`);
+  return url;
 }
 
 function createFriendLinkDTO(body) {
@@ -23,7 +23,10 @@ function createFriendLinkDTO(body) {
   const dto = { name, url };
 
   if (body.avatar !== undefined) {
-    dto.avatar = normalizeAvatar(body.avatar);
+    dto.avatar = normalizeExternalUrl(body.avatar, '头像URL');
+  }
+  if (body.preview_image !== undefined) {
+    dto.preview_image = normalizeExternalUrl(body.preview_image, '背景图URL');
   }
   if (body.description !== undefined) {
     const desc = body.description?.trim() || null;
@@ -59,7 +62,10 @@ function updateFriendLinkDTO(body) {
     dto.url = url;
   }
   if (body.avatar !== undefined) {
-    dto.avatar = normalizeAvatar(body.avatar);
+    dto.avatar = normalizeExternalUrl(body.avatar, '头像URL');
+  }
+  if (body.preview_image !== undefined) {
+    dto.preview_image = normalizeExternalUrl(body.preview_image, '背景图URL');
   }
   if (body.description !== undefined) {
     const desc = body.description?.trim() || null;

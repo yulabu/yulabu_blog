@@ -4,6 +4,7 @@ function friendLinkDetail(link) {
     name: link.name,
     url: link.url,
     avatar: link.avatar || null,
+    preview_image: link.preview_image || null,
     description: link.description || null,
     sort_order: link.sort_order,
     status: link.status,

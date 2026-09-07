@@ -20,7 +20,7 @@ function decodeEntities(str) {
 }
 
 function extractMeta(html, pageUrl) {
-  // og:image / og:image:url（两种属性顺序）
+  // og:image / og:image:url（两种属性顺序）→ 背景图
   const ogMatch = html.match(
     /<meta[^>]+(?:property|name)=["'](?:og:image|og:image:url)["'][^>]*content=["']([^"']+)["']/i
   ) || html.match(
@@ -34,15 +34,15 @@ function extractMeta(html, pageUrl) {
     /<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']og:image:secure_url["']/i
   );
 
-  // favicon 兜底（含 apple-touch-icon，忽略 data: URI）
+  // favicon → 头像：apple-touch-icon（通常 180px）优先于 shortcut icon（16px 观感差）
   const iconMatch = html.match(
-    /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i
-  ) || html.match(
-    /<link[^>]+href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i
-  ) || html.match(
     /<link[^>]+rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i
   ) || html.match(
     /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon["']/i
+  ) || html.match(
+    /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i
+  ) || html.match(
+    /<link[^>]+href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i
   );
 
   let image = null;
@@ -50,10 +50,13 @@ function extractMeta(html, pageUrl) {
     image = normalizeImageUrl(ogMatch[1], pageUrl);
   } else if (secureMatch) {
     image = normalizeImageUrl(secureMatch[1], pageUrl);
-  } else if (iconMatch) {
+  }
+
+  let favicon = null;
+  if (iconMatch) {
     const iconUrl = normalizeImageUrl(iconMatch[1], pageUrl);
     if (iconUrl && !iconUrl.startsWith('data:')) {
-      image = iconUrl;
+      favicon = iconUrl;
     }
   }
 
@@ -72,7 +75,8 @@ function extractMeta(html, pageUrl) {
   return {
     title: titleMatch ? decodeEntities(titleMatch[1]).trim() : null,
     description: descMatch ? decodeEntities(descMatch[1]).trim() : null,
-    image
+    image,
+    favicon
   };
 }
 

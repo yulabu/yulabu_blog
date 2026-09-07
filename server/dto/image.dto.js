@@ -1,7 +1,7 @@
 const AppError = require('@middleware/AppError');
 const { parseId, paginate } = require('./common.dto');
 
-const REFERENCE_TYPES = ['post_content', 'cover', 'friend_link', 'other'];
+const REFERENCE_TYPES = ['post_content', 'cover', 'other'];
 
 // ========== 图片列表查询参数 ==========
 function imageListDTO(query) {

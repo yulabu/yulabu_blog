@@ -28,12 +28,7 @@ module.exports = (sequelize, DataTypes) => {
     preview_image: {
       type: DataTypes.STRING(512),
       allowNull: true,
-      comment: '预览图URL（相对路径或外链）'
-    },
-    preview_image_id: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-      comment: '预览图图片ID（引用 image 表，本地抓图时写入，供 GC 对账）'
+      comment: '背景图外链URL（2026-09 起友链彻底退出图片系统，只存外链）'
     },
     sort_order: {
       type: DataTypes.INTEGER,
