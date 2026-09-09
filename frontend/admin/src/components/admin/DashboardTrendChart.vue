@@ -4,8 +4,7 @@
       <h3 class="chart-title">
         <Icon icon="material-symbols:trending-up" class="title-icon" />
         发文与访问趋势
-      </h3>
-      <div class="range-tabs">
+      </h3>      <div class="range-tabs">
         <button
           v-for="tab in rangeTabs"
           :key="tab.value"
@@ -76,7 +75,7 @@ function updateOption() {
   chartInstance.setOption({
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'cross' }
+      axisPointer: { type: 'shadow' }
     },
     legend: {
       data: ['发文数', '浏览量', '独立访客'],
@@ -93,7 +92,7 @@ function updateOption() {
       type: 'category',
       data: xLabels,
       axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } },
-      axisLabel: { color: 'var(--color-muted)' }
+      axisLabel: { color: 'rgb(120, 140, 125)' }
     },
     yAxis: [
       {
@@ -101,13 +100,13 @@ function updateOption() {
         name: '发文数',
         minInterval: 1,
         splitLine: { lineStyle: { color: 'rgba(0,0,0,0.05)' } },
-        axisLabel: { color: 'var(--color-muted)' }
+        axisLabel: { color: 'rgb(120, 140, 125)' }
       },
       {
         type: 'value',
         name: '访问量',
         splitLine: { show: false },
-        axisLabel: { color: 'var(--color-muted)' }
+        axisLabel: { color: 'rgb(120, 140, 125)' }
       }
     ],
     series: [
@@ -115,10 +114,12 @@ function updateOption() {
         name: '发文数',
         type: 'bar',
         barWidth: '40%',
+        yAxisIndex: 0,
         itemStyle: {
-          color: 'rgba(var(--color-primary-rgb), 0.8)',
+          color: 'rgba(99, 149, 86, 0.35)',
           borderRadius: [4, 4, 0, 0]
         },
+        emphasis: { disabled: true },
         data: postsByDate.map(item => item.count)
       },
       {
@@ -127,12 +128,12 @@ function updateOption() {
         yAxisIndex: 1,
         smooth: true,
         showSymbol: false,
-        itemStyle: { color: '#3b82f6' },
+        itemStyle: { color: '#639556' },
         lineStyle: { width: 3 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(59, 130, 246, 0.25)' },
-            { offset: 1, color: 'rgba(59, 130, 246, 0.02)' }
+            { offset: 0, color: 'rgba(99, 149, 86, 0.25)' },
+            { offset: 1, color: 'rgba(99, 149, 86, 0.02)' }
           ])
         },
         data: visitsByDate.map(item => item.pv)
@@ -143,7 +144,7 @@ function updateOption() {
         yAxisIndex: 1,
         smooth: true,
         showSymbol: false,
-        itemStyle: { color: '#10b981' },
+        itemStyle: { color: '#508c86' },
         lineStyle: { width: 3 },
         data: visitsByDate.map(item => item.uv)
       }

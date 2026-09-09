@@ -33,17 +33,18 @@ const empty = computed(() => props.data.tagsDistribution.length === 0)
 const chartRef = ref<HTMLDivElement>()
 let chartInstance: echarts.ECharts | null = null
 
+// canvas 不解析 CSS 变量，这里必须写死与 main.css 主题同源的色值
 const palette = [
-  'rgba(var(--color-primary-rgb), 0.85)',
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#ec4899',
-  '#06b6d4',
-  '#84cc16',
-  '#f97316'
+  '#639556', // 主绿 --color-primary
+  '#508c86', // 青绿 --color-accent
+  '#76c06a', // 草绿
+  '#d9a441', // 暖金
+  '#2d5a41', // 深林绿 --color-heading 同族
+  '#c0754d', // 陶土
+  '#7fa8a0', // 浅青灰
+  '#a3b18a', // 鼠尾草绿
+  '#b5c99a', // 浅豆绿
+  '#8c6a4f' // 山棕
 ]
 
 function initChart() {
@@ -69,7 +70,7 @@ function updateOption() {
       type: 'scroll',
       orient: 'horizontal',
       bottom: 0,
-      textStyle: { color: 'var(--color-muted)' }
+      textStyle: { color: 'rgb(120, 140, 125)' }
     },
     color: palette,
     series: [
@@ -89,7 +90,7 @@ function updateOption() {
         label: {
           show: true,
           formatter: '{b}\n{d}%',
-          color: 'var(--color-heading)',
+          color: 'rgb(45, 90, 65)',
           fontSize: 12
         },
         labelLine: {
