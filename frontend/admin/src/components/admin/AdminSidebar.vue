@@ -51,6 +51,11 @@
         <Icon icon="material-symbols:settings-outline" class="menu-icon" />
         <span>系统设置</span>
       </router-link>
+
+      <router-link to="/admin/backups" class="menu-item" active-class="active">
+        <Icon icon="material-symbols:backup" class="menu-icon" />
+        <span>备份管理</span>
+      </router-link>
     </nav>
 
   </aside>

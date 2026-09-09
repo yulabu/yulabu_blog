@@ -10,6 +10,7 @@ const visitController = require('@controllers/visitController');
 const columnController = require('@controllers/columnController');
 const imageController = require('@controllers/imageController');
 const diaryController = require('@controllers/diaryController');
+const backupController = require('@controllers/backupController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);
@@ -67,5 +68,11 @@ router.get('/diaries/:id', diaryController.getDiaryById);
 router.post('/diaries', diaryController.createDiary);
 router.put('/diaries/:id', diaryController.updateDiary);
 router.delete('/diaries/:id', diaryController.deleteDiary);
+
+// 备份管理（列表 / 立即备份 / 导出完整包 / 删除 dump）
+router.get('/backups', backupController.getBackups);
+router.post('/backups', backupController.createBackup);
+router.get('/backups/:filename/export', backupController.exportBackup);
+router.delete('/backups/:filename', backupController.deleteBackup);
 
 module.exports = router;

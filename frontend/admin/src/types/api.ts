@@ -180,3 +180,20 @@ export interface VisitStats {
   totalPV: number
   totalUV: number
 }
+
+export interface BackupInfo {
+  filename: string
+  size: number
+  createdAt: string
+}
+
+export interface UploadsMirrorStats {
+  fileCount: number
+  totalSize: number
+  syncedAt: string | null
+}
+
+export interface BackupListResponse {
+  backups: BackupInfo[]
+  uploads: UploadsMirrorStats
+}

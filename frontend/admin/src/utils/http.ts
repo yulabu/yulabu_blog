@@ -23,9 +23,18 @@ instance.interceptors.request.use((config) => {
 // 响应拦截器：透传完整 response，错误统一抛出
 instance.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string }>) => {
+  async (error: AxiosError<any>) => {
     const status = error.response?.status
-    const msg = error.response?.data?.message || error.message || '请求失败'
+    let payload = error.response?.data
+    // 下载接口以 blob 接收响应，后端返回的 JSON 错误体需先解析出 message
+    if (payload instanceof Blob && payload.type.includes('application/json')) {
+      try {
+        payload = JSON.parse(await payload.text())
+      } catch {
+        // 非 JSON 错误体，保留原 payload
+      }
+    }
+    const msg = payload?.message || error.message || '请求失败'
 
     if (status === 401) {
       localStorage.removeItem('token')
