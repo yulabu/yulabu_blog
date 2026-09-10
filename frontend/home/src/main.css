@@ -1,3 +1,8 @@
+/* LXGW 文楷字体自托管：@font-face 的 woff2 子集随构建打进产物，
+   不再从 cdn.jsdelivr.net 外链（Edge 跟踪名单域，中文页 ~28 个子集请求
+   每个都触发 Tracking Prevention 告警；且 jsdelivr 在国内不稳）。 */
+@import "lxgw-wenkai-webfont/style.css";
+
 /* ============================================================
  * 响应式断点约定（全站统一，新增页面禁止私自定义其他断点）
  *   @md  1024px  平板/窄屏：布局降列、隐藏左栏
