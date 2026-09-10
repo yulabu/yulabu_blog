@@ -5,7 +5,7 @@
         <span class="header-kicker">{{ headerKicker }}</span>
         <div class="header-main">
           <span class="icon-shell">
-            <Icon icon="material-symbols:article-outline" class="icon" />
+            <AppIcon icon="material-symbols:article-outline" class="icon" />
           </span>
           <h3 class="section-title">{{ sectionTitle }}</h3>
         </div>
@@ -16,7 +16,7 @@
           <span>篇文章</span>
         </span>
         <button v-if="hasFilter" class="clear-btn" @click="onClear">
-          <Icon icon="material-symbols:close" class="clear-icon" />
+          <AppIcon icon="material-symbols:close" class="clear-icon" />
           <span>清除筛选</span>
         </button>
       </div>
@@ -25,17 +25,18 @@
       v-if="!posts.length"
       kind="empty"
       size="compact"
-      icon="material-symbols:description-off-outline"
+      icon="material-symbols:description-outline"
     >
       {{ emptyText }}
     </ContentState>
     <div v-else class="posts-stack">
-      <article
+      <a
         v-for="(post, index) in posts"
         :key="post.id"
         class="post-card"
         :class="index === 0 ? 'post-card--featured' : 'post-card--compact'"
-        @click="goToDetail(post.id)"
+        :href="`/post/${post.id}`"
+        @click="markPostSplash(post)"
       >
         <div class="post-cover" :class="{ 'is-empty': !post.cover }">
           <img
@@ -44,22 +45,22 @@
             :alt="post.title"
             loading="lazy"
           />
-          <Icon v-else icon="material-symbols:article-outline" class="cover-empty-icon" />
+          <AppIcon v-else icon="material-symbols:article-outline" class="cover-empty-icon" />
           <span class="cover-wash"></span>
           <div class="cover-topline">
             <span class="post-index">{{ formatIndex(index) }}</span>
             <span v-if="post.category" class="cover-tag">{{ post.category.name }}</span>
           </div>
           <span v-if="index === 0" class="featured-label">
-            <Icon icon="material-symbols:auto-awesome" />
+            <AppIcon icon="material-symbols:auto-awesome" />
             最近更新
           </span>
           <h4 v-if="index === 0" class="featured-title">{{ post.title }}</h4>
           <span class="cover-arrow">
-            <Icon icon="material-symbols:arrow-outward-rounded" />
+            <AppIcon icon="material-symbols:arrow-outward-rounded" />
           </span>
         </div>
-        <div class="post-body">
+          <div class="post-body">
           <div v-if="index === 0" class="featured-kicker">
             <span>FEATURED NOTE</span>
             <i></i>
@@ -68,30 +69,30 @@
           <p v-if="post.summary" class="excerpt">{{ post.summary }}</p>
           <div class="meta">
             <span class="author">
-              <Icon icon="material-symbols:person-outline" />
+              <AppIcon icon="material-symbols:person-outline" />
               {{ post.author }}
             </span>
             <span class="date">
-              <Icon icon="material-symbols:schedule-outline" />
+              <AppIcon icon="material-symbols:schedule-outline" />
               {{ formatDate(post.createdAt) }}
             </span>
             <span class="read-more">
               阅读全文
-              <Icon icon="material-symbols:arrow-forward-rounded" />
+              <AppIcon icon="material-symbols:arrow-forward-rounded" />
             </span>
           </div>
         </div>
-      </article>
+      </a>
     </div>
   </GlassPanel>
 </template>
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { formatDate } from '@/utils/date'
 import { getPosts } from '@/api/post'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { markPostSplash } from '@/utils/postSplash'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 
@@ -110,7 +111,9 @@ const emit = defineEmits(['clear', 'loaded'])
 
 const posts = ref([])
 const total = ref(0)
-const router = useRouter()
+// 请求令牌：挂载首取（无筛选）与搜索词/分类变化的重取存在竞态，
+// 只采纳最后一次请求的结果，防止过期响应覆盖过滤结果
+let fetchToken = 0
 const { toast } = useMessageBox()
 
 function formatIndex(index) {
@@ -138,8 +141,10 @@ const emptyText = computed(() => {
 })
 
 async function fetchPosts() {
+  const token = ++fetchToken
   try {
     const data = await getPosts(1, 8, props.categoryId, props.searchQuery || undefined)
+    if (token !== fetchToken) return
     posts.value = data.posts
     total.value = data.total
   } catch (e) {
@@ -151,10 +156,6 @@ async function fetchPosts() {
 
 function onClear() {
   emit('clear')
-}
-
-function goToDetail(id) {
-  router.push(`/post/${id}`)
 }
 
 onMounted(fetchPosts)
@@ -307,6 +308,7 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 
 .post-card {
   position: relative;
+  display: block;
   overflow: hidden;
   border: 1px solid rgba(var(--color-accent-rgb), .2);
   border-radius: 18px;
@@ -317,6 +319,8 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
   box-shadow: 0 6px 16px rgba(0, 0, 0, .06);
   backdrop-filter: blur(14px);
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
   transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
 

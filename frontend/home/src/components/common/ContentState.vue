@@ -1,12 +1,12 @@
 <template>
   <div class="content-state" :class="[`content-state--${kind}`, `content-state--${size}`]">
-    <Icon v-if="icon" :icon="icon" class="content-state__icon" />
+    <AppIcon v-if="icon" :icon="icon" class="content-state__icon" />
     <span><slot /></span>
   </div>
 </template>
 
 <script setup>
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 defineProps({
   kind: {

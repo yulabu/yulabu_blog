@@ -2,7 +2,7 @@
   <GlassPanel class="profile-card">
     <div class="profile-cover">
       <span class="cover-label">YULABU / PROFILE</span>
-      <Icon icon="material-symbols:auto-awesome" class="cover-spark" />
+      <AppIcon icon="material-symbols:auto-awesome" class="cover-spark" />
       <span class="cover-orbit cover-orbit--outer"></span>
       <span class="cover-orbit cover-orbit--inner"></span>
     </div>
@@ -10,7 +10,7 @@
     <!-- 头像独立于封面（cover overflow:hidden 会裁掉溢出部分）：
          作为卡片直接子元素跨界定位，保证完整显示且不被内容区遮挡 -->
     <div class="avatar-frame">
-      <img src="@/assets/img/Personal_img.jpg" alt="Yulabu 的头像" class="avatar" />
+      <img :src="personalImg" alt="Yulabu 的头像" class="avatar" />
     </div>
 
     <div class="profile-content">
@@ -28,7 +28,7 @@
       <div class="profile-rule"><span></span></div>
       <div class="profile-footer">
         <span>
-          <Icon icon="material-symbols:edit-note" />
+          <AppIcon icon="material-symbols:edit-note" />
           持续记录
         </span>
         <span class="footer-mark">MORE ON HOVER</span>
@@ -53,8 +53,12 @@
 </template>
 
 <script setup>
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
+import personalImgMeta from '@/assets/img/Personal_img.jpg'
 import GlassPanel from '@/components/common/GlassPanel.vue'
+
+// Astro 下图片导入是 ImageMetadata 对象，用作 URL 必须取 .src
+const personalImg = personalImgMeta.src
 </script>
 
 <style scoped>

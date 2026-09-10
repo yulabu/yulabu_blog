@@ -38,11 +38,12 @@
                 >
                   <div class="month-title">{{ month.month }} 月</div>
                   <div class="post-list">
-                    <div
+                    <a
                       v-for="post in month.posts"
                       :key="post.id"
                       class="post-item"
-                      @click="goToDetail(post.id)"
+                      :href="`/post/${post.id}`"
+                      @click="markPostSplash(post)"
                     >
                       <div class="date-badge">
                         <span class="day">{{ formatDay(post.createdAt) }}</span>
@@ -54,12 +55,12 @@
                         <div class="post-meta">
                           <span v-if="post.category" class="category-tag">{{ post.category.name }}</span>
                           <span class="views">
-                            <Icon icon="material-symbols:visibility-outline" class="view-icon" />
+                            <AppIcon icon="material-symbols:visibility-outline" class="view-icon" />
                             {{ formatViewCount(post.viewCount) }}
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -73,16 +74,16 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { getArchive } from '@/api/post'
 import { formatViewCount } from '@/utils/format'
+import { pad, beijingShifted } from '@/utils/date'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { markPostSplash } from '@/utils/postSplash'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
-const router = useRouter()
 const { toast } = useMessageBox()
 
 const archives = ref([])
@@ -93,20 +94,17 @@ const totalPosts = computed(() => {
   return archives.value.reduce((sum, year) => sum + year.count, 0)
 })
 
+// 日期统一按北京时间（UTC+8）取部件，与 utils/date.ts 的 formatDate 保持一致
 function formatDay(date) {
-  return String(new Date(date).getDate()).padStart(2, '0')
+  return pad(beijingShifted(date).getUTCDate())
 }
 
 function formatMonth(date) {
-  return new Date(date).getMonth() + 1
+  return beijingShifted(date).getUTCMonth() + 1
 }
 
 function toggleYear(year) {
   expandedYears.value[year] = !expandedYears.value[year]
-}
-
-function goToDetail(id) {
-  router.push(`/post/${id}`)
 }
 
 async function fetchArchive() {
@@ -248,6 +246,8 @@ onMounted(fetchArchive)
   border-top: 1px solid var(--border-light);
   border-left: 1px solid var(--border-light);
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 

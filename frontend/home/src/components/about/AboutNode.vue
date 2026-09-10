@@ -1,7 +1,7 @@
 <template>
   <div class="about-node" :class="[side, { 'is-open': open }]">
     <button class="node-marker" type="button" :aria-expanded="open" @click="toggle">
-      <Icon :icon="icon" class="marker-icon" />
+      <AppIcon :icon="icon" class="marker-icon" />
       <span class="marker-label">{{ title }}</span>
     </button>
 
@@ -12,7 +12,7 @@
         </div>
         <div class="node-body">
           <h3 class="node-title">
-            <Icon :icon="icon" class="node-icon" />
+            <AppIcon :icon="icon" class="node-icon" />
             {{ title }}
           </h3>
           <p class="node-summary">{{ summary }}</p>
@@ -21,7 +21,7 @@
     </div>
 
     <!-- 展开弹出层 -->
-    <Teleport to="body">
+    <Teleport v-if="isMounted" to="body">
       <Transition name="node-overlay">
         <div v-if="open" class="node-overlay" @click="close">
           <div class="node-popup" :class="side" @click.stop>
@@ -31,7 +31,7 @@
               </div>
               <div class="popup-body">
                 <h3 class="popup-title">
-                  <Icon :icon="icon" class="popup-icon" />
+                  <AppIcon :icon="icon" class="popup-icon" />
                   {{ title }}
                 </h3>
                 <p class="popup-summary">{{ summary }}</p>
@@ -40,7 +40,7 @@
                 </div>
               </div>
               <button class="popup-close" @click="close" aria-label="关闭">
-                <Icon icon="mdi:close" />
+                <AppIcon icon="mdi:close" />
               </button>
             </GlassPanel>
           </div>
@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 
 interface Props {
@@ -65,6 +65,10 @@ interface Props {
 
 const props = defineProps<Props>()
 const open = ref(false)
+// Teleport 守卫：SSR 与客户端首帧都不输出 teleport 标记（Astro 向岛内注入的
+// 水合脚本与 Vue 期望的空注释错位会触发 hydrateTeleport mismatch），
+// 挂载后再挂 Teleport——弹出层本就只在用户交互后出现
+const isMounted = ref(false)
 
 function toggle() {
   open.value = !open.value
@@ -82,6 +86,7 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  isMounted.value = true
   document.addEventListener('keydown', handleKeydown)
 })
 

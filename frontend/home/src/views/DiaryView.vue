@@ -41,7 +41,7 @@
 
             <div class="diary-footer">
               <span class="diary-time">
-                <Icon icon="material-symbols:schedule-outline" class="time-icon" />
+                <AppIcon icon="material-symbols:schedule-outline" class="time-icon" />
                 {{ formatRelativeTime(diary.created_at) }}
               </span>
             </div>
@@ -52,7 +52,7 @@
       <Pagination v-if="!loading && totalPages > 1" v-model:page="page" :totalPages="totalPages" />
     </main>
 
-    <Teleport to="body">
+    <Teleport v-if="isMounted" to="body">
       <Transition name="lightbox">
         <div v-if="lightboxVisible" class="lightbox-overlay" @click="closeLightbox">
           <img :src="lightboxImages[lightboxIndex]" class="lightbox-img" alt="预览图片" @click.stop />
@@ -77,8 +77,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { Icon } from '@iconify/vue'
+import { ref, watch, onMounted } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { getPublicDiaries } from '@/api/diary'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
@@ -87,6 +87,10 @@ import Pagination from '@/components/common/Pagination.vue'
 
 const diaries = ref([])
 const loading = ref(false)
+// Teleport 守卫：SSR 与客户端首帧都不输出 teleport 标记（Astro 向岛内注入的
+// 水合脚本与 Vue 期望的空注释错位会触发 hydrateTeleport mismatch），
+// 挂载后再挂 Teleport——灯箱本就只在用户交互后出现
+const isMounted = ref(false)
 const page = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
@@ -154,11 +158,15 @@ async function fetchDiaries() {
   }
 }
 
-fetchDiaries()
-
 watch(page, () => {
   fetchDiaries()
   window.scrollTo({ top: 0, behavior: 'smooth' })
+})
+
+// 仅浏览器端拉取（SSR 预渲染期不发起相对路径请求）
+onMounted(() => {
+  isMounted.value = true
+  fetchDiaries()
 })
 </script>
 

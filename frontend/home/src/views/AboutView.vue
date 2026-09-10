@@ -33,10 +33,10 @@
         </blockquote>
         <div class="social-links">
           <a href="https://github.com/yulabu" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="GitHub">
-            <Icon icon="mdi:github" class="social-icon" />
+            <AppIcon icon="mdi:github" class="social-icon" />
           </a>
           <a href="mailto:hello@yulabu.cn" class="social-link" aria-label="Email">
-            <Icon icon="mdi:email" class="social-icon" />
+            <AppIcon icon="mdi:email" class="social-icon" />
           </a>
         </div>
       </GlassPanel>
@@ -45,42 +45,43 @@
 </template>
 
 <script setup>
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import AboutNode from '@/components/about/AboutNode.vue'
-import avatarImg from '@/assets/img/about_avatar.jpg'
-import skillsImg from '@/assets/img/about_skills.jpg'
-import blogImg from '@/assets/img/about_blog.jpg'
-import contactImg from '@/assets/img/about_contact.jpg'
+import avatarImgMeta from '@/assets/img/about_avatar.jpg'
+import skillsImgMeta from '@/assets/img/about_skills.jpg'
+import blogImgMeta from '@/assets/img/about_blog.jpg'
+import contactImgMeta from '@/assets/img/about_contact.jpg'
 
+// Astro 下图片导入是 ImageMetadata 对象，用作 URL 必须取 .src
 const nodes = [
   {
     title: '你好，我是 Yulabu',
     icon: 'mdi:account-heart',
     summary: '一名喜欢纳西妲的开发者，喜欢折腾新鲜事物，偶尔写点东西记录成长。',
-    image: avatarImg,
+    image: avatarImgMeta.src,
     detail: '我偏爱用代码解决生活中的小麻烦，也喜欢把遇到的坑和学到的东西整理成笔记。如果你也对编程、开源和有趣的小工具有兴趣，我们应该会聊得来。'
   },
   {
     title: '技能树',
     icon: 'mdi:school',
     summary: '没什么技能',
-    image: skillsImg,
+    image: skillsImgMeta.src,
     detail: '……'
   },
   {
     title: '关于本站',
     icon: 'mdi:notebook',
     summary: "Yulabu's Blog 是一个用于记录学习笔记、技术探索和日常的个人空间。",
-    image: blogImg,
+    image: blogImgMeta.src,
     detail: '我会在这里持续更新：前端/后端实践的踩坑记录、一些生活见闻、读书思考，以及自己写的小工具。站的内容慢慢丰富，就像一座自建的花园。'
   },
   {
     title: '联系我',
     icon: 'mdi:message-text',
     summary: '如果你有任何想法或建议，欢迎通过 GitHub 或 Email 与我交流。',
-    image: contactImg,
+    image: contactImgMeta.src,
     detail: '留言、建议或者只是想聊聊技术、分享一个好玩的项目，都可以用下面的方式找到我。看到消息我会尽快回复。'
   }
 ]

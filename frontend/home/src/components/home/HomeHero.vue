@@ -101,6 +101,44 @@ onUnmounted(() => {
   font-size: clamp(20px, 5vw, 42px);
 }
 
+/* 老访客（折叠态会话）进入首页：首帧直接渲染折叠布局，不播折叠动画。
+   Layout 的内联脚本在首帧前按 sessionStorage 给 html 打 data-hero-collapsed，
+   水合后 collapsed class 翻转时各项计算值与这里一致 → 无跳变、无内容暴露。
+   新访客（无标记）不走这些规则，向下滚动时照旧播折叠动画。
+   注意：整个选择器包 :global()——Vue scoped 对「:global + 后代 + :deep」混用
+   会错误地丢弃后代部分（实测规则塌缩成只匹配 html），全 :global 最可靠 */
+:global(html[data-hero-collapsed] .home-hero),
+:global(html[data-hero-collapsed] .home-hero .banner) {
+  height: 360px;
+  transition: none;
+}
+
+:global(html[data-hero-collapsed] .home-hero .content) {
+  padding-top: 76px;
+  transition: none;
+}
+
+:global(html[data-hero-collapsed] .home-hero .site-title) {
+  font-size: clamp(24px, 5vw, 42px);
+  transition: none;
+}
+
+:global(html[data-hero-collapsed] .home-hero .subtitle) {
+  font-size: clamp(20px, 5vw, 42px);
+  transition: none;
+}
+
+:global(html[data-hero-collapsed] .home-hero .waves) {
+  opacity: 1;
+  transition: none;
+}
+
+:global(html[data-hero-collapsed] .home-hero .scroll-hint) {
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}
+
 .home-hero :deep(.waves) {
   opacity: 0;
   transition: opacity 0.5s ease 0.2s;

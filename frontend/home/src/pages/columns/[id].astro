@@ -1,0 +1,32 @@
+---
+// 专栏详情：按需渲染（SSR），服务端取数拼出完整 HTML 与 og 标签
+export const prerender = false
+
+import Layout from '@/layouts/Layout.astro'
+import ColumnDetailView from '@/views/ColumnDetailView.vue'
+
+// SSR 服务端取数走本机后端（生产由 pm2 注入 API_BASE_URL）
+const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:3000/api'
+const { id } = Astro.params
+
+let column = null
+if (/^\d+$/.test(id ?? '')) {
+  try {
+    const res = await fetch(`${API_BASE}/columns/${id}`)
+    if (res.ok) column = await res.json()
+  } catch {
+    // 后端不可达时按 404 处理
+  }
+}
+
+if (!column) {
+  return Astro.rewrite('/404')
+}
+
+const description = column.desc || `专栏「${column.name}」共 ${column.posts.length} 篇文章`
+const ogImage = column.cover || '/og-image.jpg'
+---
+
+<Layout title={column.name} description={description} ogImage={ogImage}>
+  <ColumnDetailView client:load initialColumn={column} />
+</Layout>

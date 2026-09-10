@@ -2,7 +2,7 @@
   <div class="music-player" :class="{ expanded, collapsed: !expanded }">
     <!-- 展开态：完整面板 -->
     <div class="panel-wrapper" v-show="expanded">
-      <img class="nahida-deco" src="@/assets/img/nahida_music.png" alt="" />
+      <img class="nahida-deco" :src="nahidaDeco" alt="" />
       <div class="panel">
       <div class="panel-header">
         <div>
@@ -10,7 +10,7 @@
           <h3 class="panel-title">音乐时光</h3>
         </div>
         <button class="icon-btn collapse-btn" @click="expanded = false" aria-label="收起">
-          <Icon icon="material-symbols:keyboard-arrow-down" />
+          <AppIcon icon="material-symbols:keyboard-arrow-down" />
         </button>
       </div>
 
@@ -18,7 +18,7 @@
         <div class="album-art">
           <img :src="musicStore.currentTrack.cover" alt="音乐封面">
           <span class="album-wash"></span>
-          <Icon icon="material-symbols:music-note-rounded" class="album-icon" />
+          <AppIcon icon="material-symbols:music-note-rounded" class="album-icon" />
         </div>
         <div class="track-copy">
           <strong>{{ musicStore.currentTrack.title }}</strong>
@@ -48,10 +48,10 @@
           :aria-label="musicStore.isPlaying ? '暂停' : '播放'"
           @click="musicStore.togglePlay"
         >
-          <Icon :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'" />
+          <AppIcon :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'" />
         </button>
         <div class="volume-control">
-          <Icon icon="material-symbols:volume-up-outline-rounded" class="volume-icon" />
+          <AppIcon icon="material-symbols:volume-up-outline-rounded" class="volume-icon" />
           <input
             type="range"
             class="volume-range"
@@ -78,7 +78,7 @@
         :aria-label="musicStore.isPlaying ? '暂停' : '播放'"
         @click.stop="musicStore.togglePlay"
       >
-        <Icon :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'" />
+        <AppIcon :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'" />
       </button>
     </div>
   </div>
@@ -86,14 +86,21 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useMusicStore } from '@/stores/music'
+import nahidaDecoMeta from '@/assets/img/nahida_music.png'
 
-const route = useRoute()
+// Astro 下图片导入是 ImageMetadata 对象，用作 URL 必须取 .src
+const nahidaDeco = nahidaDecoMeta.src
+
 const musicStore = useMusicStore()
 
-const isHome = computed(() => route.name === 'Home')
+// 组件带 transition:persist，跨页存活；首页判断从 URL 推导并在软导航后刷新
+const isHome = ref(typeof window !== 'undefined' && window.location.pathname === '/')
+
+function updateIsHome() {
+  isHome.value = window.location.pathname === '/'
+}
 
 // 响应式检测：768px 以下为移动端（遵循项目 @sm 断点约定）
 const isMobile = ref(false)
@@ -107,10 +114,12 @@ onMounted(() => {
   mql = window.matchMedia('(max-width: 768px)')
   updateMobile()
   mql.addEventListener('change', updateMobile)
+  document.addEventListener('astro:after-swap', updateIsHome)
 })
 
 onUnmounted(() => {
   mql?.removeEventListener('change', updateMobile)
+  document.removeEventListener('astro:after-swap', updateIsHome)
 })
 
 // 展开逻辑：桌面端 + 首页才展开，移动端始终收起迷你条

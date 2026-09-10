@@ -10,10 +10,11 @@
 
       <div v-else class="columns-grid">
         <GlassPanel
+          as="a"
           v-for="column in columns"
           :key="column.id"
           class="column-card"
-          @click="goDetail(column.id)"
+          :href="`/columns/${column.id}`"
         >
           <div class="card-cover">
             <img
@@ -39,21 +40,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { getColumns } from '@/api/column'
 import { useMessageBox } from '@/composables/useMessageBox'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
-const router = useRouter()
 const { toast } = useMessageBox()
 const columns = ref([])
 const loading = ref(true)
-
-function goDetail(id) {
-  router.push(`/columns/${id}`)
-}
 
 onMounted(async () => {
   try {
@@ -83,6 +78,7 @@ onMounted(async () => {
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
+  text-decoration: none;
   transition: transform 0.25s, box-shadow 0.25s;
   display: flex;
   flex-direction: column;

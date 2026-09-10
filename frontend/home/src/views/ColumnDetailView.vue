@@ -28,17 +28,18 @@
             v-for="(post, index) in column.posts"
             :key="post.id"
             class="post-item"
-            @click="goDetail(post.id)"
           >
-            <span class="post-index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <div class="post-info">
-              <h3 class="post-title">{{ post.title }}</h3>
-              <p class="post-summary">{{ post.summary || '暂无摘要' }}</p>
-              <div class="post-meta">
-                <span v-if="post.category" class="category-tag">{{ post.category.name }}</span>
-                <span class="post-date">{{ formatDate(post.createdAt) }}</span>
+            <a class="post-item-link" :href="`/post/${post.id}`" @click="markPostSplash(post)">
+              <span class="post-index">{{ String(index + 1).padStart(2, '0') }}</span>
+              <div class="post-info">
+                <h3 class="post-title">{{ post.title }}</h3>
+                <p class="post-summary">{{ post.summary || '暂无摘要' }}</p>
+                <div class="post-meta">
+                  <span v-if="post.category" class="category-tag">{{ post.category.name }}</span>
+                  <span class="post-date">{{ formatDate(post.createdAt) }}</span>
+                </div>
               </div>
-            </div>
+            </a>
           </div>
         </GlassPanel>
       </template>
@@ -48,28 +49,32 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { getColumnDetail } from '@/api/column'
 import { formatDate } from '@/utils/date'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { markPostSplash } from '@/utils/postSplash'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
-const route = useRoute()
-const router = useRouter()
+// SSR 页（columns/[id].astro）会注入整份专栏数据；prop 缺席时退回客户端拉取
+const props = defineProps({
+  initialColumn: {
+    type: Object,
+    default: null
+  }
+})
+
 const { toast } = useMessageBox()
 
-const column = ref(null)
-const loading = ref(true)
-
-function goDetail(id) {
-  router.push(`/post/${id}`)
-}
+const column = ref(props.initialColumn)
+const loading = ref(!props.initialColumn)
 
 onMounted(async () => {
+  if (props.initialColumn) return
+  const id = Number(window.location.pathname.split('/').pop())
   try {
-    column.value = await getColumnDetail(Number(route.params.id))
+    column.value = await getColumnDetail(id)
   } catch (e) {
     toast('获取专栏失败', 'error')
   } finally {
@@ -160,6 +165,15 @@ onMounted(async () => {
   border-radius: 12px;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.post-item-link {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
 }
 
 .post-item:hover {

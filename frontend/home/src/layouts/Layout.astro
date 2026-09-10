@@ -1,0 +1,104 @@
+---
+import '@/main.css'
+// 服务端注册离线图标 + md-editor 本地扩展（SSR 正文代码块同步高亮；
+// 客户端由 _app.ts 注册）
+import '@/utils/icons'
+import '@/utils/mdEditorSetup'
+import { ClientRouter } from 'astro:transitions'
+import Navbar from '@/components/common/Navbar.vue'
+import MessageBox from '@/components/common/MessageBox.vue'
+import MusicPlayer from '@/components/common/MusicPlayer.vue'
+import PostSplash from '@/components/common/PostSplash.vue'
+
+interface Props {
+  title?: string
+  description?: string
+  ogImage?: string
+}
+
+const SITE_NAME = '鱼辣不的博客'
+const SITE_DESCRIPTION = '纳西妲世界第一可爱'
+const SITE_IMAGE = '/og-image.jpg'
+
+const { title, description = SITE_DESCRIPTION, ogImage = SITE_IMAGE } = Astro.props
+const site = Astro.site ?? new URL('https://blog.yulabu.cn')
+const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME
+const canonical = new URL(Astro.url.pathname, site)
+const ogImageURL = new URL(ogImage, site)
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/nahida.ico" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImageURL} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script is:inline>
+      // 首帧前恢复客户端专属状态，防闪烁/弹跳（key 与 stores/ui.ts 的
+      // THEME_KEY / HOME_HERO_COLLAPSED_KEY 保持一致）；
+      // ClientRouter 软导航 swap 后 html 属性会被新文档覆盖，需在 astro:after-swap 重挂
+      function applyClientState() {
+        var root = document.documentElement
+        try {
+          root.dataset.theme = localStorage.getItem('theme') || 'light'
+        } catch (e) { /* 无 localStorage 时静默降级 */ }
+        try {
+          // 首页全屏 Hero：折叠态会话的首帧直接以 360px 渲染（配合 HomeHero
+          // 的 html[data-hero-collapsed] CSS），避免水合后 0.8s 折叠动画的弹跳
+          if (sessionStorage.getItem('homeHeroCollapsed') === 'true') {
+            root.dataset.heroCollapsed = 'true'
+          } else {
+            delete root.dataset.heroCollapsed
+          }
+        } catch (e) { /* 无 sessionStorage 时静默降级 */ }
+      }
+      applyClientState()
+      document.addEventListener('astro:after-swap', applyClientState)
+    </script>
+    <ClientRouter />
+  </head>
+  <body>
+    <Navbar client:load currentPath={Astro.url.pathname} />
+    <slot />
+    <!-- client:only：MessageBox 根节点是 Teleport to body，SSR 水合会在 body 内
+         触发 mismatch 清理、误删相邻岛（实测删过 Navbar），且弹窗初始无需服务端渲染 -->
+    <MessageBox client:only="vue" />
+    <!-- persist 挂在普通包装元素上：整块搬运保留播放器状态（含 audio 不中断），
+         避免 client:only 岛在 swap 中被单独 moveBefore 触发的边界问题 -->
+    <div transition:persist="music-player">
+      <MusicPlayer client:only="vue" />
+    </div>
+    <!-- 文章过渡卡片：点击瞬间弹出、跨页连续显示的常驻遮罩岛（persist 包装同 MusicPlayer） -->
+    <div transition:persist="post-splash">
+      <PostSplash client:only="vue" />
+    </div>
+    <script>
+      import { useAnimatedCursor } from '@/composables/useAnimatedCursor'
+      import { useDayPeriod } from '@/composables/useDayPeriod'
+
+      const cursor = useAnimatedCursor()
+      const dayPeriod = useDayPeriod()
+
+      function startEffects() {
+        cursor.initCursors()
+        dayPeriod.start()
+      }
+
+      startEffects()
+      // ClientRouter 软导航后重新应用（composables 内部有幂等守卫）
+      document.addEventListener('astro:page-load', startEffects)
+    </script>
+  </body>
+</html>

@@ -12,7 +12,7 @@
             <span class="date">{{ formatDate(post.createdAt) }}</span>
             <span class="meta-separator">·</span>
             <span class="views">
-              <Icon icon="material-symbols:visibility-outline" class="view-icon" />
+              <AppIcon icon="material-symbols:visibility-outline" class="view-icon" />
               {{ formatViewCount(post.viewCount) }} 次阅读
             </span>
           </div>
@@ -20,8 +20,10 @@
         <nav v-if="prevPost || nextPost" class="chapter-nav">
           <GlassPanel
             v-if="prevPost"
+            as="a"
             class="chapter-item prev"
-            @click="goChapter(prevPost.id)"
+            :href="`/post/${prevPost.id}`"
+            @click="markPostSplash(prevPost)"
           >
             <span class="chapter-label">上一篇</span>
             <span class="chapter-title">{{ prevPost.title }}</span>
@@ -32,8 +34,10 @@
           </GlassPanel>
           <GlassPanel
             v-if="nextPost"
+            as="a"
             class="chapter-item next"
-            @click="goChapter(nextPost.id)"
+            :href="`/post/${nextPost.id}`"
+            @click="markPostSplash(nextPost)"
           >
             <span class="chapter-label">下一篇</span>
             <span class="chapter-title">{{ nextPost.title }}</span>
@@ -46,10 +50,13 @@
         <GlassPanel class="content-card">
           <MdPreview
             :modelValue="post.content"
-            :theme="uiStore.theme"
+            :theme="mdTheme"
             previewTheme="github"
-            :codeTheme="uiStore.theme === 'dark' ? 'atomOneDark' : 'github'"
+            :codeTheme="mdCodeTheme"
             :showCodeRowNumber="true"
+            no-katex
+            no-mermaid
+            no-echarts
             :mdHeadingId="(h) => `heading-${h.index}`"
             @onGetCatalog="handleCatalog"
           />
@@ -79,9 +86,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
@@ -90,14 +96,35 @@ import { getPost, recordPostView } from '@/api/post'
 import { getPrevPost, getNextPost } from '@/api/column'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { useUiStore } from '@/stores/ui'
+import { markPostSplash } from '@/utils/postSplash'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
-const route = useRoute()
+// SSR 页（post/[id].astro）服务端取好文章与上下篇，经 props 注入首屏；
+// MPA 整页跳转下不需要 watch 路由，prop 缺席时才退回客户端拉取
+const props = defineProps({
+  postId: {
+    type: Number,
+    required: true
+  },
+  initialPost: {
+    type: Object,
+    default: null
+  },
+  initialPrev: {
+    type: Object,
+    default: null
+  },
+  initialNext: {
+    type: Object,
+    default: null
+  }
+})
+
 const { toast } = useMessageBox()
 const uiStore = useUiStore()
 
-const post = ref({
+const post = ref(props.initialPost || {
   title: '',
   content: '',
   category: null,
@@ -107,34 +134,38 @@ const post = ref({
 })
 const catalog = ref([])
 const activeHeading = ref('')
-const prevPost = ref(null)
-const nextPost = ref(null)
+const prevPost = ref(props.initialPrev)
+const nextPost = ref(props.initialNext)
+
+// 水合稳态：SSR 与客户端首帧一致用 light 主题，挂载后同步真实主题
+// （暗色用户的代码高亮配色在水合后切换，避免 md-editor 根级水合 mismatch）
+const mdTheme = ref('light')
+const mdCodeTheme = ref('github')
+
+function syncMdTheme() {
+  mdTheme.value = uiStore.theme
+  mdCodeTheme.value = uiStore.theme === 'dark' ? 'atomOneDark' : 'github'
+}
+
+watch(() => uiStore.theme, syncMdTheme)
 
 async function fetchPost() {
-  const id = Number(route.params.id)
   try {
-    post.value = await getPost(id)
+    post.value = await getPost(props.postId)
   } catch (e) {
     toast('获取文章详情失败', 'error')
   }
-  // 记录访问：fire & forget，静默失败不影响读者体验
-  recordPostView(id).catch(() => {})
 }
 
 async function fetchChapter() {
-  const id = Number(route.params.id)
   try {
-    const [prev, next] = await Promise.all([getPrevPost(id), getNextPost(id)])
+    const [prev, next] = await Promise.all([getPrevPost(props.postId), getNextPost(props.postId)])
     prevPost.value = prev.post
     nextPost.value = next.post
   } catch (e) {
     prevPost.value = null
     nextPost.value = null
   }
-}
-
-function goChapter(id) {
-  router.push(`/post/${id}`)
 }
 
 function handleCatalog(list) {
@@ -171,15 +202,12 @@ function handleScroll() {
 }
 
 onMounted(() => {
-  fetchPost()
-  fetchChapter()
+  syncMdTheme()
+  // 访问计数只在浏览器端记录（fire & forget，静默失败不影响读者体验）
+  recordPostView(props.postId).catch(() => {})
+  if (!props.initialPost) fetchPost()
+  if (!props.initialPrev && !props.initialNext) fetchChapter()
   window.addEventListener('scroll', handleScroll, { passive: true })
-})
-
-watch(() => route.params.id, () => {
-  fetchPost()
-  fetchChapter()
-  activeHeading.value = ''
 })
 
 onUnmounted(() => {
@@ -376,6 +404,8 @@ onUnmounted(() => {
   padding: 14px 18px;
   border-radius: 12px;
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;

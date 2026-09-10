@@ -1,15 +1,15 @@
 <template>
-  <nav class="navbar" :class="{ scrolled: isScrolled }" v-click-outside="closeAll">
+  <nav v-if="showNavbar" class="navbar" :class="{ scrolled: isScrolled }" v-click-outside="closeAll">
     <div class="nav-brand">
       <span class="logo">Yulabu</span>
     </div>
     <div class="nav-links" ref="navLinksRef">
-      <router-link to="/" class="nav-link">首页</router-link>
-      <router-link to="/columns" class="nav-link">专栏</router-link>
-      <router-link to="/friends" class="nav-link">友链</router-link>
-      <router-link to="/archive" class="nav-link">归档</router-link>
-      <router-link to="/diary" class="nav-link">日记</router-link>
-      <router-link to="/about" class="nav-link">关于</router-link>
+      <a href="/" class="nav-link" :class="{ active: isActive('/') }">首页</a>
+      <a href="/columns" class="nav-link" :class="{ active: isActive('/columns') }">专栏</a>
+      <a href="/friends" class="nav-link" :class="{ active: isActive('/friends') }">友链</a>
+      <a href="/archive" class="nav-link" :class="{ active: isActive('/archive') }">归档</a>
+      <a href="/diary" class="nav-link" :class="{ active: isActive('/diary') }">日记</a>
+      <a href="/about" class="nav-link" :class="{ active: isActive('/about') }">关于</a>
       <div class="nav-indicator" ref="indicatorRef"></div>
     </div>
     <div class="nav-search">
@@ -23,32 +23,39 @@
         @keyup.enter="onSearch"
       />
       <button v-if="!isSearchOpen" class="search-btn" @click.stop="openSearch">
-        <Icon icon="material-symbols:search" class="search-icon" />
+        <AppIcon icon="material-symbols:search" class="search-icon" />
       </button>
       <button class="theme-btn" @click="uiStore.toggleTheme">
-        <Icon :icon="themeIcon" class="theme-icon" />
+        <AppIcon :icon="themeIcon" class="theme-icon" />
       </button>
       <button class="menu-btn" :class="{ active: isMenuOpen }" @click.stop="toggleMenu" aria-label="菜单">
-        <Icon icon="material-symbols:menu" class="menu-icon" />
+        <AppIcon icon="material-symbols:menu" class="menu-icon" />
       </button>
     </div>
     <transition name="menu-fade">
       <div v-if="isMenuOpen" class="mobile-menu">
-        <router-link to="/" class="mobile-link" @click="closeMenu">首页</router-link>
-        <router-link to="/columns" class="mobile-link" @click="closeMenu">专栏</router-link>
-        <router-link to="/friends" class="mobile-link" @click="closeMenu">友链</router-link>
-        <router-link to="/archive" class="mobile-link" @click="closeMenu">归档</router-link>
-        <router-link to="/diary" class="mobile-link" @click="closeMenu">日记</router-link>
-        <router-link to="/about" class="mobile-link" @click="closeMenu">关于</router-link>
+        <a href="/" class="mobile-link" :class="{ active: isActive('/') }" @click="closeMenu">首页</a>
+        <a href="/columns" class="mobile-link" :class="{ active: isActive('/columns') }" @click="closeMenu">专栏</a>
+        <a href="/friends" class="mobile-link" :class="{ active: isActive('/friends') }" @click="closeMenu">友链</a>
+        <a href="/archive" class="mobile-link" :class="{ active: isActive('/archive') }" @click="closeMenu">归档</a>
+        <a href="/diary" class="mobile-link" :class="{ active: isActive('/diary') }" @click="closeMenu">日记</a>
+        <a href="/about" class="mobile-link" :class="{ active: isActive('/about') }" @click="closeMenu">关于</a>
       </div>
     </transition>
   </nav>
 </template>
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { navigate } from 'astro:transitions/client'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useUiStore } from '@/stores/ui'
+
+const props = defineProps({
+  currentPath: {
+    type: String,
+    default: '/'
+  }
+})
 
 const isScrolled = ref(false)
 const BANNER_HEIGHT = 360
@@ -57,15 +64,59 @@ const THRESHOLD = BANNER_HEIGHT - NAVBAR_HEIGHT
 const navLinksRef = ref(null)
 const indicatorRef = ref(null)
 
-const route = useRoute()
-const router = useRouter()
 const uiStore = useUiStore()
+// 水合稳态初值：SSR 与客户端首帧渲染必须一致，客户端专属状态（URL query、
+// sessionStorage、当前主题）统一在 onMounted 里同步，避免 Hydration mismatch
 const searchInput = ref('')
 const isSearchOpen = ref(false)
 const isMenuOpen = ref(false)
 const searchInputRef = ref(null)
 
-const themeIcon = computed(() => uiStore.theme === 'light' ? 'material-symbols:dark-mode' : 'material-symbols:light-mode')
+// 挂载前渲染空图标与 SSR 一致，挂载后按当前主题显示（暗色用户首帧不 mismatch）
+const isMounted = ref(false)
+const themeIcon = computed(() => {
+  if (!isMounted.value) return ''
+  return uiStore.theme === 'light' ? 'material-symbols:dark-mode' : 'material-symbols:light-mode'
+})
+
+// 首页桌面端等 Hero 折叠后才显示导航栏（折叠态经 yulabu:hero-collapsed 事件跨岛同步）
+const HERO_KEY = 'homeHeroCollapsed'
+const heroCollapsed = ref(false)
+const isMobile = ref(false)
+let mql = null
+
+function readHeroCollapsed() {
+  try {
+    return sessionStorage.getItem(HERO_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function onHeroCollapsed(e) {
+  heroCollapsed.value = !!e.detail
+}
+
+function updateMobile() {
+  isMobile.value = mql?.matches ?? false
+}
+
+function updateMql() {
+  mql = window.matchMedia('(max-width: 768px)')
+  updateMobile()
+  mql.addEventListener('change', updateMobile)
+}
+
+// 首页进入/刷新：加载遮罩与进度条由 HomeView 等待数据就绪后熄灭；
+const showNavbar = computed(() => {
+  if (props.currentPath === '/' && !isMobile.value && !heroCollapsed.value) return false
+  return true
+})
+
+function isActive(to) {
+  if (to === '/') return props.currentPath === '/'
+  return props.currentPath.startsWith(to)
+}
 
 function handleScroll() {
   isScrolled.value = window.scrollY > THRESHOLD
@@ -97,7 +148,7 @@ function closeAll() {
 
 function updateIndicator() {
   if (!navLinksRef.value || !indicatorRef.value) return
-  const active = navLinksRef.value.querySelector('.router-link-active')
+  const active = navLinksRef.value.querySelector('.nav-link.active')
   if (!active) {
     indicatorRef.value.style.opacity = '0'
     return
@@ -109,34 +160,27 @@ function updateIndicator() {
 
 function onSearch() {
   const q = searchInput.value.trim().slice(0, 32)
-  if (q) {
-    router.push({ name: 'Home', query: { ...route.query, q } })
-  } else {
-    const { q: _, ...rest } = route.query
-    router.push({ name: 'Home', query: rest })
-  }
+  navigate(q ? `/?q=${encodeURIComponent(q)}` : '/')
   closeSearch()
 }
 
-watch(() => route.query.q, (val) => {
-  searchInput.value = val ? String(val) : ''
-}, { immediate: true })
-
-watch(() => route.path, () => {
-  closeMenu()
-  closeSearch()
-})
-
-watch(() => route.path, () => nextTick(updateIndicator))
-
 onMounted(() => {
+  isMounted.value = true
+  updateMql()
+  // 同步客户端专属状态（此时 SSR 首帧已渲染完毕，更新不再触发水合 mismatch）
+  const q = new URLSearchParams(window.location.search).get('q')
+  if (q) searchInput.value = q
+  heroCollapsed.value = readHeroCollapsed()
   window.addEventListener('scroll', handleScroll, { passive: true })
+  window.addEventListener('yulabu:hero-collapsed', onHeroCollapsed)
   handleScroll()
-  updateIndicator()
+  nextTick(updateIndicator)
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('yulabu:hero-collapsed', onHeroCollapsed)
+  mql?.removeEventListener('change', updateMobile)
 })
 
 const vClickOutside = {
@@ -217,7 +261,7 @@ const vClickOutside = {
   color: var(--color-primary);
 }
 
-.nav-link.router-link-active {
+.nav-link.active {
   color: var(--color-primary);
   font-weight: 900;
 }
@@ -358,7 +402,7 @@ const vClickOutside = {
 }
 
 .mobile-menu .mobile-link:hover,
-.mobile-menu .mobile-link.router-link-active {
+.mobile-menu .mobile-link.active {
   color: var(--color-primary);
   background: rgba(99, 149, 86, 0.08);
 }

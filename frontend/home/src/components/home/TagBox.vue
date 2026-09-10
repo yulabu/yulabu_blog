@@ -2,7 +2,7 @@
   <GlassPanel class="card">
     <div class="header">
       <span class="heading-icon">
-        <Icon icon="material-symbols:label-outline" />
+        <AppIcon icon="material-symbols:label-outline" />
       </span>
       <div class="heading-copy">
         <span class="heading-kicker">EXPLORE</span>
@@ -44,7 +44,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { getTags } from '@/api/tag'
 import { useMessageBox } from '@/composables/useMessageBox'
 import ContentState from '@/components/common/ContentState.vue'

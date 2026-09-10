@@ -6,11 +6,11 @@
 <div class="home-layout">
             <aside class="left-sidebar">
                 <PersonalCard />
-                <TagBox :active-id="activeCategoryId" @select="onTagSelect" @loaded="onSectionLoaded" />
+                <TagBox :active-id="activeCategoryId" @select="onTagSelect" />
             </aside>
             <main class="center">
-                <TagBox class="mobile-tag-box" :active-id="activeCategoryId" @select="onTagSelect" @loaded="onSectionLoaded" />
-                <PostList :category-id="activeCategoryId" :search-query="searchQuery" @clear="onClear" @loaded="onSectionLoaded" />
+                <TagBox class="mobile-tag-box" :active-id="activeCategoryId" @select="onTagSelect" />
+                <PostList :category-id="activeCategoryId" :search-query="searchQuery" @clear="onClear" />
             </main>
             <aside class="right-sidebar">
             </aside>
@@ -19,49 +19,21 @@
     
 </template>
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useUiStore } from '@/stores/ui'
+import { ref, onMounted } from 'vue'
+import { navigate } from 'astro:transitions/client'
 import PersonalCard from '@/components/home/PersonalCard.vue';
 import TagBox from '@/components/home/TagBox.vue';
 import HomeHero from '@/components/home/HomeHero.vue';
 import PostList from '@/components/home/PostList.vue';
 import SitePageFrame from '@/components/common/SitePageFrame.vue';
 
-const route = useRoute()
-const router = useRouter()
-const uiStore = useUiStore()
-
 const activeCategoryId = ref(null)
-const searchQuery = computed(() => (route.query.q ? String(route.query.q) : ''))
-
-// 首页加载：等待文章列表 / 标签全部就绪后熄灭加载遮罩与进度条
-const PENDING_SECTIONS = 2
-const pendingSections = ref(PENDING_SECTIONS)
-let loadingTimeout = null
-
-function onSectionLoaded() {
-  pendingSections.value -= 1
-  if (pendingSections.value <= 0) {
-    finishLoading()
-  }
-}
-
-function finishLoading() {
-  clearTimeout(loadingTimeout)
-  uiStore.setPageLoading(false)
-}
+// 水合稳态初值：SSR（静态预渲染）与客户端首帧一致为无搜索态，
+// 真实搜索词在 onMounted 从 URL 同步（PostList 头部随后切换到搜索结果态）
+const searchQuery = ref('')
 
 onMounted(() => {
-  pendingSections.value = PENDING_SECTIONS
-  uiStore.setPageLoading(true)
-  // 兜底：8s 内未全部就绪则强制熄灭（防请求挂起卡死）
-  loadingTimeout = setTimeout(finishLoading, 8000)
-})
-
-onUnmounted(() => {
-  clearTimeout(loadingTimeout)
-  uiStore.setPageLoading(false)
+  searchQuery.value = new URLSearchParams(window.location.search).get('q') || ''
 })
 
 function onTagSelect(id) {
@@ -70,8 +42,8 @@ function onTagSelect(id) {
 
 function onClear() {
   activeCategoryId.value = null
-  if (route.query.q) {
-    router.push({ name: 'Home' })
+  if (searchQuery.value) {
+    navigate('/')
   }
 }
 </script>

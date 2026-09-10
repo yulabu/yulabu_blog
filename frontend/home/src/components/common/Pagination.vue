@@ -5,7 +5,7 @@
       :disabled="page <= 1"
       @click="goTo(page - 1)"
     >
-      <Icon icon="material-symbols:chevron-left" class="arrow-icon" />
+      <AppIcon icon="material-symbols:chevron-left" class="arrow-icon" />
     </button>
 
     <button
@@ -23,14 +23,14 @@
       :disabled="page >= totalPages"
       @click="goTo(page + 1)"
     >
-      <Icon icon="material-symbols:chevron-right" class="arrow-icon" />
+      <AppIcon icon="material-symbols:chevron-right" class="arrow-icon" />
     </button>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { Icon } from '@iconify/vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   page: { type: Number, default: 1 },

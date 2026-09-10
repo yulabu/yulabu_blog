@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import defaultCover from '@/assets/img/music_player.jpg'
+import defaultCoverMeta from '@/assets/img/music_player.jpg'
 import defaultSrc from '@/assets/music/我爱你 - nxd.mp3'
 
 export interface Track {
@@ -16,7 +16,7 @@ const defaultTrack: Track = {
   title: '我爱你',
   artist: '纳西妲 · Yulabu playlist',
   src: defaultSrc,
-  cover: defaultCover,
+  cover: defaultCoverMeta.src,
 }
 
 export const useMusicStore = defineStore('music', () => {
