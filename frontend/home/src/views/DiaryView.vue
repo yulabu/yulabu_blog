@@ -1,57 +1,54 @@
 <template>
-  <SitePageFrame :show-typing="false" subtitle="日记">
-    <main class="diary-layout">
-      <ContentState v-if="loading" kind="loading" size="page">
-        加载中...
-      </ContentState>
-      <ContentState v-else-if="diaries.length === 0" kind="empty" size="page">
-        暂无日记
-      </ContentState>
+  <main class="diary-layout">
+    <ContentState v-if="loading" kind="loading" size="page">
+      加载中...
+    </ContentState>
+    <ContentState v-else-if="diaries.length === 0" kind="empty" size="page">
+      暂无日记
+    </ContentState>
 
-      <template v-else>
-        <!-- 汇总卡 -->
-        <GlassPanel class="summary-card">
-          <div class="summary-left">
-            <h2 class="summary-title">日记</h2>
-            <p class="summary-subtitle">随时随地，分享生活</p>
+    <template v-else>
+      <!-- 汇总卡 -->
+      <GlassPanel class="summary-card">
+        <div class="summary-left">
+          <h2 class="summary-title">日记</h2>
+          <p class="summary-subtitle">随时随地，分享生活</p>
+        </div>
+        <div class="summary-right">
+          <span class="summary-count">{{ total }}</span>
+          <span class="summary-label">条日记</span>
+        </div>
+      </GlassPanel>
+
+      <!-- 日记卡片流 -->
+      <div class="diary-list">
+        <GlassPanel v-for="diary in diaries" :key="diary.id" class="diary-card">
+          <h3 class="diary-title">{{ diaryTitle(diary) }}</h3>
+
+          <p v-if="diaryBody(diary)" class="diary-content">{{ diaryBody(diary) }}</p>
+
+          <div v-if="diary.images && diary.images.length" class="diary-gallery">
+            <div
+              v-for="(img, idx) in diary.images"
+              :key="idx"
+              class="diary-photo"
+              @click="openLightbox(diary.images, idx)"
+            >
+              <img :src="img" class="diary-photo-img" :alt="'日记图片 ' + (idx + 1)" loading="lazy" />
+            </div>
           </div>
-          <div class="summary-right">
-            <span class="summary-count">{{ total }}</span>
-            <span class="summary-label">条日记</span>
+
+          <div class="diary-footer">
+            <span class="diary-time">
+              <AppIcon icon="material-symbols:schedule-outline" class="time-icon" />
+              {{ formatRelativeTime(diary.created_at) }}
+            </span>
           </div>
         </GlassPanel>
+      </div>
+    </template>
 
-        <!-- 日记卡片流 -->
-        <div class="diary-list">
-          <GlassPanel v-for="diary in diaries" :key="diary.id" class="diary-card">
-            <h3 class="diary-title">{{ diaryTitle(diary) }}</h3>
-
-            <p v-if="diaryBody(diary)" class="diary-content">{{ diaryBody(diary) }}</p>
-
-            <div v-if="diary.images && diary.images.length" class="diary-gallery">
-              <div
-                v-for="(img, idx) in diary.images"
-                :key="idx"
-                class="diary-photo"
-                @click="openLightbox(diary.images, idx)"
-              >
-                <img :src="img" class="diary-photo-img" :alt="'日记图片 ' + (idx + 1)" loading="lazy" />
-              </div>
-            </div>
-
-            <div class="diary-footer">
-              <span class="diary-time">
-                <AppIcon icon="material-symbols:schedule-outline" class="time-icon" />
-                {{ formatRelativeTime(diary.created_at) }}
-              </span>
-            </div>
-          </GlassPanel>
-        </div>
-      </template>
-
-      <Pagination v-if="!loading && totalPages > 1" v-model:page="page" :totalPages="totalPages" />
-    </main>
-
+    <Pagination v-if="!loading && totalPages > 1" v-model:page="page" :totalPages="totalPages" />
     <Teleport v-if="isMounted" to="body">
       <Transition name="lightbox">
         <div v-if="lightboxVisible" class="lightbox-overlay" @click="closeLightbox">
@@ -73,27 +70,37 @@
         </div>
       </Transition>
     </Teleport>
-  </SitePageFrame>
+  </main>
 </template>
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { getPublicDiaries } from '@/api/diary'
-import SitePageFrame from '@/components/common/SitePageFrame.vue'
+import { createSilentSync } from '@/utils/liveData'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import ContentState from '@/components/common/ContentState.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
-const diaries = ref([])
-const loading = ref(false)
+const props = defineProps({
+  // 构建期烘焙的第 1 页数据（diary.astro 注入），页面必定传入（取数失败传空对象）。
+  // 不写 default：Astro 对 JS SFC 的函数式 default 会破坏 .vue 的类型生成
+  initialDiaries: { type: Object }
+})
+
+const baked = props.initialDiaries || {}
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有内容，首屏不闪「加载中」
+const diaries = ref(baked.diaries || [])
+const loading = ref(!diaries.value.length)
 // Teleport 守卫：SSR 与客户端首帧都不输出 teleport 标记（Astro 向岛内注入的
 // 水合脚本与 Vue 期望的空注释错位会触发 hydrateTeleport mismatch），
 // 挂载后再挂 Teleport——灯箱本就只在用户交互后出现
 const isMounted = ref(false)
 const page = ref(1)
-const totalPages = ref(1)
-const total = ref(0)
+const totalPages = ref(baked.totalPages ?? 1)
+const total = ref(baked.total ?? 0)
+// 请求令牌：翻页与静默对账可能并发，只采纳最后一次请求的结果
+let fetchToken = 0
 
 const lightboxVisible = ref(false)
 const lightboxImages = ref([])
@@ -144,17 +151,40 @@ function nextImage() {
   lightboxIndex.value = (lightboxIndex.value + 1) % lightboxImages.value.length
 }
 
+function applyPage(res) {
+  diaries.value = res.diaries
+  totalPages.value = res.totalPages
+  total.value = res.total
+}
+
+// 指纹：id 序列 + 总数（新增/删除/翻页长度变化都能察觉）
+function fingerprintOf(res) {
+  const list = res?.diaries ?? []
+  return `${list.map((d) => d.id).join(',')}#${res?.total ?? ''}`
+}
+
+const silentSync = createSilentSync({
+  baked: fingerprintOf(baked),
+  load: () => getPublicDiaries(1),
+  key: fingerprintOf,
+  apply: (res) => {
+    // 对账期间用户可能已翻页，别用第 1 页的数据覆盖当前页
+    if (page.value !== 1) return
+    applyPage(res)
+  }
+})
+
 async function fetchDiaries() {
+  const token = ++fetchToken
   loading.value = true
   try {
     const res = await getPublicDiaries(page.value)
-    diaries.value = res.diaries
-    totalPages.value = res.totalPages
-    total.value = res.total
+    if (token !== fetchToken) return
+    applyPage(res)
   } catch (e) {
     console.error('获取日记失败:', e)
   } finally {
-    loading.value = false
+    if (token === fetchToken) loading.value = false
   }
 }
 
@@ -163,19 +193,21 @@ watch(page, () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 })
 
-// 仅浏览器端拉取（SSR 预渲染期不发起相对路径请求）
 onMounted(() => {
   isMounted.value = true
-  fetchDiaries()
+  // 有烘焙数据（第 1 页）时不再进入加载态，只静默对账；否则正常首屏拉取
+  if (diaries.value.length) silentSync()
+  else fetchDiaries()
 })
 </script>
 
 <style scoped>
+/* 靠左铺满内容列（不要 margin: 0 auto）：骨架左栏已有卡片，若这里再居中，
+   正文会离卡片多出一大截空白。与首页 PostList 对齐方式保持一致，
+   间距就等于网格 gap（24px）。宽屏下上限 720px，窄屏自动占满 */
 .diary-layout {
   width: 100%;
   max-width: 720px;
-  margin: 0 auto;
-  padding: 20px var(--page-padding) 60px;
 }
 
 /* 汇总卡 */

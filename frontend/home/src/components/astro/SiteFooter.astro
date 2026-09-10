@@ -1,0 +1,129 @@
+---
+/**
+ * 全站页脚（纯 Astro 静态组件，零 JS）。
+ *
+ * 刻意保持精简：只有站点名 + 联系方式 + 版权三样，**不放导航链接**
+ * （导航已在 Navbar，页脚再放一遍是重复）。三者居中竖排。
+ */
+import AppIcon from '@/components/common/AppIcon.vue'
+
+const year = new Date().getFullYear()
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <span class="site-footer__name">yulabu's blog</span>
+
+    <div class="site-footer__links">
+      <a
+        class="site-footer__link"
+        href="https://github.com/yulabu"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="GitHub"
+      >
+        <AppIcon icon="mdi:github" />
+      </a>
+      <a class="site-footer__link" href="mailto:hello@yulabu.cn" aria-label="Email">
+        <AppIcon icon="mdi:email" />
+      </a>
+    </div>
+
+    <span class="site-footer__copy">© {year} yulabu</span>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    position: relative;
+    margin-top: 48px;
+    /* 必须自带不透明底色：本项目 body 没有背景色，页面底色由 .site-page-frame /
+       .page-frame 这类容器提供，而页脚在它们之外 —— 只给半透明玻璃底的话会透出
+       浏览器画布（白），暗色模式下就会在底部漏出一条浅色带、且文字对比度不达标。
+       （实测踩到：暗色下 heading 只有 2.9:1） */
+    background-color: var(--bg-page);
+    background-image: linear-gradient(to right bottom, var(--bg-glass-start), var(--bg-glass-mid));
+    backdrop-filter: blur(16px);
+  }
+
+  /* 顶部发丝线用品牌色渐隐，比一条实线更收得住 */
+  .site-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(var(--color-primary-rgb), 0.45) 50%,
+      transparent
+    );
+  }
+
+  /* 居中竖排：站名 → 联系方式 → 版权。
+     图标行单独用 justify-content: center 保证在任意宽度下都是水平居中 */
+  .site-footer__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 24px var(--page-padding);
+    text-align: center;
+  }
+
+  /* 文字色用 --color-heading / --color-text 而不是 --color-primary：
+     后者在白玻璃底上只有 3.2:1，16px 不达 AA（实测） */
+  .site-footer__name {
+    font-family: 'LXGW WenKai', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--color-heading);
+  }
+
+  .site-footer__copy {
+    font-size: 12px;
+    color: var(--color-text);
+  }
+
+  .site-footer__links {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* 44px 热区；图标视觉尺寸 20px */
+  .site-footer__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-heading);
+    font-size: 20px;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .site-footer__link:hover {
+    background: rgba(var(--color-primary-rgb), 0.22);
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 768px) {
+    .site-footer {
+      margin-top: 32px;
+    }
+
+    .site-footer__inner {
+      padding: 20px var(--page-padding);
+      gap: 12px;
+    }
+  }
+</style>

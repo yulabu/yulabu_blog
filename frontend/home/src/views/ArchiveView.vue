@@ -1,75 +1,68 @@
 <template>
-  <SitePageFrame :show-typing="false" subtitle="文章归档">
-    <div class="archive-layout">
-      <aside class="archive-sidebar">
-        <!-- 左侧预留空位 -->
-      </aside>
-      <main class="archive-main">
-        <GlassPanel class="archive-card">
-          <div class="archive-header">
-            <h1 class="archive-title">文章年份列表</h1>
-            <span v-if="totalPosts > 0" class="total-count">共 {{ totalPosts }} 篇</span>
+  <main class="archive-main">
+    <GlassPanel class="archive-card">
+      <div class="archive-header">
+        <h1 class="archive-title">文章年份列表</h1>
+        <span v-if="totalPosts > 0" class="total-count">共 {{ totalPosts }} 篇</span>
+      </div>
+
+      <ContentState v-if="loading" kind="loading" size="panel">
+        加载中...
+      </ContentState>
+      <ContentState v-else-if="archives.length === 0" kind="empty" size="panel">
+        暂无文章
+      </ContentState>
+
+      <div v-else class="year-list">
+        <div
+          v-for="year in archives"
+          :key="year.year"
+          class="year-section"
+        >
+          <div class="year-title" @click="toggleYear(year.year)">
+            <span class="arrow" :class="{ expanded: expandedYears[year.year] }">▶</span>
+            <span class="year-text">{{ year.year }} 年</span>
+            <span class="year-count">（{{ year.count }} 篇）</span>
           </div>
 
-          <ContentState v-if="loading" kind="loading" size="panel">
-            加载中...
-          </ContentState>
-          <ContentState v-else-if="archives.length === 0" kind="empty" size="panel">
-            暂无文章
-          </ContentState>
-
-          <div v-else class="year-list">
+          <div v-show="expandedYears[year.year]" class="year-content">
             <div
-              v-for="year in archives"
-              :key="year.year"
-              class="year-section"
+              v-for="month in year.months"
+              :key="month.month"
+              class="month-section"
             >
-              <div class="year-title" @click="toggleYear(year.year)">
-                <span class="arrow" :class="{ expanded: expandedYears[year.year] }">▶</span>
-                <span class="year-text">{{ year.year }} 年</span>
-                <span class="year-count">（{{ year.count }} 篇）</span>
-              </div>
-
-              <div v-show="expandedYears[year.year]" class="year-content">
-                <div
-                  v-for="month in year.months"
-                  :key="month.month"
-                  class="month-section"
+              <div class="month-title">{{ month.month }} 月</div>
+              <div class="post-list">
+                <a
+                  v-for="post in month.posts"
+                  :key="post.id"
+                  class="post-item"
+                  :href="`/post/${post.id}`"
+                  @click="markPostSplash(post)"
                 >
-                  <div class="month-title">{{ month.month }} 月</div>
-                  <div class="post-list">
-                    <a
-                      v-for="post in month.posts"
-                      :key="post.id"
-                      class="post-item"
-                      :href="`/post/${post.id}`"
-                      @click="markPostSplash(post)"
-                    >
-                      <div class="date-badge">
-                        <span class="day">{{ formatDay(post.createdAt) }}</span>
-                        <span class="month">{{ formatMonth(post.createdAt) }}月</span>
-                      </div>
-                      <div class="post-info">
-                        <h3 class="post-title">{{ post.title }}</h3>
-                        <p class="post-summary">{{ post.summary || '暂无摘要' }}</p>
-                        <div class="post-meta">
-                          <span v-if="post.category" class="category-tag">{{ post.category.name }}</span>
-                          <span class="views">
-                            <AppIcon icon="material-symbols:visibility-outline" class="view-icon" />
-                            {{ formatViewCount(post.viewCount) }}
-                          </span>
-                        </div>
-                      </div>
-                    </a>
+                  <div class="date-badge">
+                    <span class="day">{{ formatDay(post.createdAt) }}</span>
+                    <span class="month">{{ formatMonth(post.createdAt) }}月</span>
                   </div>
-                </div>
+                  <div class="post-info">
+                    <h3 class="post-title">{{ post.title }}</h3>
+                    <p class="post-summary">{{ post.summary || '暂无摘要' }}</p>
+                    <div class="post-meta">
+                      <span v-if="post.category" class="category-tag">{{ post.category.name }}</span>
+                      <span class="views">
+                        <AppIcon icon="material-symbols:visibility-outline" class="view-icon" />
+                        {{ formatViewCount(post.viewCount) }}
+                      </span>
+                    </div>
+                  </div>
+                </a>
               </div>
             </div>
           </div>
-        </GlassPanel>
-      </main>
-    </div>
-  </SitePageFrame>
+        </div>
+      </div>
+    </GlassPanel>
+  </main>
 </template>
 
 <script setup>
@@ -80,18 +73,53 @@ import { formatViewCount } from '@/utils/format'
 import { pad, beijingShifted } from '@/utils/date'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { markPostSplash } from '@/utils/postSplash'
+import { createSilentSync } from '@/utils/liveData'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
-import SitePageFrame from '@/components/common/SitePageFrame.vue'
+
+const props = defineProps({
+  // 构建期烘焙的归档（archive.astro 注入），页面必定传入（取数失败传空数组）。
+  // 不写 default：Astro 对 JS SFC 的函数式 default 会破坏 .vue 的类型生成
+  initialArchives: { type: Array }
+})
 
 const { toast } = useMessageBox()
 
-const archives = ref([])
-const loading = ref(true)
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有内容，首屏不闪「加载中」
+const archives = ref(props.initialArchives || [])
+const loading = ref(!archives.value.length)
 const expandedYears = ref({})
+if (archives.value.length) markYearsExpanded(archives.value)
 
 const totalPosts = computed(() => {
   return archives.value.reduce((sum, year) => sum + year.count, 0)
+})
+
+// 归档默认全部展开
+function markYearsExpanded(list) {
+  list.forEach((year) => {
+    expandedYears.value[year.year] = true
+  })
+}
+
+// 指纹只需覆盖「结构 + 篇数」：发文会改 count 或新增月份，都会被察觉
+function fingerprintOf(list) {
+  return (list ?? [])
+    .map((y) => `${y.year}:${y.count}:${y.months.map((m) => `${m.month}:${m.count}`).join('.')}`)
+    .join(',')
+}
+
+function applyArchives(list) {
+  archives.value = list
+  markYearsExpanded(list)
+}
+
+// 水合后静默对账：指纹一致则完全不动 DOM
+const silentSync = createSilentSync({
+  baked: fingerprintOf(props.initialArchives),
+  load: async () => (await getArchive()).archives || [],
+  key: fingerprintOf,
+  apply: applyArchives
 })
 
 // 日期统一按北京时间（UTC+8）取部件，与 utils/date.ts 的 formatDate 保持一致
@@ -108,13 +136,9 @@ function toggleYear(year) {
 }
 
 async function fetchArchive() {
+  loading.value = true
   try {
-    const data = await getArchive()
-    archives.value = data.archives || []
-    // 默认全部展开
-    archives.value.forEach((year) => {
-      expandedYears.value[year.year] = true
-    })
+    applyArchives((await getArchive()).archives || [])
   } catch (e) {
     toast('获取归档失败', 'error')
   } finally {
@@ -122,23 +146,16 @@ async function fetchArchive() {
   }
 }
 
-onMounted(fetchArchive)
+onMounted(() => {
+  if (archives.value.length) silentSync()
+  else fetchArchive()
+})
 </script>
 
 <style scoped>
-.archive-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 24px;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px var(--page-padding) 60px;
-}
-
-.archive-sidebar {
-  min-height: 200px;
-}
-
+/* 页面骨架（含左栏空位与常驻个人卡片）已上移到 Astro 层
+   （pages/archive.astro + components/astro/PageFrame.astro），
+   本组件只负责主内容本身 */
 .archive-main {
   min-width: 0;
 }
@@ -342,16 +359,6 @@ onMounted(fetchArchive)
 
 .view-icon {
   font-size: 14px;
-}
-
-@media (max-width: 1024px) {
-  .archive-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .archive-sidebar {
-    display: none;
-  }
 }
 
 @media (max-width: 768px) {

@@ -42,15 +42,38 @@
 import { ref, onMounted } from 'vue'
 import { getColumns } from '@/api/column'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { createSilentSync } from '@/utils/liveData'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
-const { toast } = useMessageBox()
-const columns = ref([])
-const loading = ref(true)
+const props = defineProps({
+  // 构建期烘焙的专栏列表（columns/index.astro 注入），页面必定传入（取数失败传空数组）。
+  // 不写 default：Astro 对 JS SFC 的函数式 default 会破坏 .vue 的类型生成
+  initialColumns: { type: Array }
+})
 
-onMounted(async () => {
+const { toast } = useMessageBox()
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有内容，首屏不闪「加载中」
+const columns = ref(props.initialColumns || [])
+const loading = ref(!columns.value.length)
+
+// post_count 随发文变化，指纹必须带上，否则新文章不会反映到专栏卡片上
+function fingerprintOf(list) {
+  return (list ?? []).map((c) => `${c.id}:${c.post_count}`).join(',')
+}
+
+const silentSync = createSilentSync({
+  baked: fingerprintOf(props.initialColumns),
+  load: () => getColumns(),
+  key: fingerprintOf,
+  apply: (list) => {
+    columns.value = list
+  }
+})
+
+async function loadFirstPaint() {
+  loading.value = true
   try {
     columns.value = await getColumns()
   } catch (e) {
@@ -58,6 +81,11 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  if (props.initialColumns.length) silentSync()
+  else loadFirstPaint()
 })
 </script>
 

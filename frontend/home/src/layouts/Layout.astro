@@ -6,6 +6,7 @@ import '@/utils/icons'
 import '@/utils/mdEditorSetup'
 import { ClientRouter } from 'astro:transitions'
 import Navbar from '@/components/common/Navbar.vue'
+import SiteFooter from '@/components/astro/SiteFooter.astro'
 import MessageBox from '@/components/common/MessageBox.vue'
 import MusicPlayer from '@/components/common/MusicPlayer.vue'
 import PostSplash from '@/components/common/PostSplash.vue'
@@ -71,6 +72,7 @@ const ogImageURL = new URL(ogImage, site)
   <body>
     <Navbar client:load currentPath={Astro.url.pathname} />
     <slot />
+    <SiteFooter />
     <!-- client:only：MessageBox 根节点是 Teleport to body，SSR 水合会在 body 内
          触发 mismatch 清理、误删相邻岛（实测删过 Navbar），且弹窗初始无需服务端渲染 -->
     <MessageBox client:only="vue" />

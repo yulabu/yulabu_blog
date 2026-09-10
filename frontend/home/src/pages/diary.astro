@@ -1,8 +1,18 @@
 ---
 import Layout from '@/layouts/Layout.astro'
+import PageFrame from '@/components/astro/PageFrame.astro'
 import DiaryView from '@/views/DiaryView.vue'
+import { fetchDiaries } from '@/utils/serverData'
+
+// 构建期取数第 1 页（pageSize 默认值与 api/diary.ts 保持一致）：
+// 预渲染产物 HTML 里直接带日记（后端不可达时传空对象，岛内退化为客户端取数）
+const diaries = await fetchDiaries(1)
 ---
 
 <Layout title="日记">
-  <DiaryView client:load />
+  <!-- 与首页/归档同一套骨架：左栏的常驻个人卡片在这三页之间是同一个 DOM 节点，
+       切换时整块搬运、位置不变。rail 槽留空——日记页左栏只放卡片。 -->
+  <PageFrame subtitle="日记" showTyping={false}>
+    <DiaryView client:load initialDiaries={diaries ?? {}} />
+  </PageFrame>
 </Layout>

@@ -95,11 +95,20 @@ const nahidaDeco = nahidaDecoMeta.src
 
 const musicStore = useMusicStore()
 
-// 组件带 transition:persist，跨页存活；首页判断从 URL 推导并在软导航后刷新
-const isHome = ref(typeof window !== 'undefined' && window.location.pathname === '/')
+// 组件带 transition:persist，跨页存活；展开判定从 URL 推导并在软导航后刷新。
+// 完全展开（面板态）的页面：首页 + 日记页；其余页面显示迷你条。
+const EXPAND_PATHS = ['/', '/diary']
 
-function updateIsHome() {
-  isHome.value = window.location.pathname === '/'
+function isExpandPath(pathname) {
+  // 归一化尾部斜杠，/diary/ 这类形态也要命中
+  const p = (pathname || '').replace(/\/+$/, '') || '/'
+  return EXPAND_PATHS.includes(p)
+}
+
+const expandRoute = ref(typeof window !== 'undefined' && isExpandPath(window.location.pathname))
+
+function updateExpandRoute() {
+  expandRoute.value = isExpandPath(window.location.pathname)
 }
 
 // 响应式检测：768px 以下为移动端（遵循项目 @sm 断点约定）
@@ -114,19 +123,19 @@ onMounted(() => {
   mql = window.matchMedia('(max-width: 768px)')
   updateMobile()
   mql.addEventListener('change', updateMobile)
-  document.addEventListener('astro:after-swap', updateIsHome)
+  document.addEventListener('astro:after-swap', updateExpandRoute)
 })
 
 onUnmounted(() => {
   mql?.removeEventListener('change', updateMobile)
-  document.removeEventListener('astro:after-swap', updateIsHome)
+  document.removeEventListener('astro:after-swap', updateExpandRoute)
 })
 
-// 展开逻辑：桌面端 + 首页才展开，移动端始终收起迷你条
+// 展开逻辑：桌面端 + 展开页（首页 / 日记）才展开，移动端始终收起迷你条
 const expanded = ref(false)
 
-watch([isHome, isMobile], ([home, mobile]) => {
-  expanded.value = home && !mobile
+watch([expandRoute, isMobile], ([onExpandRoute, mobile]) => {
+  expanded.value = onExpandRoute && !mobile
 }, { immediate: true })
 
 function onSeek(e) {

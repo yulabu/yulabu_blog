@@ -21,8 +21,11 @@
         </button>
       </div>
     </div>
+    <ContentState v-if="loading" kind="loading" size="compact">
+      加载中...
+    </ContentState>
     <ContentState
-      v-if="!posts.length"
+      v-else-if="!posts.length"
       kind="empty"
       size="compact"
       icon="material-symbols:description-outline"
@@ -93,8 +96,13 @@ import { formatDate } from '@/utils/date'
 import { getPosts } from '@/api/post'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { markPostSplash } from '@/utils/postSplash'
+import { createSilentSync, listFingerprint } from '@/utils/liveData'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
+
+// 首页每页条数。必须与 index.astro 的 fetchPosts(1, 8) 保持一致，
+// 否则构建期烘焙的切片与这里对账的切片不同，指纹永不相等 → 每次访问都无谓重绘
+const PAGE_SIZE = 8
 
 const props = defineProps({
   categoryId: {
@@ -104,13 +112,22 @@ const props = defineProps({
   searchQuery: {
     type: String,
     default: ''
+  },
+  // 构建期烘焙的首屏数据（index.astro 注入），页面必定传入（取数失败传空对象）。
+  // 不写 default：Astro 对 JS SFC 的函数式 default 会破坏 .vue 的类型生成
+  // （报 "has no default export"），故此处无 default 并在下方兜底
+  initialData: {
+    type: Object
   }
 })
 
 const emit = defineEmits(['clear', 'loaded'])
 
-const posts = ref([])
-const total = ref(0)
+const baked = props.initialData || {}
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有文章，首屏不闪「加载中」
+const posts = ref(baked.posts || [])
+const total = ref(baked.total ?? 0)
+const loading = ref(!posts.value.length)
 // 请求令牌：挂载首取（无筛选）与搜索词/分类变化的重取存在竞态，
 // 只采纳最后一次请求的结果，防止过期响应覆盖过滤结果
 let fetchToken = 0
@@ -140,17 +157,37 @@ const emptyText = computed(() => {
   return '暂无文章'
 })
 
+// 水合后静默对账：构建期烘焙的数据可能已过期（本项目约定发新文章无需重新构建）
+const silentSync = createSilentSync({
+  baked: listFingerprint(baked.posts, baked.total),
+  load: () => getPosts(1, PAGE_SIZE),
+  key: (data) => listFingerprint(data.posts, data.total),
+  apply: (data) => {
+    // 对账期间用户可能已选中标签或发起搜索，别用未筛选结果覆盖它
+    if (hasFilter.value) return
+    posts.value = data.posts
+    total.value = data.total
+  }
+})
+
 async function fetchPosts() {
   const token = ++fetchToken
+  // 仅在没有任何内容可展示时才进入加载态：切换标签/搜索时保留旧列表，
+  // 避免整块闪成「加载中」再闪回来
+  if (!posts.value.length) loading.value = true
   try {
-    const data = await getPosts(1, 8, props.categoryId, props.searchQuery || undefined)
+    const data = await getPosts(1, PAGE_SIZE, props.categoryId, props.searchQuery || undefined)
     if (token !== fetchToken) return
     posts.value = data.posts
     total.value = data.total
   } catch (e) {
+    if (token !== fetchToken) return
     toast('获取文章列表失败', 'error')
   } finally {
-    emit('loaded')
+    if (token === fetchToken) {
+      loading.value = false
+      emit('loaded')
+    }
   }
 }
 
@@ -158,7 +195,17 @@ function onClear() {
   emit('clear')
 }
 
-onMounted(fetchPosts)
+onMounted(() => {
+  if (posts.value.length) {
+    // 首屏已是真实内容：立即放行加载遮罩，且只在未筛选时对账
+    // （筛选态交给 watch 正常拉取）
+    emit('loaded')
+    if (!hasFilter.value) silentSync()
+  } else {
+    fetchPosts()
+  }
+})
+
 watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
 </script>
 <style scoped>

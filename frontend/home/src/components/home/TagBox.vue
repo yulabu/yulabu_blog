@@ -12,7 +12,7 @@
         <strong>{{ tags.length }}</strong>
         <small>个标签</small>
       </span>
-      <button v-if="activeId" class="clear-tag" @click="onSelect(null)">全部</button>
+      <button v-if="activeTagId" class="clear-tag" @click="onSelect(null)">全部</button>
     </div>
     <div class="body">
       <ContentState v-if="loading" kind="loading" size="compact">
@@ -31,7 +31,7 @@
           v-for="tag in tags"
           :key="tag.id"
           class="tag"
-          :class="{ active: activeId === tag.id }"
+          :class="{ active: activeTagId === tag.id }"
           @click="onSelect(tag.id)"
         >
           <span class="tag-name">{{ tag.name }}</span>
@@ -47,26 +47,53 @@ import { ref, onMounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { getTags } from '@/api/tag'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { activeTagId, toggleActiveTag } from '@/stores/tagFilter'
+import { createSilentSync } from '@/utils/liveData'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 
 const props = defineProps({
-  activeId: {
-    type: Number,
-    default: null
+  // 构建期烘焙的标签：左栏实例由 index.astro 直接注入，中栏移动端实例由 HomeView 透传。
+  // 页面必定传入（取数失败传空数组）。不写 default：Astro 对 JS SFC 的函数式 default
+  // 会破坏 .vue 的类型生成（报 "has no default export"）
+  initialTags: {
+    type: Array
   }
 })
 
+// 选中态不走 props：首页的标签筛选现在挂在页面骨架的左栏（PageFrame 的 rail 槽），
+// 与中栏 PostList 分属不同岛，且 Astro 传给岛的 props 是静态的（无法响应式）。
+// 因此由跨岛共享状态（stores/tagFilter.ts）驱动，中栏 PostList 读同一个 ref。
 const emit = defineEmits(['select', 'loaded'])
 
-const tags = ref([])
-const loading = ref(true)
+// 只展示有文章的标签。构建期烘焙数据与客户端拉取数据都必须过这个归一化，
+// 否则两边切片不同、指纹永不相等
+function normalizeTags(list) {
+  return (list || []).filter(tag => tag.count > 0)
+}
+
+// 标签的文章数会随发文变化，指纹必须带上 count
+function fingerprintOf(list) {
+  return normalizeTags(list).map(tag => `${tag.id}:${tag.count}`).join(',')
+}
+
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有标签，首屏不闪「加载中」
+const tags = ref(normalizeTags(props.initialTags || []))
+const loading = ref(!tags.value.length)
 const { toast } = useMessageBox()
+
+const silentSync = createSilentSync({
+  baked: fingerprintOf(props.initialTags || []),
+  load: () => getTags(),
+  key: fingerprintOf,
+  apply: (list) => {
+    tags.value = normalizeTags(list)
+  }
+})
 
 async function fetchTags() {
   try {
-    const data = await getTags()
-    tags.value = (data || []).filter(tag => tag.count > 0)
+    tags.value = normalizeTags(await getTags())
   } catch (err) {
     toast('获取标签失败', 'error')
     tags.value = []
@@ -77,11 +104,14 @@ async function fetchTags() {
 }
 
 function onSelect(id) {
-  emit('select', id === props.activeId ? null : id)
+  toggleActiveTag(id)
+  // 保留对外事件（同岛内的父组件仍可监听）
+  emit('select', activeTagId.value)
 }
 
 onMounted(() => {
-  fetchTags()
+  if (tags.value.length) silentSync()
+  else fetchTags()
 })
 </script>
 

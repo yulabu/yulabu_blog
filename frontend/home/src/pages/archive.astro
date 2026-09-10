@@ -1,8 +1,18 @@
 ---
 import Layout from '@/layouts/Layout.astro'
+import PageFrame from '@/components/astro/PageFrame.astro'
 import ArchiveView from '@/views/ArchiveView.vue'
+import { fetchArchive } from '@/utils/serverData'
+
+// 构建期取数：预渲染产物 HTML 里直接带完整归档（后端不可达时传空数组，
+// 岛内退化为客户端取数）
+const archive = await fetchArchive()
 ---
 
 <Layout title="文章归档">
-  <ArchiveView client:load />
+  <!-- 左栏由页面骨架提供：常驻个人卡片会从首页整块搬到这里（同一个 persist key），
+       位置正好是原 ArchiveView 里预留的空位。rail 槽留空——归档页左栏除了卡片不放别的。 -->
+  <PageFrame subtitle="文章归档" showTyping={false}>
+    <ArchiveView client:load initialArchives={archive?.archives ?? []} />
+  </PageFrame>
 </Layout>

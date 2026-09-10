@@ -1,0 +1,120 @@
+---
+/**
+ * 页面骨架（纯 Astro）。
+ *
+ * 为什么这层必须在 Astro 而不是 Vue：`transition:persist` 只在 .astro 模板里生效
+ * —— Astro 编译期会把它改写成 `data-astro-transition-persist`，ClientRouter 才认；
+ * 写在 Vue SFC 里只是原样透传一个属性，等于没写。而「首页 ↔ 归档」要常驻的个人
+ * 卡片原先在 HomeView（Vue 岛）内部，归档页那个空左栏在 ArchiveView 内部，
+ * 所以必须把骨架提到 Astro 层才能让卡片跨页搬运。
+ *
+ * 结构：全宽刊头（slot banner）→ 两列网格（左栏 rail + 主内容 main）。
+ * 左栏第一格是常驻卡片；页面还可以通过 slot="rail" 在卡片下方追加自己的内容
+ * （首页用它放标签筛选）。
+ *
+ * persist 挂在普通 div 上而不是 astro-island 上：遵守项目既有纪律，
+ * 直接挂岛会在 swap 时触发 moveBefore 边界问题（实踩）。
+ */
+import PersonalCard from '@/components/home/PersonalCard.vue'
+import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
+
+interface Props {
+  /** 默认刊头的静态副标题（页面不自定义 banner 槽时生效） */
+  subtitle?: string
+  /** 默认刊头是否使用打字机副标题 */
+  showTyping?: boolean
+}
+
+const { subtitle = '', showTyping = true } = Astro.props
+---
+
+<div class="page-frame">
+  <header class="page-frame__banner">
+    <slot name="banner">
+      <WelcomeBanner client:load showTyping={showTyping} subtitle={subtitle} />
+    </slot>
+  </header>
+
+  <div class="page-frame__grid">
+    <aside class="page-frame__rail">
+      <!-- 跨页常驻：首页与归档用同一个 persist key，ClientRouter 会把旧节点
+           整块搬进新文档，卡片 DOM 与状态都不重建 -->
+      <div transition:persist="personal-card">
+        <PersonalCard client:load />
+      </div>
+      <slot name="rail" />
+    </aside>
+
+    <div class="page-frame__main">
+      <slot />
+    </div>
+  </div>
+</div>
+
+<style>
+  .page-frame {
+    width: 100%;
+    min-height: 100vh;
+    background-color: var(--bg-page);
+    overflow: hidden;
+  }
+
+  .page-frame__banner {
+    width: 100%;
+  }
+
+  .page-frame__grid {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+    gap: 24px;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 28px var(--page-padding) 64px;
+  }
+
+  /* 左栏：粘性跟随，与首页原左栏一致（top 96px 让开固定 Navbar） */
+  .page-frame__rail {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: sticky;
+    top: 96px;
+    align-self: start;
+    z-index: 1;
+  }
+
+  .page-frame__main {
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 响应式降级沿用原首页约定：
+   * @md 1024px  隐藏左栏（常驻卡片随之隐藏），主内容占满
+   * @sm 768px   刊头隐藏（看板页原本也如此）
+   */
+  @media (max-width: 1024px) {
+    .page-frame__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .page-frame__rail {
+      display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-frame__banner {
+      display: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .page-frame__grid {
+      padding-top: 20px;
+      padding-bottom: 40px;
+    }
+  }
+</style>

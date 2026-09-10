@@ -1,8 +1,13 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import FriendsView from '@/views/FriendsView.vue'
+import { fetchFriendLinks } from '@/utils/serverData'
+
+// 构建期取数：预渲染产物 HTML 里直接带友链卡片（后端不可达时传空数组，
+// 岛内会退化为客户端取数）
+const links = await fetchFriendLinks()
 ---
 
 <Layout title="友链">
-  <FriendsView client:load />
+  <FriendsView client:load initialLinks={links ?? []} />
 </Layout>

@@ -54,6 +54,23 @@ export interface Tag {
   count: number
 }
 
+/** 日记：后端没有标题/摘要字段，正文首行在前端充当标题 */
+export interface Diary {
+  id: number
+  content: string
+  images: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface PaginatedDiaries {
+  diaries: Diary[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 export interface FriendLink {
   id: number
   name: string

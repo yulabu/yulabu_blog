@@ -168,3 +168,16 @@ certbot renew --dry-run
 - dev 工作流：根目录 npm run dev:home = server(3000) + astro dev(5174，vite proxy /api、/uploads)；本地验证 SSR 用 `node dist/server/entry.mjs`（standalone，不自动读 .env，API_BASE_URL 走 pm2 env 注入）
 - 死代码：src/_archive/（MapView 世界地图，未接线；tsconfig/依赖扫描已排除，不参与构建）；加载遮罩 TopProgressBar/LoadingOverlay 与 src/router、src/main.ts、src/App.vue 已删除（文章过渡卡片接棒加载体验）
 
+- **跨页常驻岛：个人卡片（2026-09）**——**首页 / 归档 / 日记**三页左栏是同一个 DOM 节点，三页之间来回切换零重建、位置不动（实测 absTop 388 / left 84 / 300×330 全程一致，且节点上的 JS 属性仍在）。
+  - **`transition:persist` 只在 `.astro` 模板里生效**：Astro 编译期把它改写成 `data-astro-transition-persist`，ClientRouter 才认；写在 Vue SFC 里只是原样透传一个属性。所以卡片必须由 Astro 渲染 → 新增 `src/components/astro/PageFrame.astro` 作为页面骨架（全宽刊头槽 + 左栏 rail + 主内容 main），首页与归档页都用它，两页的 persist key 必须同名（`personal-card`）。persist 挂在普通 div 上，不要直接挂 astro-island（moveBefore 边界 bug）
+  - 骨架左栏 ≤1024px 隐藏（沿用原首页左栏约定）；归档页与日记页左栏除卡片不放别的（rail 槽留空），首页 rail 槽放 TagBox
+  - `HomeView.vue` / `ArchiveView.vue` / `DiaryView.vue` 已退化为纯内容（HomeView 只留中心列 + 右栏；DiaryView 只留 720px 正文）；其余 5 个视图（About / Columns / ColumnDetail / Friends / PostDetail）仍用 `SitePageFrame.vue`，未迁移
+  - 音乐播放器（MusicPlayer）的**完全展开白名单**是 `EXPAND_PATHS = ['/', '/diary']`：桌面端在这两页展开成完整面板，其余页面是迷你条；移动端 ≤768px 一律迷你条。它靠 `transition:persist` 跨页存活，所以这里只改「在哪几页展开」，播放状态不受影响
+  - **slot 属性不能直接挂在 Vue 岛组件上**：Astro 传给框架组件的 slot 会作为 fallthrough 属性进入 Vue，而服务端渲染时 Astro 不输出该属性 → 水合属性不匹配告警（实测首页 banner/rail 两处）。要包一层普通元素：`<div slot="rail"><TagBox client:load /></div>`
+- **标签筛选的跨岛共享状态（stores/tagFilter.ts）**：TagBox 现在挂在骨架左栏、PostList 在中栏，二者分属不同岛，Astro 传给岛的 props 又是静态的，所以用**模块级 ref**（同一份 ESM 模块图，同页所有岛共享同一实例）。**不要用 pinia**——每个岛是独立 app 实例、store 各注一份互不同步；也不要绕 DOM 事件，模块单例更简单。新增跨岛共享状态时沿用这个模式
+- **预渲染页在构建期烘焙真实内容**：5 个列表页 frontmatter 顶层 await `src/utils/serverData.ts` 取数并经 props 注入岛，产物 HTML 里就是真实文章/标签/专栏/日记/友链（首屏不再先闪「加载中」空壳，爬虫/分享可读）
+  - **必须 fail-soft**：取数失败一律返回空值、绝不拦构建（实测死后端仍构建成功，各页打印 `[serverData]` 告警并退化为客户端取数）。代价：**构建时需后端可达**才能烘焙出内容
+  - **烘焙切片必须与客户端对账切片一致**（/posts 用 `limit`、/diaries 用 `pageSize`；PostList 的 PAGE_SIZE 与 index.astro 的 fetchPosts 必须同值），否则指纹永不相等 → 每次访问无谓重绘
+  - 岛内用 `src/utils/liveData.ts` 的 `createSilentSync`：指纹一致则**完全不动 DOM（零闪烁）**，不一致才替换，取数失败静默吞掉 → 保住「发新文章无需构建」
+  - **Astro 对 JS Vue SFC 的 props 推断很粗**：`type: Array/Object` 被当成必填 `unknown[]`/`Record<string,any>`，且**函数式 default（`default: () => []`）会让 .vue 类型生成整个失败**（报 `Module has no default export`）。所以烘焙型 props 一律不写 default、由页面必定传入、组件内 `props.x || []` 兜底；也不要传 `null`（类型不接受），失败就传空数组/空对象
+- **页脚（SiteFooter.astro，纯 Astro 零 JS）**：只有站点名 + GitHub/Email + 版权，**刻意不放导航链接**（导航已在 Navbar）。两个坑：① **必须自带不透明底色**（`background-color: var(--bg-page)` + 玻璃渐变）——本项目 body 没有背景色，页面底色由 .page-frame 这类容器提供，而页脚在它们之外，只给半透明底会透出浏览器画布（白），暗色模式下底部漏浅色带且文字只有 2.9:1（实测）；② 文字用 `--color-heading` / `--color-text`，不要用 `--color-primary`（白玻璃底上仅 3.2:1，16px 不达 AA）

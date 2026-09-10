@@ -1,8 +1,13 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import ColumnsView from '@/views/ColumnsView.vue'
+import { fetchColumns } from '@/utils/serverData'
+
+// 构建期取数：预渲染产物 HTML 里直接带专栏卡片（后端不可达时传空数组，
+// 岛内会退化为客户端取数，不会白屏）
+const columns = await fetchColumns()
 ---
 
 <Layout title="专栏">
-  <ColumnsView client:load />
+  <ColumnsView client:load initialColumns={columns ?? []} />
 </Layout>

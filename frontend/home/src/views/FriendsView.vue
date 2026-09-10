@@ -52,13 +52,21 @@
 import { ref, onMounted } from 'vue'
 import { getFriendLinks } from '@/api/friend'
 import { useMessageBox } from '@/composables/useMessageBox'
+import { createSilentSync } from '@/utils/liveData'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 
+const props = defineProps({
+  // 构建期烘焙的友链列表（friends.astro 注入），页面必定传入（取数失败传空数组）。
+  // 不写 default：Astro 对 JS SFC 的函数式 default 会破坏 .vue 的类型生成
+  initialLinks: { type: Array }
+})
+
 const { toast } = useMessageBox()
-const links = ref([])
-const loading = ref(true)
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有内容，首屏不闪「加载中」
+const links = ref(props.initialLinks || [])
+const loading = ref(!links.value.length)
 // 外链图加载失败的 URL（回落站名首字；友链图片一律外链，防盗链/死链不可避免）
 const failedAvatars = ref(new Set())
 
@@ -67,7 +75,22 @@ function coverSrc(link) {
   return link.preview_image || link.avatar || null
 }
 
-onMounted(async () => {
+// 友链的排序/字段都可能被后台改动，指纹带上会变的字段
+function fingerprintOf(list) {
+  return (list ?? []).map((l) => `${l.id}:${l.name}:${l.avatar ?? ''}`).join(',')
+}
+
+const silentSync = createSilentSync({
+  baked: fingerprintOf(props.initialLinks),
+  load: () => getFriendLinks(),
+  key: fingerprintOf,
+  apply: (list) => {
+    links.value = list
+  }
+})
+
+async function loadFirstPaint() {
+  loading.value = true
   try {
     links.value = await getFriendLinks()
   } catch (e) {
@@ -75,6 +98,11 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  if (props.initialLinks.length) silentSync()
+  else loadFirstPaint()
 })
 </script>
 

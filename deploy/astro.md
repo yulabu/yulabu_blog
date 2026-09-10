@@ -13,9 +13,13 @@ frontend/home/dist/
 
 渲染分工：
 - 构建时预渲染（纯静态）：`/`、`/archive`、`/about`、`/friends`、`/columns`、`/diary`、404 除外
+  - **这些页面的内容在构建阶段就从后端取好、烘焙进 HTML**（`src/utils/serverData.ts`），产物 HTML 里就有真实文章/标签/专栏/日记/友链，首屏不再先闪「加载中」空壳
+  - **构建时必须后端可达**（pm2 blog-server 在跑）。取数失败不会让构建失败（fail-soft，打印 `[serverData]` 告警），但那一页会退化成空壳 + 客户端取数，丢掉预渲染红利 → 部署时留意构建日志有没有 `[serverData]`
+  - 新内容无需重建：岛挂载后按指纹静默对账（`src/utils/liveData.ts`），数据一致则完全不动 DOM
 - 按需 SSR（prerender = false）：`/post/[id]`、`/columns/[id]`、`/404`
   - 服务端 fetch 本机后端拼完整 HTML（per-post og:title / og:image / canonical）
   - 后端不可达或文章不存在 → Astro.rewrite('/404')
+- 首页 `/`、归档 `/archive`、日记 `/diary` 的左栏是**同一个常驻岛**（个人卡片，`data-astro-transition-persist="personal-card"`，由 `components/astro/PageFrame.astro` 渲染）。这三页都必须输出该 key，切换时才搬运而不是重建 —— 改动这几个页面的骨架时别把 persist 包装删掉
 
 SSR 取数环境变量：`API_BASE_URL`（默认 `http://127.0.0.1:3000/api`）。
 standalone 产物**不自动读 .env**，必须由 pm2 环境变量注入。

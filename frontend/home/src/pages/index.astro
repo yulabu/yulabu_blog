@@ -1,8 +1,37 @@
 ---
 import Layout from '@/layouts/Layout.astro'
+import PageFrame from '@/components/astro/PageFrame.astro'
+import HomeHero from '@/components/home/HomeHero.vue'
+import TagBox from '@/components/home/TagBox.vue'
 import HomeView from '@/views/HomeView.vue'
+import { fetchPosts, fetchTags } from '@/utils/serverData'
+
+// 构建期取数：预渲染产物 HTML 里直接带真实内容（取数失败时传空值，
+// 岛内会退化为客户端取数，不会白屏）。
+// limit 必须与 PostList 里的 PAGE_SIZE 一致，否则烘焙切片与对账切片不同、
+// 指纹永不相等 → 每次访问都无谓重绘
+const [posts, tags] = await Promise.all([fetchPosts(1, 8), fetchTags()])
 ---
 
 <Layout>
-  <HomeView client:load />
+  <!-- 页面骨架提到 Astro 层：常驻个人卡片靠 .astro 里的 transition:persist 才能跨页
+       （写在 Vue SFC 里 Astro 不会识别）。Hero 一并搬到 banner 槽，保持
+       「刊头全宽 + 下方两列」的原结构。
+
+       注意 slot 属性要挂在普通元素上，不能直接挂在 Vue 岛组件上：
+       Astro 传给框架组件的 slot 会作为 fallthrough 属性进入 Vue 渲染，
+       而服务端渲染时 Astro 不会输出该属性 → 水合属性不匹配告警（实测）。 -->
+  <PageFrame>
+    <div slot="banner">
+      <!-- 首页招牌，原样保留：全屏高度、滚动折叠、Navbar 联动都不动 -->
+      <HomeHero client:load />
+    </div>
+    <div slot="rail">
+      <!-- 标签筛选跟随常驻卡片放在左栏；它与中栏 PostList 分属不同岛，
+           通过 stores/tagFilter.ts 的模块级共享状态联通 -->
+      <TagBox client:load initialTags={tags ?? []} />
+    </div>
+    <HomeView client:load initialPosts={posts ?? {}} initialTags={tags ?? []} />
+  </PageFrame>
 </Layout>
+
