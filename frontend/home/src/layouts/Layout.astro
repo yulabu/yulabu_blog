@@ -4,6 +4,11 @@ import '@/main.css'
 // 客户端由 _app.ts 注册）
 import '@/utils/icons'
 import '@/utils/mdEditorSetup'
+// LXGW 文楷：只取 regular + bold（Mono 三档与 Light 一档全站零引用），
+// 并用 ?url 让它成为独立可寻址资产，在 <head> 里非阻塞加载（见下方 fontCssLinks 一段）。
+// 不能写进 main.css 的 @import：那样会与全局样式合并成一个渲染阻塞样式表。
+import fontRegularCss from 'lxgw-wenkai-webfont/lxgwwenkai-regular.css?url'
+import fontBoldCss from 'lxgw-wenkai-webfont/lxgwwenkai-bold.css?url'
 import { ClientRouter } from 'astro:transitions'
 import Navbar from '@/components/common/Navbar.vue'
 import SiteFooter from '@/components/astro/SiteFooter.astro'
@@ -21,6 +26,15 @@ const SITE_NAME = '鱼辣不的博客'
 const SITE_DESCRIPTION = '纳西妲世界第一可爱'
 const SITE_IMAGE = '/og-image.jpg'
 
+// 字体样式表：不阻塞首屏。
+// 字体 CSS 只含 @font-face、没有任何布局规则，且每条 @font-face 都是 font-display: swap，
+// 所以首屏用系统中文字体先出字、文楷到达后替换。
+// 用 media="print" + onload 切成 all（经典 loadCSS 手法）而不是 rel="preload"：
+// rel=stylesheet 所有浏览器都认，且不匹配的 media 不会被当作渲染阻塞，浏览器以低优先级
+// 就取——字体本来就不该抢首屏带宽。onload 若因故没触发，最多是退回系统字体，不会白屏。
+// <noscript> 兜底给禁用 JS 的访客。
+const fontCssUrls = [fontRegularCss, fontBoldCss]
+
 const { title, description = SITE_DESCRIPTION, ogImage = SITE_IMAGE } = Astro.props
 const site = Astro.site ?? new URL('https://blog.yulabu.cn')
 const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME
@@ -33,7 +47,10 @@ const ogImageURL = new URL(ogImage, site)
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/nahida.ico" />
+    <!-- 图标用 PNG（浏览器对 webp favicon 支持不完整）：原 256x256 .ico 有 243 KB -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -45,6 +62,12 @@ const ogImageURL = new URL(ogImage, site)
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:locale" content="zh_CN" />
     <meta name="twitter:card" content="summary_large_image" />
+    {fontCssUrls.map((href) => (
+      <link rel="stylesheet" href={href} media="print" onload="this.setAttribute('media','all')" />
+    ))}
+    <noscript>
+      {fontCssUrls.map((href) => <link rel="stylesheet" href={href} />)}
+    </noscript>
     <script is:inline>
       // 首帧前恢复客户端专属状态，防闪烁/弹跳（key 与 stores/ui.ts 的
       // THEME_KEY / HOME_HERO_COLLAPSED_KEY 保持一致）；
@@ -93,7 +116,9 @@ const ogImageURL = new URL(ogImage, site)
       const dayPeriod = useDayPeriod()
 
       function startEffects() {
-        cursor.initCursors()
+        // armCursors 而非 initCursors：首次指针交互才真正拉 .ani 并生成光标样式
+        // （首屏零请求零注入，理由见 useAnimatedCursor.ts 的按需初始化注释）
+        cursor.armCursors()
         dayPeriod.start()
       }
 
@@ -101,6 +126,7 @@ const ogImageURL = new URL(ogImage, site)
       // ClientRouter 软导航：head 与 html 属性会被新文档整段替换（注入的光标 <style>
       // 被移除、html 上的 data-period 被清掉），after-swap 在浏览器取新快照前触发，
       // 此时补回不会被拍到；两个 composable 内部均有幂等守卫，重复调用安全
+      // （armCursors 已初始化时退回 ensureInjected，把被 swap 掉的光标样式补回来）
       document.addEventListener('astro:after-swap', startEffects)
       document.addEventListener('astro:page-load', startEffects)
     </script>

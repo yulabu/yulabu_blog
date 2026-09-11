@@ -30,6 +30,11 @@ export default defineConfig({
   output: 'static',
   adapter: node({ mode: 'standalone' }),
   integrations: [vue({ appEntrypoint: '/src/pages/_app' })],
+  build: {
+    // 字体 CSS 已单独拆出（见 Layout.astro），每页剩下的样式只有约 11 KB，
+    // 内联进 HTML 后首屏不再有任何渲染阻塞样式表请求
+    inlineStylesheets: 'always',
+  },
   // MPA 下的 SPA 手感：全站链接 hover 预取（含 SSR 文章页）
   prefetch: {
     prefetchAll: true,

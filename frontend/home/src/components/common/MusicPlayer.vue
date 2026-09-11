@@ -88,7 +88,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useMusicStore } from '@/stores/music'
-import nahidaDecoMeta from '@/assets/img/nahida_music.png'
+import nahidaDecoMeta from '@/assets/img/nahida_music.webp'
 
 // Astro 下图片导入是 ImageMetadata 对象，用作 URL 必须取 .src
 const nahidaDeco = nahidaDecoMeta.src

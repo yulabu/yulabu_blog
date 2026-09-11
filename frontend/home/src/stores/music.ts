@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import defaultCoverMeta from '@/assets/img/music_player.jpg'
+import defaultCoverMeta from '@/assets/img/music_player.webp'
 import defaultSrc from '@/assets/music/我爱你 - nxd.mp3'
 
 export interface Track {
@@ -25,7 +25,11 @@ export const useMusicStore = defineStore('music', () => {
   const currentTrack = computed(() => playlist.value[currentIndex.value] ?? defaultTrack)
 
   const audio = new Audio()
-  audio.preload = 'metadata'
+  // 刻意不在初始化时 load：那会让每次页面加载都去拉这首 3.7 MB 曲子的元数据，
+  // 实测是 Lighthouse 网络负载的第一项（3,656.6 KiB，占第一方 7.4 MB 的 49%），
+  // 而访客多半不会点播放。首次播放时 togglePlay 里的 loadedIndex !== currentIndex
+  // 分支会自然加载（代价：未播放前时长显示 0:00）。
+  audio.preload = 'none'
   audio.volume = 0.16
 
   const isPlaying = ref(false)
@@ -122,8 +126,7 @@ export const useMusicStore = defineStore('music', () => {
     return `${minutes}:${remainder}`
   }
 
-  // 初始化加载默认曲目
-  loadTrack(0)
+  // 曲目改为按需加载（见上面 audio.preload 的说明），不再在 store 初始化时 loadTrack(0)
 
   return {
     playlist,

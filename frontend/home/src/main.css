@@ -1,7 +1,13 @@
-/* LXGW 文楷字体自托管：@font-face 的 woff2 子集随构建打进产物，
-   不再从 cdn.jsdelivr.net 外链（Edge 跟踪名单域，中文页 ~28 个子集请求
-   每个都触发 Tracking Prevention 告警；且 jsdelivr 在国内不稳）。 */
-@import "lxgw-wenkai-webfont/style.css";
+/* LXGW 文楷字体自托管：@font-face 的 woff2 子集随构建打进产物，不从 cdn.jsdelivr.net
+   外链（Edge 跟踪名单域，中文页 ~28 个子集请求每个都触发 Tracking Prevention 告警；
+   且 jsdelivr 在国内不稳）。
+
+   字体 CSS 不在这里 @import：它原本会与本文件合并成一个渲染阻塞样式表（565 KB /
+   gzip 217 KB，实测占首屏阻塞资源 223 KiB 里的 212 KiB）。改由 Layout.astro 以独立
+   非阻塞样式表加载（见该文件 fontRegularCss 一段）——字体 CSS 只含 @font-face、
+   不含任何布局规则，延后加载不会闪样式，配合 font-display: swap 首屏用系统中文字体
+   先渲染。另外只保留 regular + bold 两档（Mono 三档与 Light 一档全站零引用），
+   582 条 @font-face 降到 194 条。 */
 
 /* ============================================================
  * 响应式断点约定（全站统一，新增页面禁止私自定义其他断点）
@@ -94,6 +100,12 @@
     font-family: 'Poppins', sans-serif;
 }
 body{
+    /* body 也要有底色：页面主底色虽由 .page-frame / .site-page-frame 提供，但页脚
+       在它们之外，且 .site-footer 是 margin-top: 48px 进入的 —— 外边距区域没有
+       任何不透明容器覆盖，body 透明就会透出浏览器画布（实测：footer 上方一条
+       48px 的浅色/黑色横带）。给 body 上底色后这一整类「透出画布」问题都消失，
+       移动端下拉回弹的底色也一并正确（暗色模式随 --bg-page 自动跟随）。 */
+    background-color: var(--bg-page);
     background-size: cover;
     overflow-x: hidden;
 }

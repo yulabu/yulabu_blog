@@ -137,7 +137,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('@/assets/img/banner2.png');
+  background-image: url('@/assets/img/banner2.webp');
   background-size: cover;
   background-position: center;
   filter: brightness(0.72) saturate(0.92) hue-rotate(0deg);

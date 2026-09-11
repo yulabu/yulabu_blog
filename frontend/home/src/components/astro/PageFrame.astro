@@ -38,9 +38,11 @@ const { subtitle = '', showTyping = true } = Astro.props
   <div class="page-frame__grid">
     <aside class="page-frame__rail">
       <!-- 跨页常驻：首页与归档用同一个 persist key，ClientRouter 会把旧节点
-           整块搬进新文档，卡片 DOM 与状态都不重建 -->
+           整块搬进新文档，卡片 DOM 与状态都不重建。
+           不加 client:* 指令：该组件没有任何事件、生命周期或 pinia 状态
+           （交互全是 CSS :hover），由 Astro 直接渲染成静态 HTML、零客户端 JS -->
       <div transition:persist="personal-card">
-        <PersonalCard client:load />
+        <PersonalCard />
       </div>
       <slot name="rail" />
     </aside>

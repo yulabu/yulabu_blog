@@ -88,6 +88,10 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+// 必须先于 md-editor-v3 求值：config() 要在这里注入本地 highlight.js 与本地
+// 主题 css（根除 unpkg.com 运行时外链）。放在本组件而非 _app.ts，是为了不让
+// highlight.js 进到每个页面都要加载的全局包（详见 _app.ts 注释）。
+import '@/utils/mdEditorSetup'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'

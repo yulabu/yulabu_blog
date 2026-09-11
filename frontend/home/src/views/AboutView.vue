@@ -49,10 +49,10 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import AboutNode from '@/components/about/AboutNode.vue'
-import avatarImgMeta from '@/assets/img/about_avatar.jpg'
-import skillsImgMeta from '@/assets/img/about_skills.jpg'
-import blogImgMeta from '@/assets/img/about_blog.jpg'
-import contactImgMeta from '@/assets/img/about_contact.jpg'
+import avatarImgMeta from '@/assets/img/about_avatar.webp'
+import skillsImgMeta from '@/assets/img/about_skills.webp'
+import blogImgMeta from '@/assets/img/about_blog.webp'
+import contactImgMeta from '@/assets/img/about_contact.webp'
 
 // Astro 下图片导入是 ImageMetadata 对象，用作 URL 必须取 .src
 const nodes = [

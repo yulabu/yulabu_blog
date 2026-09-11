@@ -167,6 +167,62 @@ export function useAnimatedCursor() {
     }
   }
 
+  // ---- 按需初始化 ----------------------------------------------------------
+  // 首屏完全不碰光标：11 个 .ani 共 1.12 MB，转成 CSS 后还要往 <head> 注入约 347 KiB
+  // 的 base64 帧样式（实测这 347 KiB 里首屏用不到 339 KiB，是 Lighthouse「减少未使用的
+  // CSS」549 KiB 中的最大单项，同时 beam/link/arrow.ani 都排进网络负载前十）。改成
+  // 「首次指针交互才初始化」后，无人操作时（爬虫、Lighthouse、只看不动的访客）一个字节
+  // 都不下载、CSS 也不生成；真实用户鼠标一动就生效，感知不到差别。
+  const TRIGGER_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel'] as const
+
+  let armed = false
+  let listenersAttached = false
+
+  function cursorsWanted(): boolean {
+    if (typeof window === 'undefined') return false
+    // 触屏 / 无精确指针：本来就没有自定义光标可显示
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return false
+    // 尊重系统「减少动效」偏好
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false
+    // 省流模式
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+    if (conn?.saveData) return false
+    return true
+  }
+
+  function detachTriggers() {
+    if (!listenersAttached) return
+    for (const evt of TRIGGER_EVENTS) window.removeEventListener(evt, onFirstInteraction)
+    listenersAttached = false
+  }
+
+  function onFirstInteraction() {
+    detachTriggers()
+    armed = true
+    if (cursorsWanted()) initCursors()
+  }
+
+  /**
+   * 挂上「首次交互」监听并在触发时初始化光标。必须幂等：ClientRouter 软导航后
+   * head 被整段替换、注入的 <style> 会被移除，所以已初始化时退回 ensureInjected()。
+   */
+  function armCursors() {
+    if (initialized) {
+      ensureInjected()
+      return
+    }
+    if (armed) return
+    if (!cursorsWanted()) {
+      armed = true
+      return
+    }
+    if (listenersAttached) return
+    listenersAttached = true
+    for (const evt of TRIGGER_EVENTS) {
+      window.addEventListener(evt, onFirstInteraction, { passive: true })
+    }
+  }
+
   async function loadBusyCss(): Promise<string | null> {
     if (loadingCss) return loadingCss
     try {
@@ -218,6 +274,8 @@ export function useAnimatedCursor() {
   function destroy() {
     initialized = false
     cursorsCss = null
+    detachTriggers()
+    armed = false
     if (loadingOffTimer) {
       clearTimeout(loadingOffTimer)
       loadingOffTimer = null
@@ -238,5 +296,5 @@ export function useAnimatedCursor() {
     document.documentElement.classList.remove('is-loading')
   }
 
-  return { initCursors, setLoadingCursor, destroy }
+  return { initCursors, armCursors, setLoadingCursor, destroy }
 }
