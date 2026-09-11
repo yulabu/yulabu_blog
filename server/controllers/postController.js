@@ -1,7 +1,7 @@
 const AppError = require('@middleware/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { parseId, paginate } = require('@dto/common.dto');
-const { sequelize, Post, Tag, ColumnPost, Column, PostImage } = require('@models');
+const { sequelize, Post, Tag, ColumnPost, Column, PostImage, Image } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
@@ -21,7 +21,11 @@ exports.getPosts = async (req, res) => {
   }
   const { rows: posts, count: total } = await Post.findAndCountAll({
     where,
-    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+    include: [
+      { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+      // 列表小卡封面用 400px 缩略图（大图卡用 post_cover 原图）
+      { model: Image, as: 'coverImage', attributes: ['thumb_path'] },
+    ],
     order: [['created_at', 'DESC']], // 按创建时间降序排列
     limit,
     offset,
@@ -88,7 +92,12 @@ exports.getNextPost = async (req, res) => {
 exports.getArchive = async (req, res) => {
   const posts = await Post.findAll({
     where: { post_status: 'published' },
-    include: { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+    include: [
+      { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
+      // 与列表接口保持一致：archive 的列表项也要带 coverThumb（归档页本身不显示封面，
+      // 但接口契约统一，避免前端拿到字段缺失的两种形状）
+      { model: Image, as: 'coverImage', attributes: ['thumb_path'] },
+    ],
     order: [['created_at', 'DESC']],
   });
 

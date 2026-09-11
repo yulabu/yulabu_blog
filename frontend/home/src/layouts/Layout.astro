@@ -26,13 +26,14 @@ const SITE_NAME = '鱼辣不的博客'
 const SITE_DESCRIPTION = '纳西妲世界第一可爱'
 const SITE_IMAGE = '/og-image.jpg'
 
-// 字体样式表：不阻塞首屏。
-// 字体 CSS 只含 @font-face、没有任何布局规则，且每条 @font-face 都是 font-display: swap，
-// 所以首屏用系统中文字体先出字、文楷到达后替换。
-// 用 media="print" + onload 切成 all（经典 loadCSS 手法）而不是 rel="preload"：
-// rel=stylesheet 所有浏览器都认，且不匹配的 media 不会被当作渲染阻塞，浏览器以低优先级
-// 就取——字体本来就不该抢首屏带宽。onload 若因故没触发，最多是退回系统字体，不会白屏。
-// <noscript> 兜底给禁用 JS 的访客。
+// 字体样式表：桌面与移动**统一加载**，不按视口区分。
+// 唯一砍掉的是真正用不上的部分：只引 regular + bold 两档 —— Mono 三档与 Light 一档
+// 经全站 grep（font-family / font-weight）确认零引用，582 条 @font-face → 194 条，
+// 字体 CSS 565 KB → 183 KB。
+// 加载方式：media="print" + onload 切成 all（经典 loadCSS 手法）—— 非阻塞、低优先级，
+// 字体本来就不该抢首屏带宽。字体 CSS 只含 @font-face、没有任何布局规则，且每条都是
+// font-display: swap，所以首屏先用系统中文字体出字、文楷到达后替换。
+// <noscript> 兜底给禁用 JS 的访客（那时 onload 不会触发）。
 const fontCssUrls = [fontRegularCss, fontBoldCss]
 
 const { title, description = SITE_DESCRIPTION, ogImage = SITE_IMAGE } = Astro.props

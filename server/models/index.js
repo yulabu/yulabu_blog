@@ -32,6 +32,11 @@ Post.hasMany(PostImage, { foreignKey: 'post_id', as: 'postImages' });
 PostImage.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
 PostImage.belongsTo(Image, { foreignKey: 'image_id', as: 'image' });
 
+// 关联：文章封面 -> image。cover_image_id 列早已存在（由 post_cover 派生，供 GC 对账），
+// 这里只补关联声明，**不产生任何 ALTER / 不需要 sync-schema**。用途单一：列表 VO 取
+// 400px 缩略图路径（image.thumb_path）给列表小卡当封面，大图卡仍用 post_cover 原图。
+Post.belongsTo(Image, { foreignKey: 'cover_image_id', as: 'coverImage' });
+
 // DailyStat 无关联：由日期键自持的每日聚合，不与其他业务表 join
 
 module.exports = { sequelize, Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary, PostImage, DailyStat };

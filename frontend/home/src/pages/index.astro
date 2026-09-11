@@ -23,13 +23,22 @@ const [posts, tags] = await Promise.all([fetchPosts(1, 8), fetchTags()])
        而服务端渲染时 Astro 不会输出该属性 → 水合属性不匹配告警（实测）。 -->
   <PageFrame>
     <div slot="banner">
-      <!-- 首页招牌，原样保留：全屏高度、滚动折叠、Navbar 联动都不动 -->
-      <HomeHero client:load />
+      <!-- 首页招牌，原样保留：全屏高度、滚动折叠、Navbar 联动都不动。
+           client:visible 而不是 client:load：移动端 `.home-hero{display:none}`
+           （HomeHero.vue 的 ≤768px 规则），元素永不可见 → IntersectionObserver
+           永不触发 → 移动端完全不下发这个岛（含它内部的 WelcomeBanner）的 JS，
+           也不再白挂 scroll 监听与打字机定时器。桌面端首屏可见，立即水合。
+           注意：若以后把 hero 改回在窄屏可见，这里必须同步改回 client:load。 -->
+      <HomeHero client:visible />
     </div>
     <div slot="rail">
       <!-- 标签筛选跟随常驻卡片放在左栏；它与中栏 PostList 分属不同岛，
-           通过 stores/tagFilter.ts 的模块级共享状态联通 -->
-      <TagBox client:load initialTags={tags ?? []} />
+           通过 stores/tagFilter.ts 的模块级共享状态联通。
+           client:visible：左栏在 ≤1024px 是 display:none（PageFrame 的规则），
+           窄屏这个实例永不水合 —— 移动端真正的标签 UI 是 HomeView 内那个
+           （.mobile-tag-box），所以这里既不缺功能，又少了一个岛的水合和
+           一次重复的 GET /api/tags。 -->
+      <TagBox client:visible initialTags={tags ?? []} />
     </div>
     <HomeView client:load initialPosts={posts ?? {}} initialTags={tags ?? []} />
   </PageFrame>

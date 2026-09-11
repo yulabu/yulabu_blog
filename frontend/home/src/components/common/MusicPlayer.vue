@@ -2,7 +2,12 @@
   <div class="music-player" :class="{ expanded, collapsed: !expanded }">
     <!-- 展开态：完整面板 -->
     <div class="panel-wrapper" v-show="expanded">
-      <img class="nahida-deco" :src="nahidaDeco" alt="" />
+      <!-- v-if="expanded" 而不是只靠 loading="lazy"：面板用 v-show 隐藏时懒加载本应不取图，
+           但移动端首帧 expanded 会短暂为 true（isMobile 要等 onMounted 的 matchMedia 才置位），
+           这张 7 KB 的装饰图因此时取时不取（实测两次结果不同）—— 用 v-if 让移动端根本不渲染
+           它，确定性省掉。桌面端展开态才渲染，行为不变。
+           下面的专辑封面不用加：它和迷你条那张是同一个 src，移动端本来就要下。 -->
+      <img v-if="expanded" class="nahida-deco" :src="nahidaDeco" alt="" loading="lazy" />
       <div class="panel">
       <div class="panel-header">
         <div>
@@ -111,12 +116,18 @@ function updateExpandRoute() {
   expandRoute.value = isExpandPath(window.location.pathname)
 }
 
-// 响应式检测：768px 以下为移动端（遵循项目 @sm 断点约定）
-const isMobile = ref(false)
+// 响应式检测：768px 以下为移动端（遵循项目 @sm 断点约定）。
+// 初值直接读 matchMedia：本岛是 client:only（没有 SSR 输出，不存在水合不一致问题）。
+// 若像原先那样等 onMounted 才置位，移动端首帧会先按桌面渲染一次 —— expanded 短暂为
+// true，展开面板与那张 7 KB 装饰图被创建并触发下载（实测时取时不取），
+// 面板本身也白渲染一帧。初值正确后移动端根本不渲染面板。
+const isMobile = ref(
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+)
 let mql = null
 
 function updateMobile() {
-  isMobile.value = mql ? mql.matches : false
+  isMobile.value = mql ? mql.matches : isMobile.value
 }
 
 onMounted(() => {

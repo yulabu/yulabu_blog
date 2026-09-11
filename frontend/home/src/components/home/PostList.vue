@@ -42,11 +42,17 @@
         @click="markPostSplash(post)"
       >
         <div class="post-cover" :class="{ 'is-empty': !post.cover }">
+          <!-- 封面按卡片大小分两档：大图卡（index 0，手机显示 326px / 桌面最高 640px）
+               用原图；小图卡（显示 112–182px）用后端已有的 400px 缩略图，2x/3x 屏都够清晰。
+               coverThumb 为空时回退原图（外链封面、没有 image 记录的老数据）。
+               首图是报告里的 LCP 元素：eager + fetchpriority=high 消除 690ms 发现延迟。 -->
           <img
             v-if="post.cover"
-            :src="post.cover"
+            :src="index === 0 ? post.cover : (post.coverThumb || post.cover)"
             :alt="post.title"
-            loading="lazy"
+            :loading="index === 0 ? 'eager' : 'lazy'"
+            :fetchpriority="index === 0 ? 'high' : undefined"
+            decoding="async"
           />
           <AppIcon v-else icon="material-symbols:article-outline" class="cover-empty-icon" />
           <span class="cover-wash"></span>
