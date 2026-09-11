@@ -117,6 +117,26 @@ async function syncSchema() {
     }
   }
 
+  // daily_stat 表（每日访问统计，由 utils/dailyStat.js 全量重算 UPSERT；独立于 90 天访问日志）
+  {
+    const [tables] = await sequelize.query(
+      `SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'daily_stat' LIMIT 1`
+    );
+    if (tables.length === 0) {
+      await sequelize.query(`
+        CREATE TABLE \`daily_stat\` (
+          \`stat_date\` DATE NOT NULL COMMENT '统计日期（北京时间）',
+          \`pv\` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '当日浏览量PV',
+          \`uv\` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '当日独立访客UV（按IP当日去重）',
+          \`created_at\` DATETIME NOT NULL,
+          \`updated_at\` DATETIME NOT NULL,
+          PRIMARY KEY (\`stat_date\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      console.log('[sync-schema] daily_stat 表已创建');
+    }
+  }
+
   // diary 表（与 models/Diary.js 保持一致；sync() 兜底，表存在则跳过）
   {
     const [tables] = await sequelize.query(

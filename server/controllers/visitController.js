@@ -1,9 +1,10 @@
 const { fn, col } = require('sequelize');
 const AppError = require('@middleware/AppError');
 const { recordVisitDTO, listVisitsDTO } = require('@dto/visit.dto');
-const { VisitLog, Post } = require('@models');
+const { VisitLog, Post, DailyStat } = require('@models');
 const { visitLogsVO, visitStatsVO } = require('@vo/visit.vo');
 const { Op } = require('sequelize');
+const { beijingDateStr, beijingDayStart } = require('@utils/date');
 
 // ========== 记录访问（公开接口，前端文章页 fire-and-forget 调用） ==========
 exports.recordVisit = async (req, res) => {
@@ -65,15 +66,14 @@ exports.getVisits = async (req, res) => {
 
 // ========== 管理后台：访问统计概览 ==========
 exports.getVisitStats = async (req, res) => {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // 今日零点按北京时间取（进程时区可能是 UTC，本地 setHours 会错位 8 小时）
+  const todayStart = beijingDayStart(beijingDateStr());
 
-  // 今日 PV
+  // 今日 PV / UV：读原始日志，实时且永远落在 90 天保留期内（无丢失风险）
   const todayPV = await VisitLog.count({
     where: { created_at: { [Op.gte]: todayStart } }
   });
 
-  // 今日 UV（去重 IP）
   const todayUVResult = await VisitLog.findAll({
     attributes: [[fn('COUNT', fn('DISTINCT', col('ip_address'))), 'uv']],
     where: { created_at: { [Op.gte]: todayStart } },
@@ -81,20 +81,16 @@ exports.getVisitStats = async (req, res) => {
   });
   const todayUV = todayUVResult ? Number(todayUVResult.get('uv')) : 0;
 
-  // 总 PV
-  const totalPV = await VisitLog.count();
-
-  // 总 UV
-  const totalUVResult = await VisitLog.findAll({
-    attributes: [[fn('COUNT', fn('DISTINCT', col('ip_address'))), 'uv']],
-    plain: true
-  });
-  const totalUV = totalUVResult ? Number(totalUVResult.get('uv')) : 0;
+  // 总 PV / 总 UV：来自每日统计表（永久保留，不随 90 天清理缩水，也不受「清空日志」影响）
+  // 注意 totalUV 是各日去重 UV 之和，长期访客会被逐日重复计入，口径偏大
+  const totalPV = Number(await DailyStat.sum('pv')) || 0;
+  const totalUV = Number(await DailyStat.sum('uv')) || 0;
 
   res.json(visitStatsVO({ todayPV, todayUV, totalPV, totalUV }));
 };
 
 // ========== 管理后台：清空全部日志 ==========
+// 只删原始访问明细；daily_stat 已归档的每日统计与「总量」不受影响（需重置历史统计须手工清 daily_stat）
 exports.clearAllVisits = async (req, res) => {
   const count = await VisitLog.count();
   await VisitLog.destroy({ where: {} });

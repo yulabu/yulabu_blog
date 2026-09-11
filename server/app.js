@@ -47,6 +47,8 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
 }));
 // 图片 GC：孤儿回收 + 废弃草稿清理 + 上传临时文件兜底
 const { runGC } = require('@utils/gc');
+// 每日访问统计聚合：从 visit_log 全量重算 daily_stat（图表与历史总量读它）
+const { aggregateDailyStats } = require('@utils/dailyStat');
 // 导入模型
 const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary } = require('@models');
 
@@ -55,6 +57,8 @@ const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary
 // 长期开启 alter: true 在 MySQL 上容易因索引名不匹配而产生重复索引，
 // 最终触发 ER_TOO_MANY_KEYS（max 64 keys allowed）。
 const GC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// 每日统计聚合间隔：比 GC 频繁得多，让图表当天数据接近实时
+const STAT_INTERVAL_MS = 10 * 60 * 1000;
 
 async function runGCSafe() {
   try {
@@ -64,6 +68,18 @@ async function runGCSafe() {
     }
   } catch (err) {
     console.error('GC 失败:', err);
+  }
+}
+
+// 返回是否成功，供调用方决定能否继续（清理前必须先聚合成功）
+async function runStatSafe() {
+  try {
+    const days = await aggregateDailyStats();
+    if (days) console.log(`[daily-stat] 已聚合 ${days} 天`);
+    return true;
+  } catch (err) {
+    console.error('[daily-stat] 失败:', err);
+    return false;
   }
 }
 
@@ -80,11 +96,19 @@ sequelize.sync()
     // 依赖数据库表，需在 sync 之后执行；启动先跑一次，再每 24 小时执行
     runGCSafe();
     setInterval(runGCSafe, GC_INTERVAL_MS);
-    // 访问日志 GC：独立定时器，每 24 小时清理 90 天前的日志
+    // 每日统计聚合：启动先跑一次（自动回填日志中尚存的近 90 天），此后每 10 分钟重算
+    runStatSafe();
+    setInterval(runStatSafe, STAT_INTERVAL_MS);
+    // 访问日志 GC：先聚合当日统计再清理 90 天前的日志；聚合失败则跳过，避免边界日统计丢失
     const { cleanupOldVisitLogs } = require('@utils/visitGc');
     const runVisitGcSafe = async () => {
-      try { await cleanupOldVisitLogs(); }
-      catch (err) { console.error('[visit-gc] 失败:', err); }
+      try {
+        if (!(await runStatSafe())) {
+          console.error('[visit-gc] 聚合未成功，跳过本次清理');
+          return;
+        }
+        await cleanupOldVisitLogs();
+      } catch (err) { console.error('[visit-gc] 失败:', err); }
     };
     runVisitGcSafe();
     setInterval(runVisitGcSafe, GC_INTERVAL_MS);
