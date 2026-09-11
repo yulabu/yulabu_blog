@@ -30,6 +30,7 @@ export interface ArchivePost {
   summary: string | null
   author: string
   category: Category | null
+  cover: string | null
   status: 'published' | 'trash'
   viewCount: number
   createdAt: string
@@ -96,6 +97,7 @@ export interface ColumnPostItem {
   id: number
   title: string
   summary: string | null
+  cover: string | null
   category: Category | null
   createdAt: string
   sort: number
@@ -106,7 +108,7 @@ export interface ColumnDetail extends ColumnItem {
 }
 
 export interface PrevNextPost {
-  post: { id: number; title: string } | null
+  post: { id: number; title: string; cover: string | null } | null
 }
 
 export interface MessageResponse {

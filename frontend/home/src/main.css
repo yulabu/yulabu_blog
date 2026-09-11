@@ -25,6 +25,12 @@
   --color-danger-rgb: 200, 80, 80;
   --color-danger-hover: rgb(220, 90, 90);
 
+  /* 樱花花瓣（文章过渡卡片 PostSplash 的装饰层用）。
+     比"标准樱花粉"更深：遮罩层本身是薄荷绿(202,242,203)，低不透明度花瓣叠上去会
+     被中和成淡绿白絮，配色调深才能让混合结果保住 R≥G、真的读作粉色 */
+  --color-sakura-light: rgb(255, 226, 235);
+  --color-sakura-deep: rgb(232, 138, 170);
+
   --bg-page: rgb(202, 242, 203);
   --bg-card: rgba(255, 255, 255, 0.5);
   --bg-card-strong: rgba(255, 255, 255, 0.75);
@@ -55,6 +61,10 @@
   --color-muted: rgb(130, 170, 155);
   --color-accent: rgb(100, 170, 160);
   --color-accent-rgb: 100, 170, 160;
+
+  /* 樱花花瓣：暗色底上亮粉刺眼，整体降明度，但因底色很暗需比亮色模式留更多不透明度 */
+  --color-sakura-light: rgb(238, 186, 203);
+  --color-sakura-deep: rgb(196, 116, 148);
 
   --bg-page: rgb(25, 35, 30);
   --bg-card: rgba(40, 55, 50, 0.6);
