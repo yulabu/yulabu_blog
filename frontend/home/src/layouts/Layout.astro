@@ -98,7 +98,10 @@ const ogImageURL = new URL(ogImage, site)
       }
 
       startEffects()
-      // ClientRouter 软导航后重新应用（composables 内部有幂等守卫）
+      // ClientRouter 软导航：head 与 html 属性会被新文档整段替换（注入的光标 <style>
+      // 被移除、html 上的 data-period 被清掉），after-swap 在浏览器取新快照前触发，
+      // 此时补回不会被拍到；两个 composable 内部均有幂等守卫，重复调用安全
+      document.addEventListener('astro:after-swap', startEffects)
       document.addEventListener('astro:page-load', startEffects)
     </script>
   </body>

@@ -54,7 +54,12 @@ export function useDayPeriod() {
   }
 
   function start() {
-    if (started) return
+    // ClientRouter 软导航会把 html 属性换成新文档的（不含 data-period），
+    // 已启动时也重新 apply 一次把它补回，但不再重开定时器
+    if (started) {
+      apply()
+      return
+    }
     started = true
     apply()
     schedule()

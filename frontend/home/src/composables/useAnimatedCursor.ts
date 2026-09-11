@@ -96,11 +96,38 @@ function buildCursorCSS(selector: string, data: Uint8Array): BuiltCursor {
   const atoms = splitSelectors(selector)
   const staticRules = atoms.map((s) => `\n${s} { cursor: url(${firstFrame}), auto; }`).join('')
 
-  return { css: staticRules, firstFrame }
+  if (frames.length <= 1) {
+    return { css: staticRules, firstFrame }
+  }
+
+  const keyframes = extractKeyframesBlock(generated)
+  const animName = extractAnimName(generated)
+  const duration = extractDurationMs(generated)
+  if (!keyframes || !animName || duration === null) {
+    return { css: staticRules, firstFrame }
+  }
+
+  // 箭头（'*'）的动画挂到 html 上单实例播放：:hover 匹配「鼠标下最内层元素及其祖先」，
+  // 挂在 '*' 上时每跨一个元素边界动画就从第 0 帧重启（旧版闪烁根因）。挂在 html 上后代
+  // 继承同一个动画实例，所以这里也不能再输出 '* { cursor }' 静态规则——它会把继承来的
+  // 动画值盖回静止首帧
+  if (selector === '*') {
+    return {
+      css: `${keyframes}\nhtml:hover { animation: ${animName} ${duration}ms step-end infinite; }`,
+      firstFrame,
+    }
+  }
+
+  const animRules = atoms
+    .map((s) => `\n${s}:hover { animation: ${animName} ${duration}ms step-end infinite; }`)
+    .join('')
+
+  return { css: `${keyframes}${animRules}${staticRules}`, firstFrame }
 }
 
 export function useAnimatedCursor() {
   let initialized = false
+  let cursorsCss: string | null = null
   let styleEl: HTMLStyleElement | null = null
   let loadingStyleEl: HTMLStyleElement | null = null
   let pendingLoadingEl: HTMLStyleElement | null = null
@@ -108,8 +135,19 @@ export function useAnimatedCursor() {
   let loadingToken = 0
   let loadingCss: string | null = null
 
+  // ClientRouter 软导航会整段 swap document.head：运行时注入的 <style> 不在新文档里，
+  // 会被 swapHeadElements 直接移除，而脚本不会重跑（同 src 已标记 data-astro-exec）。
+  // 所以这里用缓存的 CSS 同步补回，不重复 fetch .ani
+  function ensureInjected() {
+    if (!cursorsCss || styleEl?.isConnected) return
+    styleEl = injectStyle(cursorsCss)
+  }
+
   async function initCursors() {
-    if (initialized) return
+    if (initialized) {
+      ensureInjected()
+      return
+    }
     initialized = true
     const tasks = Object.entries(CURSOR_MAP).map(async ([selector, aniUrl]) => {
       try {
@@ -123,7 +161,10 @@ export function useAnimatedCursor() {
 
     const cssList = await Promise.all(tasks)
     const css = [NO_SELECT_CSS, ...cssList.filter(Boolean)].join('\n')
-    if (css) styleEl = injectStyle(css)
+    if (css) {
+      cursorsCss = css
+      ensureInjected()
+    }
   }
 
   async function loadBusyCss(): Promise<string | null> {
@@ -176,6 +217,7 @@ export function useAnimatedCursor() {
 
   function destroy() {
     initialized = false
+    cursorsCss = null
     if (loadingOffTimer) {
       clearTimeout(loadingOffTimer)
       loadingOffTimer = null
