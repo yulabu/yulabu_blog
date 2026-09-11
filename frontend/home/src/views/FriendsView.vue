@@ -1,5 +1,5 @@
 <template>
-  <SitePageFrame :show-typing="false" subtitle="友链">
+  <SitePageFrame variant="friends">
     <main class="friends-layout">
       <ContentState v-if="loading" kind="loading" size="page">
         加载中...

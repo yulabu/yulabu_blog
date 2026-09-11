@@ -19,13 +19,11 @@ import PersonalCard from '@/components/home/PersonalCard.vue'
 import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
 
 interface Props {
-  /** 默认刊头的静态副标题（页面不自定义 banner 槽时生效） */
-  subtitle?: string
-  /** 默认刊头是否使用打字机副标题 */
-  showTyping?: boolean
+  /** 刊头文案组 key（见 src/utils/bannerTexts.ts），缺省落到首页那组 */
+  variant?: string
 }
 
-const { subtitle = '', showTyping = true } = Astro.props
+const { variant = '' } = Astro.props
 ---
 
 <div class="page-frame">
@@ -34,7 +32,7 @@ const { subtitle = '', showTyping = true } = Astro.props
       <!-- client:visible 而不是 client:load：刊头在 ≤768px 是 display:none
            （本文件底部规则），窄屏永不可见 → 永不水合、不下发这个岛的 JS。
            桌面端首屏可见，立即水合。若以后让刊头在窄屏可见，这里要同步改回。 -->
-      <WelcomeBanner client:visible showTyping={showTyping} subtitle={subtitle} />
+      <WelcomeBanner client:visible variant={variant} />
     </slot>
   </header>
 

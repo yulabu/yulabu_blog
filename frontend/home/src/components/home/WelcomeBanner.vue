@@ -2,15 +2,10 @@
   <div class="banner">
     <div class="bg"></div>
     <div class="content">
-      <h1 class="site-title">yulabu's blog</h1>
+      <h1 class="site-title">yulabu's nest</h1>
       <h2 class="subtitle">
-        <template v-if="showTyping">
-          <span>{{ currentText }}</span>
-          <span class="cursor"></span>
-        </template>
-        <template v-else>
-          <span>{{ subtitle }}</span>
-        </template>
+        <span>{{ currentText }}</span>
+        <span v-if="isTyping" class="cursor"></span>
       </h2>
     </div>
     <div class="waves">
@@ -34,30 +29,36 @@
   </div>
 </template>
 <script setup>
+/**
+ * 刊头打字机。文案来自 utils/bannerTexts.ts，由 variant 选组。
+ *
+ * 首帧纪律：currentText 初值就是该组第一句（= 该页原静态副标题），
+ * SSR 预渲染产物里因此是真实文字而非空白，水合时客户端初值又与之相同，
+ * 不会有 mismatch。打字机在 onMounted 之后才接管——从「首句已完整显示」
+ * 的状态开始删字续播，而不是清空重打一遍。
+ */
 import { ref, onMounted, onUnmounted } from 'vue'
+import { resolveBannerTexts } from '@/utils/bannerTexts'
 
 const props = defineProps({
-  subtitle: { type: String, default: '' },
-  showTyping: { type: Boolean, default: true }
+  /** 文案组 key，见 utils/bannerTexts.ts；缺省落到首页那组 */
+  variant: { type: String, default: '' }
 })
 
-const texts = [
-  '欢迎来到鱼辣不的博客',
-  '记录生活，分享技术',
-  '愿每一次思考都有回响'
-]
-
-const currentText = ref('')
-let timer = null
+const texts = resolveBannerTexts(props.variant)
 
 const typeSpeed = 120
 const deleteSpeed = 60
 const stayAfterType = 2000
 const switchDelay = 300
 
+const currentText = ref(texts[0] ?? '')
+const isTyping = ref(false)
+
+let timer = null
 let textIndex = 0
-let charIndex = 0
-let isDeleting = false
+let charIndex = currentText.value.length
+let isDeleting = true
 
 function tick() {
   const fullText = texts[textIndex]
@@ -83,9 +84,12 @@ function tick() {
 }
 
 onMounted(() => {
-  if (props.showTyping) {
-    timer = setTimeout(tick, 500)
-  }
+  // 单句没有循环可言；reduced-motion 停在首句（连光标也不闪）
+  if (texts.length < 2) return
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+  isTyping.value = true
+  timer = setTimeout(tick, stayAfterType)
 })
 
 onUnmounted(() => {

@@ -1,5 +1,5 @@
 <template>
-  <SitePageFrame :show-typing="false" subtitle="个人树">
+  <SitePageFrame variant="about">
     <section class="about-intro">
       <GlassPanel as="div" class="intro-card">
         <p class="intro-text">

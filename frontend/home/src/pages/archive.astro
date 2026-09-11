@@ -12,7 +12,7 @@ const archive = await fetchArchive()
 <Layout title="文章归档">
   <!-- 左栏由页面骨架提供：常驻个人卡片会从首页整块搬到这里（同一个 persist key），
        位置正好是原 ArchiveView 里预留的空位。rail 槽留空——归档页左栏除了卡片不放别的。 -->
-  <PageFrame subtitle="文章归档" showTyping={false}>
+  <PageFrame variant="archive">
     <ArchiveView client:load initialArchives={archive?.archives ?? []} />
   </PageFrame>
 </Layout>

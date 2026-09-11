@@ -1,5 +1,5 @@
 <template>
-  <SitePageFrame>
+  <SitePageFrame variant="post-detail">
     <div class="detail-container">
       <main class="main-content">
         <GlassPanel class="meta-card">

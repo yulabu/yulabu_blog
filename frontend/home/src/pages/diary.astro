@@ -12,7 +12,7 @@ const diaries = await fetchDiaries(1)
 <Layout title="日记">
   <!-- 与首页/归档同一套骨架：左栏的常驻个人卡片在这三页之间是同一个 DOM 节点，
        切换时整块搬运、位置不变。rail 槽留空——日记页左栏只放卡片。 -->
-  <PageFrame subtitle="日记" showTyping={false}>
+  <PageFrame variant="diary">
     <DiaryView client:load initialDiaries={diaries ?? {}} />
   </PageFrame>
 </Layout>

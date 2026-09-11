@@ -2,7 +2,7 @@
   <div class="site-page-frame">
     <header class="site-page-frame__banner">
       <slot name="banner">
-        <WelcomeBanner :show-typing="showTyping" :subtitle="subtitle" />
+        <WelcomeBanner :variant="variant" />
       </slot>
     </header>
     <slot />
@@ -13,13 +13,10 @@
 import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
 
 defineProps({
-  subtitle: {
+  /** 刊头文案组 key（见 utils/bannerTexts.ts），缺省落到首页那组 */
+  variant: {
     type: String,
     default: ''
-  },
-  showTyping: {
-    type: Boolean,
-    default: true
   }
 })
 </script>

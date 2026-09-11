@@ -1,5 +1,5 @@
 <template>
-  <SitePageFrame :show-typing="false" subtitle="专栏">
+  <SitePageFrame variant="columns">
     <main class="columns-layout">
       <ContentState v-if="loading" kind="loading" size="page">
         加载中...

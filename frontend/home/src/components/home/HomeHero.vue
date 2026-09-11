@@ -1,6 +1,6 @@
 <template>
   <div class="home-hero" :class="{ collapsed }">
-    <WelcomeBanner />
+    <WelcomeBanner variant="home" />
     <div class="scroll-hint" @click="scrollToContent">
       <div class="chevron"></div>
     </div>
