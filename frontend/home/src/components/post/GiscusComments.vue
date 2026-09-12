@@ -56,20 +56,13 @@ let injected = false
 // 已推给 giscus 的主题名，用于去重（见 pushTheme）
 let pushedTheme = null
 
-// 自托管主题：public/giscus-light.css / giscus-dark.css，配色取自 main.css 的站点变量
-// （giscus 主题只需覆盖 Primer 变量表，见这两个文件头部注释）。
-// 必须是绝对 URL——样式表是给 giscus.app 的 iframe 加载的，相对路径会解析到 giscus.app。
-// 仅 https 下启用：本地 dev 是 http://localhost，https 的 giscus.app iframe 加载 http
-// 样式表会被浏览器按混合内容整份拦掉（实测 styleSheets 里能看到但一条规则都不生效），
-// 所以本地退回内置主题，线上才用自托管主题
-const BUILTIN_THEME = { light: 'noborder_light', dark: 'noborder_dark' }
+// giscus 自带的「无边框」主题，随站点亮暗热切换（setConfig 改配置，不重载 iframe）。
+// 刻意不自托管配色主题：那需要 nginx 给主题 CSS 放 CORS 头（样式表是 giscus.app 的跨域
+// iframe 加载的），多一条「配错就静默变成无主题」的链路，本地 dev 也因混合内容规则看不到效果
+const THEME = { light: 'noborder_light', dark: 'noborder_dark' }
 
-const themeName = () => {
-  const variant = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-  return location.protocol === 'https:'
-    ? `${location.origin}/giscus-${variant}.css`
-    : BUILTIN_THEME[variant]
-}
+const themeName = () =>
+  THEME[document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light']
 
 function settle(next) {
   if (timer) {

@@ -67,13 +67,6 @@ server {
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
-    # giscus 主题 CSS（public/giscus-*.css 随构建进 dist/client）：
-    # 样式表由 giscus.app 的 iframe 以 <link crossorigin="anonymous"> 加载，
-    # 响应缺 CORS 头会被浏览器整份丢弃 —— 评论区照常显示但完全没有配色。
-    location ~ ^/giscus-(light|dark)\.css$ {
-        add_header Access-Control-Allow-Origin *;
-    }
-
     # 先找静态文件（预渲染页面），找不到交给 SSR
     location / {
         try_files $uri $uri/ @ssr;
@@ -94,11 +87,6 @@ server {
 - yulabu 与 blog.yulabu.cn 共用该 server 块（server_name 不变）
 - admin 站点不动
 - 改完：`sudo nginx -t && sudo systemctl reload nginx`
-- giscus 主题那段 CORS 是**新功能必需项**，验证一行就够：
-  `curl -sI -H "Origin: https://giscus.app" https://yulabu.cn/giscus-light.css | grep -i access-control`
-  （无输出 = 主题会在浏览器里被静默丢弃）
-- nginx 的 `add_header` 一旦写进子 location，该 location 就不再继承 server 级的 `add_header`；
-  若 server 块里另有关键响应头，需在这个 location 内重复声明
 
 ## 四、上线步骤
 
