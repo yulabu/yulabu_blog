@@ -12,6 +12,7 @@ const VisitLog = require('./VisitLog')(sequelize, DataTypes);
 const Diary = require('./Diary')(sequelize, DataTypes);
 const PostImage = require('./PostImage')(sequelize, DataTypes);
 const DailyStat = require('./DailyStat')(sequelize, DataTypes);
+const Setting = require('./Setting')(sequelize, DataTypes);
 
 // 关联：一个 Tag 下有多个 Post（外键 post_category_id → tag_id）
 Tag.hasMany(Post, { foreignKey: 'post_category_id', as: 'posts' });
@@ -39,4 +40,6 @@ Post.belongsTo(Image, { foreignKey: 'cover_image_id', as: 'coverImage' });
 
 // DailyStat 无关联：由日期键自持的每日聚合，不与其他业务表 join
 
-module.exports = { sequelize, Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary, PostImage, DailyStat };
+// Setting 无关联：key/value 单表，键定义见 config/settings.js
+
+module.exports = { sequelize, Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary, PostImage, DailyStat, Setting };

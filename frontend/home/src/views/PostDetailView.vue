@@ -61,6 +61,7 @@
             @onGetCatalog="handleCatalog"
           />
         </GlassPanel>
+        <GiscusComments v-if="commentsEnabled" />
       </main>
       <aside class="toc-sidebar">
         <GlassPanel class="toc-card">
@@ -103,6 +104,7 @@ import { useUiStore } from '@/stores/ui'
 import { markPostSplash } from '@/utils/postSplash'
 import GlassPanel from '@/components/common/GlassPanel.vue'
 import SitePageFrame from '@/components/common/SitePageFrame.vue'
+import GiscusComments from '@/components/post/GiscusComments.vue'
 
 // SSR 页（post/[id].astro）服务端取好文章与上下篇，经 props 注入首屏；
 // MPA 整页跳转下不需要 watch 路由，prop 缺席时才退回客户端拉取
@@ -122,6 +124,11 @@ const props = defineProps({
   initialNext: {
     type: Object,
     default: null
+  },
+  // 后台「系统设置」的评论区总开关，由 post/[id].astro SSR 取数后注入；缺省视为开启
+  commentsEnabled: {
+    type: Boolean,
+    default: true
   }
 })
 

@@ -191,3 +191,16 @@ certbot renew --dry-run
 - 口径（已知取舍）：totalUV = SUM(daily_stat.uv)，是各日去重后求和，长期访客会被逐日重复计入（偏大但永不缩水）；「清空访问日志」只删明细，不再重置总量，要重置历史统计须手工清 daily_stat
 - 部署：纯增量新表，无数据迁移；`sequelize.sync()` 与 sync-schema.js 都会建表，启动即自动回填。首次上线只能回填日志尚存的最近 90 天，更早历史无法找回
 - 前端零改动即可受益（接口字段与结构未变）；后续若要 90 天/一年窗口，后端 range 白名单已支持 90days/365days，前端加下拉项即可
+
+### 12. 评论区（giscus，2026-09）
+- 选型：giscus（评论存在 GitHub Discussions，无后端、无数据库改动）。评论仓库是**独立的公开仓库 `yulabu/Blog_Content`**（分类 `评论`，Announcements 类型），与源码仓库解耦——源码仓库哪天转私有，存量评论不受影响；仓库必须保持 public，否则评论立即不可见
+- 组件 `src/components/post/GiscusComments.vue`，只挂在文章页（PostDetailView 正文卡之后）。客户端运行时注入 `client.js`——**不要在模板里写死 `<script>`**：ClientRouter 软导航后模板脚本不会重跑，评论区会静默消失；滚到评论区前 300px 才注入（没读到文末的访客零第三方请求）；`data-mapping="pathname"` 让 yulabu.cn / blog.yulabu.cn 的同一篇文章共用一条讨论帖
+- 三条实踩：① giscus 把「该页面还没有讨论帖」（`Discussion not found…`）也走 `error` 字段回传，而那正是每篇新文章最正常的状态，**不能据此判失败**，只留 console.warn；② 消息要按 `event.source === 当前 iframe.contentWindow` 过滤（postMessage 是窗口级广播，软导航残留的旧 iframe 也会发到同一个监听器）；③ 主题 setConfig 必须去重，只在主题真的变化时才推
+- 主题：`public/giscus-light.css` / `giscus-dark.css` 自托管，配色取自 main.css 的站点变量。**giscus 主题文件本质只是一张 Primer 变量表**（widget 的布局/字号/结构样式来自 giscus 应用自身），所以只改变量 + 3 条圆角规则，不依赖类名、giscus 升级不会失效
+- **主题 CSS 必须由服务端返回 CORS 头**（giscus 用 `<link crossorigin="anonymous">` 加载它），nginx 配置见 deploy/astro.md 第三节；缺了不会报错，只会静默变成无主题（页面正常、只是没配色），排查：`curl -sI -H "Origin: https://giscus.app" https://yulabu.cn/giscus-light.css | grep -i access-control`
+- **本地 dev 看不到自托管主题**：dev 是 `http://localhost`，而 https 的 giscus.app iframe 加载 http 样式表会被浏览器按混合内容整份拦掉（实测：样式表进了 `document.styleSheets`，但一条规则都不生效），所以组件在 `location.protocol !== 'https:'` 时退回内置 `noborder_light` / `noborder_dark`。要预览配色改动，把 CSS 以 `<style>` 注入 https://giscus.app/zh-CN/widget 页（同源）并模拟卡片底色
+- 目前只有文章页有评论；要给日记/专栏页开，把同一个组件放进对应视图即可（pathname 映射会自动各成一条帖）
+- **评论区总开关**：后台「系统设置」页（`/admin/settings`）——关掉后文章页不再渲染评论区。设置存在 `setting` 表（key/value），键定义集中在 `server/config/settings.js`：**新增设置项只加一行 + dto 白名单**，不需要改表结构、不需要给老库补数据（缺行即用 default）。读走公开的 `GET /api/settings`（只吐 public 键），写走 `PUT /api/admin/settings`（登录态 + 白名单 + 类型校验，未知键/非布尔值一律 400）
+- 开关生效链路：`post/[id].astro` SSR 时取 `/api/settings`，把 `commentsEnabled` 经 props 注入 `PostDetailView`，为 false 时整个评论区不渲染（岛也不挂）。取不到设置接口时按**开启**处理（fail-soft，与其它取数一致）
+- `setting` 表由 `sequelize.sync()` 启动时自动创建（**新表不需要 sync-schema**，那是给 ALTER 用的），且随整库 dump 进备份包——恢复备份后开关状态不丢
+- giscus 的第三方请求只发生在评论区进入视口之后：`giscus.app`、`api.github.com`、`avatars.githubusercontent.com`（评论头像），以及主题里官方自带的两个 `github.com` 加载图

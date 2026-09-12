@@ -1,0 +1,150 @@
+/* giscus 主题 · 鱼辣不的博客（亮色）
+ * ---------------------------------------------------------------------------
+ * 取色自 frontend/home/src/main.css 的 :root 变量，改色不改结构。
+ *
+ * giscus 的主题文件本质是一张 Primer 变量表：widget 的布局、字号、圆角等结构样式
+ * 来自 giscus 应用自身，主题只负责「颜色与表面」。所以这里可以只改变量——变量名与
+ * 官方 noborder_light.css 保持 1:1，giscus 升级不会让主题失效。
+ *
+ * 加载方式：组件把 data-theme 设为本文件的绝对 URL，giscus 以
+ * <link crossorigin="anonymous"> 引入，因此服务端必须返回
+ * Access-Control-Allow-Origin，否则整份主题会被浏览器丢弃（静默降级成无主题）。
+ * Nginx（yulabu 站点）：
+ *   location = /giscus-light.css { add_header Access-Control-Allow-Origin *; }
+ * 暗色版是同一套变量、另一组取值：public/giscus-dark.css
+ * ------------------------------------------------------------------------ */
+main {
+  color-scheme: light;
+
+  /* 主色族 = --color-primary / --color-primary-hover */
+  --primary-default: 99, 149, 86;
+  --bg-default: 255, 255, 255;
+
+  /* 语法高亮沿用 GitHub 亮色，与正文代码块的 highlight.js github 主题同源 */
+  --color-prettylights-syntax-comment: #6e7781;
+  --color-prettylights-syntax-constant: #0550ae;
+  --color-prettylights-syntax-entity: #8250df;
+  --color-prettylights-syntax-storage-modifier-import: #24292f;
+  --color-prettylights-syntax-entity-tag: #116329;
+  --color-prettylights-syntax-keyword: #cf222e;
+  --color-prettylights-syntax-string: #0a3069;
+  --color-prettylights-syntax-variable: #953800;
+  --color-prettylights-syntax-brackethighlighter-unmatched: #82071e;
+  --color-prettylights-syntax-invalid-illegal-text: #f6f8fa;
+  --color-prettylights-syntax-invalid-illegal-bg: #82071e;
+  --color-prettylights-syntax-carriage-return-text: #f6f8fa;
+  --color-prettylights-syntax-carriage-return-bg: #cf222e;
+  --color-prettylights-syntax-string-regexp: #116329;
+  --color-prettylights-syntax-markup-list: #3b2300;
+  --color-prettylights-syntax-markup-heading: #0550ae;
+  --color-prettylights-syntax-markup-italic: #24292f;
+  --color-prettylights-syntax-markup-bold: #24292f;
+  --color-prettylights-syntax-markup-deleted-text: #82071e;
+  --color-prettylights-syntax-markup-deleted-bg: #ffebe9;
+  --color-prettylights-syntax-markup-inserted-text: #116329;
+  --color-prettylights-syntax-markup-inserted-bg: #dafbe1;
+  --color-prettylights-syntax-markup-changed-text: #953800;
+  --color-prettylights-syntax-markup-changed-bg: #ffd8b5;
+  --color-prettylights-syntax-markup-ignored-text: #eaeef2;
+  --color-prettylights-syntax-markup-ignored-bg: #0550ae;
+  --color-prettylights-syntax-meta-diff-range: #8250df;
+  --color-prettylights-syntax-brackethighlighter-angle: #57606a;
+  --color-prettylights-syntax-sublimelinter-gutter-mark: #8c959f;
+  --color-prettylights-syntax-constant-other-reference-link: #0a3069;
+
+  /* 次级按钮 = 站点玻璃按钮（--bg-card / --border-light / --color-text） */
+  --color-btn-text: rgb(65, 110, 105);
+  --color-btn-bg: rgba(255, 255, 255, 0.5);
+  --color-btn-border: rgba(255, 255, 255, 0.8);
+  --color-btn-shadow: none;
+  --color-btn-inset-shadow: none;
+  --color-btn-hover-bg: rgba(255, 255, 255, 0.8);
+  --color-btn-hover-border: rgba(99, 149, 86, 0.45);
+  --color-btn-active-bg: rgba(99, 149, 86, 0.18);
+  --color-btn-active-border: rgba(99, 149, 86, 0.55);
+  --color-btn-selected-bg: rgba(99, 149, 86, 0.15);
+
+  /* 主按钮（登录 / 发表）= 站点主色的深一档，白字 4.6:1（用 --color-primary 原色只有
+     3.5:1，14px 正文不达 AA；hover 提亮回原主色保持"亮起来"的反馈） */
+  --color-btn-primary-text: rgb(255, 255, 255);
+  --color-btn-primary-bg: rgb(79, 129, 66);
+  --color-btn-primary-border: rgb(79, 129, 66);
+  --color-btn-primary-shadow: 0 4px 12px var(--shadow-color);
+  --color-btn-primary-inset-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  --color-btn-primary-hover-bg: rgb(99, 149, 86);
+  --color-btn-primary-hover-border: rgb(99, 149, 86);
+  --color-btn-primary-selected-bg: rgb(79, 129, 66);
+  --color-btn-primary-selected-shadow: inset 0 1px 0 rgba(45, 90, 65, 0.2);
+  --color-btn-primary-disabled-text: rgba(255, 255, 255, 0.8);
+  --color-btn-primary-disabled-bg: rgba(99, 149, 86, 0.5);
+  --color-btn-primary-disabled-border: rgba(99, 149, 86, 0.5);
+
+  --color-action-list-item-default-hover-bg: rgba(99, 149, 86, 0.1);
+
+  /* 「输入 / 预览」分段控件：站点玻璃质感 */
+  --color-segmented-control-bg: rgba(255, 255, 255, 0.45);
+  --color-segmented-control-button-bg: rgba(255, 255, 255, 0.85);
+  --color-segmented-control-button-selected-border: rgba(99, 149, 86, 0.5);
+
+  /* 文字：正文 --color-text / 次要信息 --color-muted */
+  --color-fg-default: rgb(65, 110, 105);
+  --color-fg-muted: rgba(65, 110, 105, 0.72);
+  --color-fg-subtle: rgba(120, 140, 125, 0.9);
+
+  /* 表面：半透明白玻璃，让文章卡片的薄荷绿玻璃透上来（--bg-card / --bg-card-strong） */
+  --color-canvas-default: rgba(255, 255, 255, 0.55);
+  --color-canvas-overlay: rgba(255, 255, 255, 0.95);
+  --color-canvas-inset: rgba(255, 255, 255, 0.45);
+  --color-canvas-subtle: rgba(255, 255, 255, 0.4);
+
+  /* 描边 = --border-divider 的青色系，实线细边（卡片头部那根虚线由页面自己画） */
+  --color-border-default: rgba(80, 140, 134, 0.25);
+  --color-border-muted: rgba(80, 140, 134, 0.16);
+  --color-neutral-muted: rgba(80, 140, 134, 0.16);
+
+  --color-accent-fg: rgb(99, 149, 86);
+  --color-accent-emphasis: rgb(79, 129, 66);
+  --color-accent-muted: rgba(99, 149, 86, 0.4);
+  --color-accent-subtle: rgba(99, 149, 86, 0.12);
+
+  --color-success-fg: rgb(99, 149, 86);
+  --color-attention-fg: #9a6700;
+  --color-attention-muted: rgba(212, 167, 44, 0.4);
+  --color-attention-subtle: #fff8c5;
+  --color-danger-fg: rgb(200, 80, 80);
+  --color-danger-muted: rgba(200, 80, 80, 0.4);
+  --color-danger-subtle: rgba(200, 80, 80, 0.12);
+
+  --color-primer-shadow-inset: 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --color-scale-gray-1: rgba(80, 140, 134, 0.12);
+  --color-scale-blue-1: rgba(99, 149, 86, 0.15);
+
+  /*! Extensions from @primer/css/alerts/flash.scss */
+  --color-social-reaction-bg-hover: rgba(99, 149, 86, 0.12);
+  --color-social-reaction-bg-reacted-hover: rgba(99, 149, 86, 0.22);
+}
+
+main .pagination-loader-container {
+  background-image: url('https://github.com/images/modules/pulls/progressive-disclosure-line.svg');
+}
+
+main .gsc-loading-image {
+  background-image: url('https://github.githubassets.com/images/mona-loading-default.gif');
+}
+
+.gsc-comment:not(.gsc-reply-box) .gsc-replies {
+  border-radius: unset;
+}
+
+/* 圆角对齐站点尺度（文本域 10px / 控件 8px）；giscus 默认 4–6px，在一众 16px 圆角的
+   玻璃卡片里会显得"外来的"。
+   这是本文件里唯一不基于变量的规则：万一 giscus 改了类名，它只会静默退回默认圆角，
+   不会牵连别处。（输入区外壳那层自带 4px，但它背景是透明的，看不出圆角，故不覆盖。） */
+main .gsc-comment-box-textarea {
+  border-radius: 10px;
+}
+
+main .btn,
+main .btn-primary {
+  border-radius: 8px;
+}

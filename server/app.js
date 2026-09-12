@@ -39,6 +39,9 @@ app.use('/api/visits', publicLimiter, visitRoutes);
 // 日记路由
 const diaryRoutes = require('@routes/diaryRoutes');
 app.use('/api/diaries', publicLimiter, diaryRoutes);
+// 站点设置路由（公开读；写入口在 /api/admin/settings）
+const settingRoutes = require('@routes/settingRoutes');
+app.use('/api/settings', publicLimiter, settingRoutes);
 const { UPLOAD_DIR } = require('@config/image');
 // 静态图片服务
 app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {

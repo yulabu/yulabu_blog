@@ -11,6 +11,7 @@ const columnController = require('@controllers/columnController');
 const imageController = require('@controllers/imageController');
 const diaryController = require('@controllers/diaryController');
 const backupController = require('@controllers/backupController');
+const settingController = require('@controllers/settingController');
 
 // 所有 /api/admin/* 接口都需要登录
 router.use(auth);
@@ -68,6 +69,10 @@ router.get('/diaries/:id', diaryController.getDiaryById);
 router.post('/diaries', diaryController.createDiary);
 router.put('/diaries/:id', diaryController.updateDiary);
 router.delete('/diaries/:id', diaryController.deleteDiary);
+
+// 系统设置（读 + 写；公开读另有 /api/settings）
+router.get('/settings', settingController.getSettings);
+router.put('/settings', settingController.updateSettings);
 
 // 备份管理（列表 / 立即备份 / 导出完整包 / 删除 dump）
 router.get('/backups', backupController.getBackups);

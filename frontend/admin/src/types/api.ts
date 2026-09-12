@@ -197,3 +197,8 @@ export interface BackupListResponse {
   backups: BackupInfo[]
   uploads: UploadsMirrorStats
 }
+
+// 站点设置（setting 表）：键与默认值见 server/config/settings.js
+export interface SiteSettings {
+  comments_enabled: boolean
+}

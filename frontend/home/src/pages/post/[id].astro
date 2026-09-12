@@ -13,18 +13,22 @@ const { id } = Astro.params
 let post = null
 let prevPost = null
 let nextPost = null
+// 评论区总开关（后台「系统设置」）；读不到就按开启处理，与本站其它取数一样 fail-soft
+let commentsEnabled = true
 
 if (/^\d+$/.test(id ?? '')) {
   try {
     const res = await fetch(`${API_BASE}/posts/${id}`)
     if (res.ok) {
       post = await res.json()
-      const [prev, next] = await Promise.all([
+      const [prev, next, settings] = await Promise.all([
         fetch(`${API_BASE}/posts/${id}/prev`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
         fetch(`${API_BASE}/posts/${id}/next`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch(`${API_BASE}/settings`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       ])
       prevPost = prev?.post ?? null
       nextPost = next?.post ?? null
+      commentsEnabled = settings?.comments_enabled !== false
     }
   } catch {
     // 后端不可达时按 404 处理
@@ -46,6 +50,7 @@ const ogImage = post.cover || '/og-image.jpg'
     initialPost={post}
     initialPrev={prevPost}
     initialNext={nextPost}
+    commentsEnabled={commentsEnabled}
   />
 
 </Layout>
