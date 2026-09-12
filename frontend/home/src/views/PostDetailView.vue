@@ -92,7 +92,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 // 必须先于 md-editor-v3 求值：config() 要在这里注入本地 highlight.js 与本地
 // 主题 css（根除 unpkg.com 运行时外链）。放在本组件而非 _app.ts，是为了不让
 // highlight.js 进到每个页面都要加载的全局包（详见 _app.ts 注释）。
-import '@/utils/mdEditorSetup'
+import { applyHljsCss } from '@/utils/mdEditorSetup'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { formatDate } from '@/utils/date'
@@ -156,6 +156,9 @@ const mdCodeTheme = ref('github')
 function syncMdTheme() {
   mdTheme.value = uiStore.theme
   mdCodeTheme.value = uiStore.theme === 'dark' ? 'atomOneDark' : 'github'
+  // 代码块 hljs 配色的 <link> 由我们自己管（见 mdEditorSetup.ts 注释）；软导航后
+  // Astro 的 head swap 会删掉这个运行时注入的 link，故每次挂载都要重建一次
+  applyHljsCss(uiStore.theme === 'dark' ? 'dark' : 'light')
 }
 
 watch(() => uiStore.theme, syncMdTheme)
