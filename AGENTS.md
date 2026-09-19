@@ -182,7 +182,7 @@ certbot renew --dry-run
   - **烘焙切片必须与客户端对账切片一致**（/posts 用 `limit`、/diaries 用 `pageSize`；PostList 的 PAGE_SIZE 与 index.astro 的 fetchPosts 必须同值），否则指纹永不相等 → 每次访问无谓重绘
   - 岛内用 `src/utils/liveData.ts` 的 `createSilentSync`：指纹一致则**完全不动 DOM（零闪烁）**，不一致才替换，取数失败静默吞掉 → 保住「发新文章无需构建」
   - **Astro 对 JS Vue SFC 的 props 推断很粗**：`type: Array/Object` 被当成必填 `unknown[]`/`Record<string,any>`，且**函数式 default（`default: () => []`）会让 .vue 类型生成整个失败**（报 `Module has no default export`）。所以烘焙型 props 一律不写 default、由页面必定传入、组件内 `props.x || []` 兜底；也不要传 `null`（类型不接受），失败就传空数组/空对象
-- **页脚（SiteFooter.astro，纯 Astro 零 JS）**：只有站点名 + GitHub/Email + 版权，**刻意不放导航链接**（导航已在 Navbar）。两个坑：① **必须自带不透明底色**（`background-color: var(--bg-page)` + 玻璃渐变）——本项目 body 没有背景色，页面底色由 .page-frame 这类容器提供，而页脚在它们之外，只给半透明底会透出浏览器画布（白），暗色模式下底部漏浅色带且文字只有 2.9:1（实测）；② 文字用 `--color-heading` / `--color-text`，不要用 `--color-primary`（白玻璃底上仅 3.2:1，16px 不达 AA）
+- **页脚（SiteFooter.astro，纯 Astro 零 JS）**：只有站点名 + GitHub/Email + 版权 + 备案号，**刻意不放导航链接**（导航已在 Navbar）。三个坑：① **必须自带不透明底色**（`background-color: var(--bg-page)` + 玻璃渐变）——本项目 body 没有背景色，页面底色由 .page-frame 这类容器提供，而页脚在它们之外，只给半透明底会透出浏览器画布（白），暗色模式下底部漏浅色带且文字只有 2.9:1（实测）；② 文字用 `--color-heading` / `--color-text`，不要用 `--color-primary`（白玻璃底上仅 3.2:1，16px 不达 AA）；③ **备案号（粤ICP备2026140579号-1）须按法定要求链到 https://beian.miit.gov.cn/**，与版权同组（`.site-footer__legal`，内部 6px）落在最下一行，12px `--color-text`、静止态不加图标不做徽章（法定信息不是设计元素），只 hover 时浮到 `--color-heading`。它是域名级信息、页脚挂在 Layout 上，所以 yulabu.cn / www / blog / admin 四个域名全站都显示（实测浅暗双主题）
 
 ### 11. 访问统计（visit_log + daily_stat，2026-09）
 - 分工：`visit_log` 只存原始明细（公开写入 + 后台分页列表 + 今日实时统计 + GC），保留 90 个**完整自然日**；`daily_stat` 存每日聚合（stat_date 主键 + pv + uv，一天一行，**永久保留**）。工作台折线图的 visitsByDate 与访问日志页「总浏览量/总独立访客」只读 daily_stat；「今日 PV/UV」实时读 visit_log（今日窗口永远在保留期内，无丢失风险）

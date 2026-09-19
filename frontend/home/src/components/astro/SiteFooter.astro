@@ -2,8 +2,8 @@
 /**
  * 全站页脚（纯 Astro 静态组件，零 JS）。
  *
- * 刻意保持精简：只有站点名 + 联系方式 + 版权三样，**不放导航链接**
- * （导航已在 Navbar，页脚再放一遍是重复）。三者居中竖排。
+ * 刻意保持精简：只有站点名 + 联系方式 + 版权 + 备案号四样，**不放导航链接**
+ * （导航已在 Navbar，页脚再放一遍是重复）。四者居中竖排。
  */
 import AppIcon from '@/components/common/AppIcon.vue'
 
@@ -29,7 +29,16 @@ const year = new Date().getFullYear()
       </a>
     </div>
 
-    <span class="site-footer__copy">© {year} yulabu</span>
+    <div class="site-footer__legal">
+      <span class="site-footer__copy">© {year} yulabu</span>
+      <!-- 备案号必须公示在主页底部并链到工信部备案管理系统（法定要求） -->
+      <a
+        class="site-footer__beian"
+        href="https://beian.miit.gov.cn/"
+        target="_blank"
+        rel="noopener noreferrer">粤ICP备2026140579号-1</a
+      >
+    </div>
   </div>
 </footer>
 
@@ -62,7 +71,7 @@ const year = new Date().getFullYear()
     );
   }
 
-  /* 居中竖排：站名 → 联系方式 → 版权。
+  /* 居中竖排：站名 → 联系方式 → 版权/备案号。
      图标行单独用 justify-content: center 保证在任意宽度下都是水平居中 */
   .site-footer__inner {
     display: flex;
@@ -85,9 +94,35 @@ const year = new Date().getFullYear()
     color: var(--color-heading);
   }
 
+  /* 版权与备案号都是法律信息，内部用 6px 贴紧成一组，
+     免得在 14px 的主节奏里被读成两个独立条目 */
+  .site-footer__legal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
   .site-footer__copy {
     font-size: 12px;
     color: var(--color-text);
+  }
+
+  /* 备案号是法定信息、不是设计元素：不加图标不做徽章，静止态保持最安静的一行，
+     只在 hover 时才浮到 --color-heading。色用 --color-text（浅色约 5.2:1、
+     暗色约 6.5:1，12px 也过 AA），不用 --color-primary（白玻璃底上仅 3.2:1） */
+  .site-footer__beian {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .site-footer__beian:hover {
+    color: var(--color-heading);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   .site-footer__links {
