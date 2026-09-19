@@ -58,6 +58,9 @@ function goTo(p) {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 页数多时在窄屏换行（36px × N 会撑破容器，而外层面板是 overflow 裁切，
+     直接溢出会让后面的页码点不到） */
+  flex-wrap: wrap;
   gap: 10px;
   padding: 16px 0;
 }
@@ -66,8 +69,10 @@ function goTo(p) {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.6);
+  /* 底色走主题变量：固定白底（rgba(255,255,255,.6)）在暗色模式是「浅底 + 浅字」
+     （--color-text 是亮绿），对比度约 1.2:1，页码基本看不清 */
+  border: 1px solid rgba(var(--color-primary-rgb), 0.28);
+  background: rgba(var(--color-primary-rgb), 0.16);
   color: var(--color-text);
   font-size: 14px;
   cursor: pointer;
@@ -80,7 +85,8 @@ function goTo(p) {
 }
 
 .page-btn:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.15);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  background: rgba(var(--color-primary-rgb), 0.26);
   color: var(--color-heading);
 }
 
@@ -88,6 +94,11 @@ function goTo(p) {
   background: var(--color-primary);
   color: white;
   box-shadow: 0 2px 8px rgba(99, 149, 86, 0.3);
+}
+
+/* 暗色下 --color-primary 是亮绿，白字只有 2.5:1，改用深色前景（与页面底色同色） */
+[data-theme='dark'] .page-btn.active {
+  color: var(--bg-page);
 }
 
 .page-btn:disabled {

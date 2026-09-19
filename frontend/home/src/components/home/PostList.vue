@@ -1,5 +1,5 @@
 <template>
-  <GlassPanel as="section" class="post-list">
+  <GlassPanel ref="panelEl" as="section" class="post-list">
     <div class="header">
       <div class="header-copy">
         <span class="header-kicker">{{ headerKicker }}</span>
@@ -37,21 +37,21 @@
         v-for="(post, index) in posts"
         :key="post.id"
         class="post-card"
-        :class="index === 0 ? 'post-card--featured' : 'post-card--compact'"
+        :class="index === featuredIndex ? 'post-card--featured' : 'post-card--compact'"
         :href="`/post/${post.id}`"
         @click="markPostSplash(post)"
       >
         <div class="post-cover" :class="{ 'is-empty': !post.cover }">
-          <!-- 封面按卡片大小分两档：大图卡（index 0，手机显示 326px / 桌面最高 640px）
+          <!-- 封面按卡片大小分两档：大图卡（featuredIndex，手机显示 326px / 桌面最高 640px）
                用原图；小图卡（显示 112–182px）用后端已有的 400px 缩略图，2x/3x 屏都够清晰。
                coverThumb 为空时回退原图（外链封面、没有 image 记录的老数据）。
                首图是报告里的 LCP 元素：eager + fetchpriority=high 消除 690ms 发现延迟。 -->
           <img
             v-if="post.cover"
-            :src="index === 0 ? post.cover : (post.coverThumb || post.cover)"
+            :src="index === featuredIndex ? post.cover : (post.coverThumb || post.cover)"
             :alt="post.title"
-            :loading="index === 0 ? 'eager' : 'lazy'"
-            :fetchpriority="index === 0 ? 'high' : undefined"
+            :loading="index === featuredIndex ? 'eager' : 'lazy'"
+            :fetchpriority="index === featuredIndex ? 'high' : undefined"
             decoding="async"
           />
           <AppIcon v-else icon="material-symbols:article-outline" class="cover-empty-icon" />
@@ -60,17 +60,17 @@
             <span class="post-index">{{ formatIndex(index) }}</span>
             <span v-if="post.category" class="cover-tag">{{ post.category.name }}</span>
           </div>
-          <span v-if="index === 0" class="featured-label">
+          <span v-if="index === featuredIndex" class="featured-label">
             <AppIcon icon="material-symbols:auto-awesome" />
             最近更新
           </span>
-          <h4 v-if="index === 0" class="featured-title">{{ post.title }}</h4>
+          <h4 v-if="index === featuredIndex" class="featured-title">{{ post.title }}</h4>
           <span class="cover-arrow">
             <AppIcon icon="material-symbols:arrow-outward-rounded" />
           </span>
         </div>
           <div class="post-body">
-          <div v-if="index === 0" class="featured-kicker">
+          <div v-if="index === featuredIndex" class="featured-kicker">
             <span>FEATURED NOTE</span>
             <i></i>
           </div>
@@ -93,6 +93,15 @@
         </div>
       </a>
     </div>
+
+    <!-- 翻页：只有一页时不渲染。分页状态与取数都留在本组件内，
+         不必往 HomeView 传状态（那要凭空多一层 props/emit 管路） -->
+    <Pagination
+      v-if="totalPages > 1"
+      :page="page"
+      :totalPages="totalPages"
+      @update:page="onPageChange"
+    />
   </GlassPanel>
 </template>
 <script setup>
@@ -105,6 +114,7 @@ import { markPostSplash } from '@/utils/postSplash'
 import { createSilentSync, listFingerprint } from '@/utils/liveData'
 import ContentState from '@/components/common/ContentState.vue'
 import GlassPanel from '@/components/common/GlassPanel.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 // 首页每页条数。必须与 index.astro 的 fetchPosts(1, 8) 保持一致，
 // 否则构建期烘焙的切片与这里对账的切片不同，指纹永不相等 → 每次访问都无谓重绘
@@ -134,13 +144,24 @@ const baked = props.initialData || {}
 const posts = ref(baked.posts || [])
 const total = ref(baked.total ?? 0)
 const loading = ref(!posts.value.length)
-// 请求令牌：挂载首取（无筛选）与搜索词/分类变化的重取存在竞态，
+// 分页状态。初值全部取自烘焙数据（index.astro 注入的第 1 页），
+// SSR 与客户端首帧一致 → 无水合差异，分页控件也能直接印进预渲染 HTML
+const page = ref(1)
+const totalPages = ref(baked.totalPages ?? 1)
+// 翻页后要把列表面板滚回视野（首页顶部是整屏 Hero，不能像日记页那样 scrollTo(0)）
+const panelEl = ref(null)
+// 请求令牌：挂载首取（无筛选）、翻页、搜索词/分类变化的重取彼此存在竞态，
 // 只采纳最后一次请求的结果，防止过期响应覆盖过滤结果
 let fetchToken = 0
 const { toast } = useMessageBox()
 
+// 大图卡只出现在第 1 页：它身上写着「最近更新 / FEATURED NOTE」，
+// 而第 2 页起的第一篇并不是最新文章，照旧渲染这两个标签就是假信息
+const featuredIndex = computed(() => (page.value === 1 ? 0 : -1))
+
+// 编号跨页连续（第 2 页是 09–16），而不是每页都从 01 重来
 function formatIndex(index) {
-  return String(index + 1).padStart(2, '0')
+  return String((page.value - 1) * PAGE_SIZE + index + 1).padStart(2, '0')
 }
 
 const hasFilter = computed(() => props.categoryId !== null || props.searchQuery !== '')
@@ -169,23 +190,34 @@ const silentSync = createSilentSync({
   load: () => getPosts(1, PAGE_SIZE),
   key: (data) => listFingerprint(data.posts, data.total),
   apply: (data) => {
-    // 对账期间用户可能已选中标签或发起搜索，别用未筛选结果覆盖它
-    if (hasFilter.value) return
+    // 对账期间用户可能已选中标签、发起搜索或翻页，别用「无筛选的第 1 页」覆盖当前视图
+    if (hasFilter.value || page.value !== 1) return
     posts.value = data.posts
     total.value = data.total
+    // 页数也要更新：新建的文章可能让第 1 页之外多出一页
+    totalPages.value = Math.max(1, data.totalPages || 1)
   }
 })
 
 async function fetchPosts() {
   const token = ++fetchToken
-  // 仅在没有任何内容可展示时才进入加载态：切换标签/搜索时保留旧列表，
+  // 取数期间页码可能又变（连点翻页），先固化本次要取的页
+  const target = page.value
+  // 仅在没有任何内容可展示时才进入加载态：翻页/切换标签/搜索时保留旧列表，
   // 避免整块闪成「加载中」再闪回来
   if (!posts.value.length) loading.value = true
   try {
-    const data = await getPosts(1, PAGE_SIZE, props.categoryId, props.searchQuery || undefined)
+    const data = await getPosts(target, PAGE_SIZE, props.categoryId, props.searchQuery || undefined)
     if (token !== fetchToken) return
+    const lastPage = Math.max(1, data.totalPages || 1)
+    if (target > lastPage) {
+      // 期间文章被删/筛选收窄，目标页已不存在：退回最后一页（watch(page) 会重新取数）
+      page.value = lastPage
+      return
+    }
     posts.value = data.posts
     total.value = data.total
+    totalPages.value = lastPage
   } catch (e) {
     if (token !== fetchToken) return
     toast('获取文章列表失败', 'error')
@@ -195,6 +227,17 @@ async function fetchPosts() {
       emit('loaded')
     }
   }
+}
+
+function onPageChange(next) {
+  page.value = next
+  scrollToList()
+}
+
+function scrollToList() {
+  // GlassPanel 是组件，取它的根元素
+  const el = panelEl.value?.$el ?? panelEl.value
+  el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function onClear() {
@@ -212,7 +255,14 @@ onMounted(() => {
   }
 })
 
-watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
+watch(page, fetchPosts)
+
+// 标签/搜索变化一律回第 1 页（第 3 页筛出 2 篇还停在第 3 页就是空列表）。
+// 页码本身就变了的情况交给 watch(page) 取数，避免重复发一次请求
+watch(() => [props.categoryId, props.searchQuery], () => {
+  if (page.value !== 1) page.value = 1
+  else fetchPosts()
+}, { deep: true })
 </script>
 <style scoped>
 .post-list {
@@ -226,6 +276,13 @@ watch(() => [props.categoryId, props.searchQuery], fetchPosts, { deep: true })
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* 翻页后滚动到本面板：让开 56px 固定 Navbar（与全站 top:96px 的约定同值） */
+  scroll-margin-top: 96px;
+}
+
+/* 面板自身有 18px gap，分页再自带 16px 上内边距会显得松 */
+.post-list :deep(.pagination) {
+  padding-top: 2px;
 }
 
 .header {
