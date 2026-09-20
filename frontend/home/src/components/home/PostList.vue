@@ -42,13 +42,16 @@
         @click="markPostSplash(post)"
       >
         <div class="post-cover" :class="{ 'is-empty': !post.cover }">
-          <!-- 封面按卡片大小分两档：大图卡（featuredIndex，手机显示 326px / 桌面最高 640px）
-               用原图；小图卡（显示 112–182px）用后端已有的 400px 缩略图，2x/3x 屏都够清晰。
-               coverThumb 为空时回退原图（外链封面、没有 image 记录的老数据）。
+          <!-- 封面按卡片大小分档：大图卡（featuredIndex，手机显示 326px / 桌面最高 640px）用原图。
+               小图卡靠 srcset 自选——桌面它只有 182px 宽，取后端已有的 400px 缩略图（2x/3x 屏都够）；
+               手机它满铺成 300–684px 宽，400px 缩略图会被放大到 1.5–3 倍发虚，故取原图。
+               coverThumb 为空（外链封面、没有 image 记录的老数据）时不发 srcset，回退原图。
                首图是报告里的 LCP 元素：eager + fetchpriority=high 消除 690ms 发现延迟。 -->
           <img
             v-if="post.cover"
             :src="index === featuredIndex ? post.cover : (post.coverThumb || post.cover)"
+            :srcset="index === featuredIndex ? undefined : compactSrcset(post)"
+            :sizes="index === featuredIndex ? undefined : COMPACT_SIZES"
             :alt="post.title"
             :loading="index === featuredIndex ? 'eager' : 'lazy'"
             :fetchpriority="index === featuredIndex ? 'high' : undefined"
@@ -84,10 +87,20 @@
             <span class="date">
               <AppIcon icon="material-symbols:schedule-outline" />
               {{ formatDate(post.createdAt) }}
+              <span class="date-time">{{ formatTime(post.createdAt) }}</span>
             </span>
             <span class="read-more">
               阅读全文
               <AppIcon icon="material-symbols:arrow-forward-rounded" />
+            </span>
+          </div>
+          <!-- 手机端满铺卡的底部药丸行（桌面端 display:none——分类已在封面右上角）。
+               列表接口没有多标签，只有单个 category，第二枚用同一 VO 里的 viewCount 补足 -->
+          <div v-if="post.category || post.viewCount" class="card-tags">
+            <span v-if="post.category" class="card-tag">{{ post.category.name }}</span>
+            <span v-if="post.viewCount" class="card-tag">
+              <AppIcon icon="material-symbols:visibility-outline" />
+              {{ post.viewCount }}
             </span>
           </div>
         </div>
@@ -107,7 +120,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
-import { formatDate } from '@/utils/date'
+import { formatDate, formatTime } from '@/utils/date'
 import { getPosts } from '@/api/post'
 import { useMessageBox } from '@/composables/useMessageBox'
 import { markPostSplash } from '@/utils/postSplash'
@@ -119,6 +132,16 @@ import Pagination from '@/components/common/Pagination.vue'
 // 首页每页条数。必须与 index.astro 的 fetchPosts(1, 8) 保持一致，
 // 否则构建期烘焙的切片与这里对账的切片不同，指纹永不相等 → 每次访问都无谓重绘
 const PAGE_SIZE = 8
+
+// 小卡封面的原图/缩略图二选一：sizes 描述卡片自身的显示宽度（桌面左右分栏时封面固定
+// 182px 宽；手机满铺卡约 83–89vw，取 88vw 作单一近似），候选给「缩略图 400w + 原图」，
+// 由浏览器按 DPR 自行挑。原图真实宽度拿不到（VO 不吐），1600w 只是"大候选"的名义值：
+// 宁可多取一点也不会取小，桌面 182px/2x 仍命中 400w 缩略图
+const COMPACT_SIZES = '(max-width: 768px) 88vw, 182px'
+function compactSrcset(post) {
+  if (!post.coverThumb || post.coverThumb === post.cover) return undefined
+  return `${post.coverThumb} 400w, ${post.cover} 1600w`
+}
 
 const props = defineProps({
   categoryId: {
@@ -460,6 +483,9 @@ watch(() => [props.categoryId, props.searchQuery], () => {
   height: 100%;
   display: block;
   object-fit: cover;
+  /* 封面 404 时浏览器会把 alt 文本按原始样式画在图片框里（标题又长又黑，
+     窄屏上还会压到下面的浮层文字）；标题在卡片里本就另有渲染，这里隐掉即可 */
+  color: transparent;
   transition: transform .6s cubic-bezier(.2, .7, .2, 1), filter .3s ease;
 }
 
@@ -713,6 +739,12 @@ watch(() => [props.categoryId, props.searchQuery], () => {
   font-size: 14px;
 }
 
+/* 时分与底部药丸行都只服务手机端满铺卡（见文末 @media 768），桌面端不渲染 */
+.date-time,
+.card-tags {
+  display: none;
+}
+
 .read-more {
   margin-left: auto;
   color: var(--color-primary);
@@ -780,23 +812,171 @@ watch(() => [props.categoryId, props.searchQuery], () => {
   margin-top: auto;
 }
 
+/* ============================================================
+ * 手机 / 小平板：小卡由「左图右文」改为「封面满铺 + 底部文字浮层」
+ * 窄屏下原布局的封面只剩 112–148px 宽、像缩略图；满铺卡让一张图铺满整卡，
+ * 标题/日期/摘要/分类全部浮在图上，一屏信息更多也更好看。
+ * DOM 完全不动，只靠绝对定位 + flex order 重排；桌面端（>768px）不受影响。
+ * 第 1 张「最近更新」大卡不参与（它本来就是图上大标题的形态），保持原样
+ * ============================================================ */
 @media (max-width: 768px) {
   .post-list {
     padding: 22px 18px 20px;
     border-radius: 20px;
   }
 
+  /* 高度由比例决定：4:3 在 390px 手机上约 247px（文字块占 ~57%）。
+     min 兜住 320px 级小屏；max 保证 481–768px 下不会长成一米高的巨卡，
+     宽屏时退化成横幅卡，文字块仍只占底部一半左右 */
   .post-card--compact {
-    grid-template-columns: 148px minmax(0, 1fr);
+    display: block;
+    flex: none;
+    aspect-ratio: 4 / 3;
+    min-height: 208px;
+    max-height: 260px;
   }
 
-  .post-card--compact .post-cover,
-  .post-card--compact .post-body {
-    min-height: 136px;
+  .post-card--compact .post-cover {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+    border-right: none;
   }
 
+  /* 纵向遮罩：顶上留一点暗色压住编号与箭头，中段把图放出来，底部压到 .85
+     （白字压在深底上仍有 9:1 以上，不必再重，重了图就没了） */
+  .post-card--compact .cover-wash {
+    background: linear-gradient(180deg,
+        rgba(8, 27, 20, .3) 0%,
+        rgba(8, 27, 20, 0) 26%,
+        rgba(8, 27, 20, .5) 58%,
+        rgba(6, 22, 16, .85) 100%);
+  }
+
+  /* 无封面文章的占位遮罩是另一套浅色渐变，特异性高于上面那条，
+     不显式覆盖就会露出浅底 + 白字（对比度不足）；同时把占位图标顶到上半区，
+     否则会与底部文字叠在一起。
+     顶部那层要比有图时更重：浅绿占位底上白字的编号/箭头小片会糊掉 */
+  .post-card--compact .post-cover.is-empty .cover-wash {
+    background:
+      linear-gradient(180deg, rgba(8, 27, 20, .46) 0%, rgba(8, 27, 20, 0) 30%, rgba(6, 22, 16, .85) 100%),
+      linear-gradient(135deg,
+        rgba(var(--color-primary-rgb), .2),
+        rgba(var(--color-accent-rgb), .2) 55%,
+        rgba(var(--color-heading-rgb, 45, 90, 65), .3));
+  }
+
+  .post-card--compact .post-cover.is-empty {
+    align-items: flex-start;
+    padding-top: 22px;
+  }
+
+  /* 文字块整体浮在封面底部。order 把视觉顺序排成 标题 → 日期 → 摘要 → 药丸
+     （与设计稿一致；DOM 顺序是 标题 / 摘要 / 日期） */
   .post-card--compact .post-body {
-    padding: 14px 16px;
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 5;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0 14px 13px;
+  }
+
+  .post-card--compact .title {
+    order: 1;
+    margin: 0 0 7px;
+    color: #fff;
+    font-size: 17px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+  }
+
+  /* 基类的 .post-card:hover .title 特异性更高，不覆盖的话悬停/点按会让白标题变绿 */
+  .post-card--compact:hover .title {
+    color: #fff;
+  }
+
+  .post-card--compact .excerpt {
+    order: 3;
+    margin: 0 0 8px;
+    color: rgba(255, 255, 255, .84);
+    font-size: 12px;
+    opacity: 1;
+    -webkit-line-clamp: 1;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, .5);
+  }
+
+  .post-card--compact .meta {
+    order: 2;
+    margin: 0 0 6px;
+    color: rgba(255, 255, 255, .92);
+    opacity: 1;
+  }
+
+  /* 作者恒为站长本人，窄屏省掉；「阅读全文」让位给底部药丸行 */
+  .post-card--compact .author,
+  .post-card--compact .read-more {
+    display: none;
+  }
+
+  /* 日期做成玻璃小片（复用 .post-index / .cover-tag 那套语言），并带上时分 */
+  .post-card--compact .date {
+    padding: 4px 9px 4px 7px;
+    border: 1px solid rgba(255, 255, 255, .3);
+    border-radius: 8px;
+    background: rgba(12, 42, 29, .34);
+    backdrop-filter: blur(8px);
+  }
+
+  .post-card--compact .date-time {
+    display: inline;
+  }
+
+  /* 分类移到底部药丸行，封面右上角不再重复显示 */
+  .post-card--compact .cover-tag {
+    display: none;
+  }
+
+  .post-card--compact .card-tags {
+    order: 4;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .post-card--compact .card-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 62%;
+    overflow: hidden;
+    padding: 3px 9px;
+    border: 1px solid rgba(255, 255, 255, .32);
+    border-radius: 9px;
+    background: rgba(12, 42, 29, .34);
+    color: rgba(255, 255, 255, .94);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+
+  .post-card--compact .card-tag :deep(svg) {
+    flex: 0 0 auto;
+    font-size: 13px;
+  }
+
+  /* 底部整块让给文字，箭头挪到右上与编号对称 */
+  .post-card--compact .cover-arrow {
+    top: 11px;
+    right: 12px;
+    bottom: auto;
+    width: 30px;
+    height: 30px;
   }
 }
 
@@ -846,17 +1026,32 @@ watch(() => [props.categoryId, props.searchQuery], () => {
     height: 32px;
   }
 
+  /* 满铺卡的版式在 ≤768 那段已定，这里只收紧尺寸（320px 级小屏文字块要矮一点） */
   .post-card--compact {
-    grid-template-columns: 112px minmax(0, 1fr);
-  }
-
-  .post-card--compact .post-cover,
-  .post-card--compact .post-body {
-    min-height: 122px;
+    min-height: 196px;
   }
 
   .post-card--compact .post-body {
-    padding: 12px 13px;
+    padding: 0 12px 12px;
+  }
+
+  .post-card--compact .title {
+    margin-bottom: 6px;
+    font-size: 16px;
+  }
+
+  .post-card--compact .excerpt {
+    margin-bottom: 7px;
+  }
+
+  /* 下面 .meta 的 10px 是给大卡那行元信息定的，浮动卡上的日期小片单独要大一档 */
+  .post-card--compact .meta {
+    font-size: 11px;
+  }
+
+  .post-card--compact .card-tag {
+    padding: 2px 8px;
+    font-size: 10px;
   }
 
   .post-card--compact .post-index {
@@ -867,28 +1062,24 @@ watch(() => [props.categoryId, props.searchQuery], () => {
   }
 
   .post-card--compact .cover-topline {
-    top: 9px;
-    right: 9px;
-    left: 9px;
+    top: 10px;
+    right: 10px;
+    left: 10px;
   }
 
-  .post-card--compact .cover-tag {
-    display: none;
+  .post-card--compact .cover-arrow {
+    top: 8px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
   }
 
   .post-card--compact .cover-empty-icon {
     font-size: 32px;
   }
 
-  .post-card--compact .title {
-    margin-bottom: 5px;
-    font-size: 15px;
-  }
-
-  .post-card--compact .excerpt {
-    margin-bottom: 8px;
-    font-size: 12px;
-    -webkit-line-clamp: 1;
+  .post-card--compact .post-cover.is-empty {
+    padding-top: 16px;
   }
 
   .meta {

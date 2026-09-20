@@ -19,10 +19,19 @@ export function formatDate(date: string): string {
   return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`
 }
 
+// 时分（北京时间）。手机端文章卡与日期分开渲染：窄屏才显示（`.date-time` 默认隐藏），
+// 桌面端日期文案保持纯日期不变，所以不能直接换成 formatDateTime
+export function formatTime(date: string): string {
+  if (!date) return ''
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return ''
+  const shifted = beijingShifted(d)
+  return `${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}`
+}
+
 export function formatDateTime(date: string): string {
   if (!date) return '-'
   const d = new Date(date)
   if (isNaN(d.getTime())) return '-'
-  const shifted = beijingShifted(d)
-  return `${formatDate(date)} ${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}`
+  return `${formatDate(date)} ${formatTime(date)}`
 }
