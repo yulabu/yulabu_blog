@@ -12,6 +12,17 @@ app.set('trust proxy', 'loopback');
 // 中间件
 app.use(cors());
 app.use(express.json());
+// Express 5 不再把"没有 body"的请求初始化为 {}：请求没有 body 头、或 Content-Type
+// 不是 JSON（本项目只挂了 json 解析器）时 req.body 会是 undefined。各 DTO 都是照
+// Express 4 的契约写的（body 必定是对象，最差空对象），于是 body.x 直接抛 TypeError
+// → 落到兜底 500。实测外网扫描器一个裸 POST 就能打到（188.253.112.119 等 6 个 IP，
+// 4 秒内 6 次，User-Agent 是光秃秃的 Mozilla/5.0）。
+// 这里还原 Express 4 的契约：DTO 拿到空对象后，会按约定抛 AppError(400) 比如
+// 「用户名不能为空」——空 body 依然被拒绝，只是从"崩溃式 500"变成"说明式 400"
+app.use((req, res, next) => {
+  if (req.body === undefined) req.body = {};
+  next();
+});
 // post路由
 const postRoutes = require('@routes/postRoutes');
 app.use('/api/posts', publicLimiter, postRoutes);
