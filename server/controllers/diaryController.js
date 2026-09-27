@@ -1,5 +1,5 @@
 const AppError = require('@middleware/AppError');
-const { Diary } = require('@models');
+const { Diary, Image } = require('@models');
 const { createDiaryDTO, updateDiaryDTO, diaryIdDTO } = require('@dto/diary.dto');
 const { diaryDetail, diaryList } = require('@vo/diary.vo');
 const { resolveImageIdByUrl } = require('@utils/image');
@@ -9,6 +9,8 @@ exports.getPublicDiaries = async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 20;
 
   const { count, rows } = await Diary.findAndCountAll({
+    // 书架的封面走 400px 缩略图（VO 的 coverThumb），见 vo/diary.vo.js
+    include: [{ model: Image, as: 'coverImage', attributes: ['thumb_path'] }],
     order: [['createdAt', 'DESC']],
     limit: pageSize,
     offset: (page - 1) * pageSize

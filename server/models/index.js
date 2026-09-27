@@ -38,6 +38,11 @@ PostImage.belongsTo(Image, { foreignKey: 'image_id', as: 'image' });
 // 400px 缩略图路径（image.thumb_path）给列表小卡当封面，大图卡仍用 post_cover 原图。
 Post.belongsTo(Image, { foreignKey: 'cover_image_id', as: 'coverImage' });
 
+// 关联：日记封面 -> image。同上，cover_image_id 列由 images[0] 派生、早已存在，
+// 这里只补关联声明（无 ALTER）。用途：日记书架一屏同时出现 20 本书，封面上架要走
+// 400px 缩略图（image.thumb_path），否则首屏要下载 20 张 1600px 原图。
+Diary.belongsTo(Image, { foreignKey: 'cover_image_id', as: 'coverImage' });
+
 // DailyStat 无关联：由日期键自持的每日聚合，不与其他业务表 join
 
 // Setting 无关联：key/value 单表，键定义见 config/settings.js

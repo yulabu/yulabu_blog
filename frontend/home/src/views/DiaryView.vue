@@ -1,59 +1,50 @@
 <template>
-  <main class="diary-layout">
-    <ContentState v-if="loading" kind="loading" size="page">
-      加载中...
-    </ContentState>
-    <ContentState v-else-if="diaries.length === 0" kind="empty" size="page">
-      暂无日记
-    </ContentState>
+  <main class="diary-page">
+    <ContentState v-if="loading" kind="loading" size="page">加载中...</ContentState>
 
     <template v-else>
-      <!-- 汇总卡 -->
-      <GlassPanel class="summary-card">
-        <div class="summary-left">
-          <h2 class="summary-title">日记</h2>
-          <p class="summary-subtitle">随时随地，分享生活</p>
-        </div>
-        <div class="summary-right">
-          <span class="summary-count">{{ total }}</span>
-          <span class="summary-label">条日记</span>
-        </div>
-      </GlassPanel>
+      <!-- 书架：首屏 HTML 里就是一整面书（构建期烘焙 + 预渲染），水合后才可抽书 -->
+      <DiaryShelf
+        :diaries="diaries"
+        :total="total"
+        :page="page"
+        :total-pages="totalPages"
+        @open="openNotebook"
+      >
+        <!-- 不用 ContentState：它的文字走 --color-text（亮色下是深绿），压在木色上
+             只有 ~1.5:1，读不出来。空架提示要用能在两种主题的木色上都读清的颜色 -->
+        <p v-if="!diaries.length" class="diary-empty">书架还空着</p>
+      </DiaryShelf>
 
-      <!-- 日记卡片流 -->
-      <div class="diary-list">
-        <GlassPanel v-for="diary in diaries" :key="diary.id" class="diary-card">
-          <h3 class="diary-title">{{ diaryTitle(diary) }}</h3>
-
-          <p v-if="diaryBody(diary)" class="diary-content">{{ diaryBody(diary) }}</p>
-
-          <div v-if="diary.images && diary.images.length" class="diary-gallery">
-            <div
-              v-for="(img, idx) in diary.images"
-              :key="idx"
-              class="diary-photo"
-              @click="openLightbox(diary.images, idx)"
-            >
-              <img :src="img" class="diary-photo-img" :alt="'日记图片 ' + (idx + 1)" loading="lazy" />
-            </div>
-          </div>
-
-          <div class="diary-footer">
-            <span class="diary-time">
-              <AppIcon icon="material-symbols:schedule-outline" class="time-icon" />
-              {{ formatRelativeTime(diary.created_at) }}
-            </span>
-          </div>
-        </GlassPanel>
-      </div>
+      <Pagination
+        v-if="totalPages > 1"
+        v-model:page="page"
+        :totalPages="totalPages"
+        class="diary-page__pager"
+      />
     </template>
 
-    <Pagination v-if="!loading && totalPages > 1" v-model:page="page" :totalPages="totalPages" />
+    <!-- 日记本浮层：点书 → 从书脊位置飞到屏幕中央 → 封面翻开 -->
+    <DiaryNotebook
+      v-if="activeDiary"
+      :diary="activeDiary"
+      :origin-rect="originRect"
+      :has-prev="activeIndex > 0"
+      :has-next="activeIndex < diaries.length - 1"
+      :suspended="lightboxVisible"
+      @close="closeNotebook"
+      @prev="stepDiary(-1)"
+      @next="stepDiary(1)"
+      @preview-image="openLightbox"
+    />
+
     <Teleport v-if="isMounted" to="body">
       <Transition name="lightbox">
         <div v-if="lightboxVisible" class="lightbox-overlay" @click="closeLightbox">
           <img :src="lightboxImages[lightboxIndex]" class="lightbox-img" alt="预览图片" @click.stop />
-          <button class="lightbox-close" @click="closeLightbox" aria-label="关闭">✕</button>
+          <button class="lightbox-close" @click="closeLightbox" aria-label="关闭">
+            <AppIcon icon="material-symbols:close" class="lightbox-close-icon" />
+          </button>
           <button
             v-if="lightboxImages.length > 1"
             class="lightbox-nav lightbox-prev"
@@ -74,13 +65,14 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
-import { getPublicDiaries } from '@/api/diary'
-import { createSilentSync } from '@/utils/liveData'
-import GlassPanel from '@/components/common/GlassPanel.vue'
 import ContentState from '@/components/common/ContentState.vue'
 import Pagination from '@/components/common/Pagination.vue'
+import DiaryShelf from '@/components/diary/DiaryShelf.vue'
+import DiaryNotebook from '@/components/diary/DiaryNotebook.vue'
+import { getPublicDiaries } from '@/api/diary'
+import { createSilentSync } from '@/utils/liveData'
 
 const props = defineProps({
   // 构建期烘焙的第 1 页数据（diary.astro 注入），页面必定传入（取数失败传空对象）。
@@ -89,12 +81,11 @@ const props = defineProps({
 })
 
 const baked = props.initialDiaries || {}
-// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有内容，首屏不闪「加载中」
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有整面书架，首屏不闪「加载中」
 const diaries = ref(baked.diaries || [])
 const loading = ref(!diaries.value.length)
-// Teleport 守卫：SSR 与客户端首帧都不输出 teleport 标记（Astro 向岛内注入的
-// 水合脚本与 Vue 期望的空注释错位会触发 hydrateTeleport mismatch），
-// 挂载后再挂 Teleport——灯箱本就只在用户交互后出现
+// Teleport 守卫：SSR 与客户端首帧都不输出 teleport 标记（Astro 向岛内注入的水合
+// 脚本与 Vue 期望的空注释错位会触发 hydrateTeleport mismatch），挂载后再挂
 const isMounted = ref(false)
 const page = ref(1)
 const totalPages = ref(baked.totalPages ?? 1)
@@ -102,40 +93,40 @@ const total = ref(baked.total ?? 0)
 // 请求令牌：翻页与静默对账可能并发，只采纳最后一次请求的结果
 let fetchToken = 0
 
+// —— 日记本 ——
+const activeIndex = ref(-1)
+const originRect = ref(null)
+const activeDiary = computed(() => diaries.value[activeIndex.value] || null)
+// 关闭后把焦点还给刚才那本书（键盘用户不会掉到页面顶部）
+let originEl = null
+
+// —— 图片灯箱 ——
 const lightboxVisible = ref(false)
 const lightboxImages = ref([])
 const lightboxIndex = ref(0)
 
-function diaryTitle(diary) {
-  const firstLine = diary.content.split('\n')[0].trim()
-  return firstLine
+function openNotebook({ index, rect, el }) {
+  originEl = el || null
+  originRect.value = rect || null
+  activeIndex.value = index
 }
 
-function diaryBody(diary) {
-  const lines = diary.content.split('\n')
-  const rest = lines.slice(1).join('\n').trim()
-  if (rest) return rest
-  return ''
+function closeNotebook() {
+  activeIndex.value = -1
+  originRect.value = null
+  if (originEl && document.contains(originEl)) originEl.focus({ preventScroll: true })
+  originEl = null
 }
 
-function formatRelativeTime(createdAt) {
-  const diff = Date.now() - new Date(createdAt).getTime()
-  const minute = 60 * 1000
-  const hour = 60 * minute
-  const day = 24 * hour
-  const month = 30 * day
-
-  if (diff < minute) return '刚刚'
-  if (diff < hour) return Math.floor(diff / minute) + ' 分钟前'
-  if (diff < day) return Math.floor(diff / hour) + ' 小时前'
-  if (diff < month) return Math.floor(diff / day) + ' 天前'
-  if (diff < 12 * month) return Math.floor(diff / month) + ' 个月前'
-  return new Date(createdAt).getFullYear() + ' 年前'
+function stepDiary(step) {
+  const next = activeIndex.value + step
+  if (next < 0 || next >= diaries.value.length) return
+  activeIndex.value = next
 }
 
 function openLightbox(images, index) {
-  lightboxImages.value = images
-  lightboxIndex.value = index
+  lightboxImages.value = images || []
+  lightboxIndex.value = index || 0
   lightboxVisible.value = true
 }
 
@@ -150,6 +141,19 @@ function prevImage() {
 function nextImage() {
   lightboxIndex.value = (lightboxIndex.value + 1) % lightboxImages.value.length
 }
+
+// 灯箱不自己锁 body 滚动：它只从日记本里打开，而日记本已经锁着了（两处各锁一次，
+// 先还原的那个会把另一处的锁一起撤掉）。这里只补 ESC —— 日记本在灯箱开着时挂起键盘
+function onLightboxKey(e) {
+  if (e.key !== 'Escape') return
+  e.preventDefault()
+  closeLightbox()
+}
+
+watch(lightboxVisible, (visible) => {
+  if (visible) window.addEventListener('keydown', onLightboxKey)
+  else window.removeEventListener('keydown', onLightboxKey)
+})
 
 function applyPage(res) {
   diaries.value = res.diaries
@@ -189,6 +193,8 @@ async function fetchDiaries() {
 }
 
 watch(page, () => {
+  // 换架时书架整体重画，顺手关掉可能开着的本子
+  activeIndex.value = -1
   fetchDiaries()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 })
@@ -199,163 +205,48 @@ onMounted(() => {
   if (diaries.value.length) silentSync()
   else fetchDiaries()
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onLightboxKey)
+})
 </script>
 
 <style scoped>
 /* 靠左铺满内容列（不要 margin: 0 auto）：骨架左栏已有卡片，若这里再居中，
-   正文会离卡片多出一大截空白。与首页 PostList 对齐方式保持一致，
-   间距就等于网格 gap（24px）。宽屏下上限 720px，窄屏自动占满 */
-.diary-layout {
+   正文会离卡片多出一大截空白。与首页 PostList 对齐方式保持一致 */
+.diary-page {
   width: 100%;
-  max-width: 720px;
+  max-width: 700px;
+  /* 书架上方留出"房间的顶"：抽出的封面卡会向上探出第一层，窄屏（刊头隐藏）
+     时这点余量也保证它不会顶到导航栏 */
+  padding-top: clamp(24px, 7vw, 92px);
 }
 
-/* 汇总卡 */
-.summary-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 22px 26px;
-  margin-bottom: 24px;
-  border-radius: 18px;
-  border: 1px solid rgba(var(--color-primary-rgb, 99, 149, 86), 0.18);
-  background: linear-gradient(145deg, rgba(var(--color-primary-rgb, 99, 149, 86), 0.08), var(--bg-card-strong));
+/* 页码与书架同宽，居中落在书架正下方 */
+.diary-page__pager {
+  max-width: 700px;
 }
 
-.summary-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.summary-title {
-  font-family: 'LXGW WenKai', 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--color-heading);
+/* 空架提示：--book-title 是近白纸色，压亮/暗两种木色都够对比度 */
+.diary-empty {
+  position: relative;
+  z-index: 1;
   margin: 0;
-  letter-spacing: .04em;
-}
-
-.summary-subtitle {
-  font-size: 13px;
-  color: var(--color-muted);
-  margin: 0;
-}
-
-.summary-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.summary-count {
-  font-family: Georgia, serif;
-  font-size: 34px;
-  font-weight: 700;
-  color: var(--color-primary);
-  line-height: 1;
-}
-
-.summary-label {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-/* 日记卡片流 */
-.diary-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.diary-card {
-  padding: 24px 26px;
-  border-radius: 18px;
-  border: 1px solid var(--border-light);
-  background: linear-gradient(145deg, var(--bg-card-strong), var(--bg-card));
-  backdrop-filter: blur(18px);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.diary-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 28px var(--shadow-color);
-}
-
-.diary-title {
+  padding: 76px 0 88px;
+  text-align: center;
   font-family: 'LXGW WenKai', 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-heading);
-  margin: 0 0 10px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: var(--book-title);
+  opacity: 0.7;
 }
 
-.diary-content {
-  font-size: 14px;
-  color: var(--color-text);
-  line-height: 1.8;
-  margin: 0 0 14px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  opacity: 0.85;
-}
-
-/* 相册：完整展示图片 */
-.diary-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.diary-photo {
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: zoom-in;
-  border: 1px solid var(--border-light);
-}
-
-.diary-photo-img {
-  display: block;
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-  transition: transform 0.3s ease;
-}
-
-.diary-photo:hover .diary-photo-img {
-  transform: scale(1.01);
-}
-
-/* 底部 */
-.diary-footer {
-  display: flex;
-  align-items: center;
-  border-top: 1px solid var(--border-divider, rgba(0, 0, 0, 0.06));
-  padding-top: 10px;
-}
-
-.diary-time {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--color-muted);
-}
-
-.time-icon {
-  font-size: 14px;
-}
-
-/* 灯箱 */
+/* 灯箱（从日记本里的照片点开）*/
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  /* 压在日记本(2200) 之上，低于 PostSplash(3000) */
+  z-index: 2600;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -376,6 +267,9 @@ onMounted(() => {
   position: absolute;
   top: 20px;
   right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
   border: none;
@@ -389,6 +283,10 @@ onMounted(() => {
 
 .lightbox-close:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.lightbox-close-icon {
+  font-size: 19px;
 }
 
 .lightbox-nav {
@@ -438,27 +336,7 @@ onMounted(() => {
   opacity: 0;
 }
 
-@media (max-width: 640px) {
-  .diary-layout {
-    padding: 16px var(--page-padding) 40px;
-  }
-
-  .summary-card {
-    padding: 18px 20px;
-  }
-
-  .summary-title {
-    font-size: 22px;
-  }
-
-  .summary-count {
-    font-size: 28px;
-  }
-
-  .diary-card {
-    padding: 18px 18px;
-  }
-
+@media (max-width: 480px) {
   .lightbox-prev {
     left: 8px;
   }

@@ -56,6 +56,33 @@
   --wave-2-color: #4a8b3c;
   --wave-3-color: #76c06a;
   --wave-4-color: #caf2cb;
+
+  /* 日记书架。材质是"石灰木/刷白木"：刻意走灰绿低饱和，而不是胡桃木那种暖棕——
+     暖棕在薄荷绿页面 + 白玻璃卡片旁边是一块孤岛色，读起来又重又跳（实测对比后改）。
+     木纹只用重复渐变，不引入任何图片资源 */
+  --shelf-wood-1: rgb(170, 176, 159);
+  --shelf-wood-2: rgb(150, 157, 139);
+  --shelf-wood-3: rgb(103, 111, 95);
+  --shelf-grain: rgba(255, 255, 255, 0.075);
+  /* 木纹颗粒：内联 SVG 噪声（140×140 无缝平铺），当背景叠层用 soft-light 混色，
+     只加质感、不改底色。**强度必须压得很低**：opaqueness 上到 .3 以上、
+     再叠细密的周期性横线，整块会读成拉丝金属而不是木头（实踩一版） */
+  --shelf-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
+  /* 架体背后的墙面暖光。浅色底上是一层暖调；暗色底上同一层暖光会变成一块发灰的
+     橄榄色雾、还能看见柔边的形状，所以在暗色主题里整条关掉（见下方 dark 块） */
+  --shelf-glow: rgba(255, 226, 170, 0.2);
+  --shelf-plate: rgb(219, 209, 184);
+  --shelf-plate-text: rgb(74, 68, 52);
+  --book-paper: rgb(231, 220, 196);
+  --book-paper-2: rgb(212, 198, 168);
+  --book-edge: rgba(56, 36, 20, 0.38);
+  --book-title: rgb(250, 246, 236);
+  --notebook-paper: rgb(250, 246, 235);
+  --notebook-paper-2: rgb(242, 236, 220);
+  --notebook-line: rgba(150, 120, 88, 0.17);
+  --notebook-shell: rgb(92, 64, 43);
+  --notebook-shell-2: rgb(66, 44, 29);
+  --notebook-scrim: rgba(26, 19, 13, 0.72);
 }
 
 [data-theme="dark"] {
@@ -91,6 +118,26 @@
   --wave-2-color: #1f3025;
   --wave-3-color: #2d4535;
   --wave-4-color: rgb(25, 35, 30);
+
+  /* 暗色：架体走冷调深灰绿（暗棕在深绿页面上同样是孤岛），书仍是暖纸色——
+     冷架 + 暖书，两边互相衬托 */
+  --shelf-wood-1: rgb(84, 92, 80);
+  --shelf-wood-2: rgb(69, 77, 66);
+  --shelf-wood-3: rgb(33, 39, 32);
+  --shelf-grain: rgba(255, 255, 255, 0.07);
+  --shelf-glow: transparent;
+  --shelf-plate: rgb(124, 120, 100);
+  --shelf-plate-text: rgb(228, 222, 202);
+  --book-paper: rgb(94, 82, 62);
+  --book-paper-2: rgb(76, 66, 50);
+  --book-edge: rgba(0, 0, 0, 0.5);
+  --book-title: rgb(245, 236, 218);
+  --notebook-paper: rgb(58, 54, 44);
+  --notebook-paper-2: rgb(47, 44, 36);
+  --notebook-line: rgba(226, 206, 168, 0.13);
+  --notebook-shell: rgb(56, 41, 29);
+  --notebook-shell-2: rgb(38, 27, 19);
+  --notebook-scrim: rgba(8, 10, 8, 0.8);
 }
 
 *{

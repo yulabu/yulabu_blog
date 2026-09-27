@@ -60,6 +60,8 @@ export interface Diary {
   id: number
   content: string
   images: string[]
+  /** 400px 封面缩略图（书脊纹理与抽出的封面卡用）；外链封面/老数据为 null，回退 images[0] */
+  coverThumb: string | null
   created_at: string
   updated_at: string
 }
