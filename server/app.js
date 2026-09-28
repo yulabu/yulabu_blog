@@ -11,7 +11,10 @@ const app = express();
 app.set('trust proxy', 'loopback');
 // 中间件
 app.use(cors());
-app.use(express.json());
+// 默认 100kb 装不下长正文：正文以 JSON 提交（POST/PUT /api/admin/posts），
+// 一篇文章超过约 3.3 万字就会被 body-parser 拦成 413「请求体过大」而保存失败。
+// 2mb 足够容纳超长图文（图片本身走 multipart，不占这个额度），仍远小于 nginx 的 10m
+app.use(express.json({ limit: '2mb' }));
 // Express 5 不再把"没有 body"的请求初始化为 {}：请求没有 body 头、或 Content-Type
 // 不是 JSON（本项目只挂了 json 解析器）时 req.body 会是 undefined。各 DTO 都是照
 // Express 4 的契约写的（body 必定是对象，最差空对象），于是 body.x 直接抛 TypeError

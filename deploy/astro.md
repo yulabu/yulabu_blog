@@ -86,6 +86,7 @@ server {
 - 旧配置的 `try_files ... /index.html`（SPA History 路由兜底）**必须移除**，否则所有路径都会命中 index.html
 - yulabu 与 blog.yulabu.cn 共用该 server 块（server_name 不变）
 - admin 站点不动
+- **`client_max_body_size 10m` 必须保留**（`/etc/nginx/sites-available/yulabu` 与 `yulabu-admin` 都配了）：后台在 admin 域名下上传图片，走的就是这两个 server 块的反代；nginx 默认只有 1m，缺这行会把上传请求直接拦成 HTML 413，前端只能显示「上传失败」，后端的具体提示根本到不了浏览器
 - 改完：`sudo nginx -t && sudo systemctl reload nginx`
 
 ## 四、上线步骤
@@ -133,3 +134,18 @@ cd frontend/home && npm install && npm run build
 - 仅前台代码变更：git pull → `cd frontend/home && npm run build` → `pm2 restart blog-web`（SSR 包变更需重启；纯静态产物不重启也会生效，但统一重启最稳）
 - 发新文章/改文章：**无需任何构建与重启**（文章页是 SSR 实时渲染）
 - admin / server 变更流程不变
+
+## 七、上传限制（改任一层都要三层一起看）
+
+| 层 | 位置 | 当前值 |
+| --- | --- | --- |
+| nginx 请求体 | `/etc/nginx/sites-available/yulabu`、`yulabu-admin` 的 `client_max_body_size` | 10m |
+| 单张图片 | `server/.env` 的 `UPLOAD_MAX_SIZE`（默认 5MB） | 5MB |
+| 单请求总量 | `server/.env` 的 `UPLOAD_MAX_TOTAL_SIZE`（默认 20MB） | 20MB |
+| 单请求张数 | `server/.env` 的 `UPLOAD_MAX_FILES`（默认 50） | 50 |
+| 前端分片 | `frontend/admin/src/api/image.ts` 的 `CHUNK_MAX_FILES` / `CHUNK_MAX_BYTES` | 10 张 / 8MB |
+| JSON 请求体 | `server/app.js` 的 `express.json({ limit })`（正文以 JSON 提交） | 2mb |
+
+- admin 的上传（编辑器粘贴多张、导入 Markdown 附图片）由前端**分片串行**发送，每片 ≤10 张且 ≤8MB——所以张数/总量上限不再是用户能撞到的墙，它们是护栏；每片都落在 nginx 的 10m 与后端 20MB 之内
+- nginx 若小于后端的 `UPLOAD_MAX_TOTAL_SIZE`，超限时用户看到的是 nginx 的 HTML 413（前端只显示「上传失败」），后端写好的文案被跳过
+- 长正文走 JSON（2mb），图片走 multipart，两者额度互不影响

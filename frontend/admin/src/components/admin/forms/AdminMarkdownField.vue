@@ -77,7 +77,8 @@ async function handleUpload(files, callback) {
     const urls = await props.uploadImages(files)
     callback(urls)
   } catch (e) {
-    toast('图片上传失败', 'error')
+    // 透出后端文案（超限时是"单次最多上传 50 张图片"这类具体原因），兜底才是通用提示
+    toast(e?.message || '图片上传失败', 'error')
   }
 }
 </script>

@@ -165,6 +165,10 @@ const importModalRef = ref(null)
 const draftId = ref(null)
 let draftPromise = null
 
+// 分片上传进度：批量上传（编辑器粘贴多张 / 导入 Markdown 附图片）时提示到第几张，
+// 失败时也用来自查已上传多少张（已上传的图留在图片库里，正文不会写回半成品）
+const uploadProgress = ref({ done: 0, total: 0 })
+
 // 快照：上次保存/加载后的表单状态，用于脏检查
 const originalData = ref(null)
 
@@ -347,7 +351,16 @@ async function handleUploadImages(files) {
     throw new Error('trash readonly')
   }
   const postId = await ensureDraft()
-  return uploadImages({ files, postId })
+  uploadProgress.value = { done: 0, total: files.length }
+  return uploadImages({
+    files,
+    postId,
+    // 只在分了多片时触发（见 api/image.ts），逐片提示进度
+    onProgress: (done, total) => {
+      uploadProgress.value = { done, total }
+      toast(`上传中 ${done}/${total}`)
+    }
+  })
 }
 
 // 封面上传：绑定类型 cover，返回 URL（v-model 由 AdminImageUpload 写入 form.cover）
@@ -409,7 +422,9 @@ async function handleImport({ markdown, files }) {
 
     closeImportModal()
   } catch (e) {
-    toast(e.message || '导入失败', 'error')
+    const { done, total } = uploadProgress.value
+    const uploaded = done > 0 ? `（已上传 ${done}/${total} 张，正文未改动）` : ''
+    toast(`导入失败：${e.message || '未知错误'}${uploaded}`, 'error')
   } finally {
     loading.value = false
   }

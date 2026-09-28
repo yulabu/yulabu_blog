@@ -44,6 +44,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { MAX_IMAGE_SIZE } from '@/api/image'
 import { useMessageBox } from '@/composables/useMessageBox'
 
 const props = defineProps({
@@ -59,7 +60,6 @@ const { toast } = useMessageBox()
 const inputRef = ref(null)
 const dragging = ref(false)
 const uploading = ref(false)
-const MAX_SIZE = 5 * 1024 * 1024
 
 function pickFile() {
   if (uploading.value) return
@@ -84,8 +84,8 @@ async function handleFile(file) {
     toast('仅支持图片文件', 'error')
     return
   }
-  if (file.size > MAX_SIZE) {
-    toast('图片不能超过 5MB', 'error')
+  if (file.size > MAX_IMAGE_SIZE) {
+    toast(`图片不能超过 ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`, 'error')
     return
   }
 
