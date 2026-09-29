@@ -15,40 +15,27 @@ function makeHandler(label) {
   }
 }
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: MESSAGE,
-  handler: makeHandler('login')
-})
+// 四个桶的公共策略只有这一处，差异全在下面的 spec 里。
+// overrides 是预留的口子：将来"SSR 回源单独一桶"只需在这里加 skip / 白名单
+function makeLimiter({ label, windowMs, max, ...overrides }) {
+  return rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: MESSAGE,
+    handler: makeHandler(label),
+    ...overrides
+  })
+}
 
-const publicLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: MESSAGE,
-  handler: makeHandler('public')
-})
-
-const staticLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: MESSAGE,
-  handler: makeHandler('static')
-})
-
-const adminLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: MESSAGE,
-  handler: makeHandler('admin')
-})
+// 阈值依据（改数值前先读这两条）：
+// ① public 60/min 与 static 120/min 是按「单个访客正常浏览一屏要打几个请求」定的上限，
+//    不是按站点吞吐定的——注意 blog-web 的 SSR 回源走 127.0.0.1 这同一个桶（见 AGENTS 的止血待办）
+// ② login 5/15min 是唯一的安全阈值（口令暴破面），放宽前先想清楚
+const loginLimiter = makeLimiter({ label: 'login', windowMs: 15 * 60 * 1000, max: 5 })
+const publicLimiter = makeLimiter({ label: 'public', windowMs: 60 * 1000, max: 60 })
+const staticLimiter = makeLimiter({ label: 'static', windowMs: 60 * 1000, max: 120 })
+const adminLimiter = makeLimiter({ label: 'admin', windowMs: 60 * 1000, max: 120 })
 
 module.exports = { loginLimiter, publicLimiter, staticLimiter, adminLimiter }
