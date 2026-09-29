@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 
 // 日记单图契约：images 最多 1 张（images[0] 即封面，与 cover_image_id 一一对应）。
 // 超出必须报错而非静默截断——静默丢弃会让多出的图片变成无指针孤儿被 GC 回收

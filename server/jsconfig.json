@@ -3,6 +3,7 @@
     "paths": {
       "@root/*": ["./*"],
       "@config/*": ["./config/*"],
+      "@errors/*": ["./errors/*"],
       "@controllers/*": ["./controllers/*"],
       "@middleware/*": ["./middleware/*"],
       "@models/*": ["./models/*"],

@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { SETTINGS_SCHEMA } = require('@config/settings');
 
 // 写入口径：只接受 SETTINGS_SCHEMA 里登记过的键（未知键直接 400，不让任意 key 落库），

@@ -39,11 +39,12 @@ server/
 ├── seed.js                     # 创建初始管理员
 ├── config/
 │   ├── database.js             # Sequelize 配置
-│   └── upload.js               # 上传目录配置
+│   └── image.js                # 上传目录 / 缩略图 / 图片质量配置
 ├── controllers/                # 业务逻辑
 ├── models/                     # 数据模型与关联
 ├── routes/                     # 路由定义
-├── middleware/                 # 鉴权、错误处理、上传解析
+├── middleware/                 # 管道层：鉴权、限流、错误处理、上传解析
+├── errors/                     # 共享内核：AppError（dto / controllers / utils 共用）
 ├── dto/                        # 入参校验
 ├── vo/                         # 出参格式化
 └── utils/
@@ -244,7 +245,8 @@ node seed.js
 
 | 层 | 职责 |
 |---|---|
-| Middleware | JWT 鉴权、multer 文件解析、全局错误处理 |
+| Middleware | JWT 鉴权、限流、multer 文件解析、全局错误处理（管道层） |
+| errors | AppError：业务异常类型，dto / controllers / utils 共用（共享内核，不属于中间件层） |
 | DTO | 白名单提取 + 参数校验，非法输入抛出 AppError |
 | Controller | 调用 DTO → 操作数据库 → VO 格式化 |
 | VO | 转换为前端友好的驼峰 JSON |

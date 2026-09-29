@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { parseId } = require('./common.dto');
 
 function createColumnDTO(body) {

@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 
 function parseId(params, label) {
   const id = Number(params.id);

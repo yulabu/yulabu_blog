@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { parseId, paginate } = require('@dto/common.dto');
 const { sequelize, Post, Tag, ColumnPost, Column, PostImage, Image } = require('@models');

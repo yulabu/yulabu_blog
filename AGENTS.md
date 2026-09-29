@@ -116,11 +116,12 @@ certbot renew --dry-run
 - 涉及图片结构变更的部署顺序：sync-schema.js → migrate-image-ref.js（均幂等，迁移以 URL 匹配为准、不盲信旧 reference_id）→ pm2 restart
 
 ### 5. 后端代码约定
-- 校验集中在 server/dto/*.dto.js（白名单过滤）；异常用 server/middleware/AppError.js 抛 400/404
+- 校验集中在 server/dto/*.dto.js（白名单过滤）；异常用 server/errors/AppError.js 抛 400/404
 - 响应统一经 server/vo/*.vo.js 组装（相对路径补 /uploads/ 前缀等）
 - /api/admin/* 受 auth 中间件保护
 - app.js 已设 trust proxy 'loopback'（express-rate-limit 8.x 必需，否则报 ERR_ERL_UNEXPECTED_X_FORWARDED_FOR）
 - 分层：routes/*Routes.js → controllers/*Controller.js → models/* + dto/* + vo/*
+- 依赖方向只能向下：errors/（AppError）与 config/ 是共享内核，dto / controllers / utils 都可依赖；middleware/ 是**管道层**（只被 routes 与 app.js 挂载），不要把错误类型、配置常量、业务逻辑放进去（2026-09 已把 AppError 从 middleware/ 迁到 errors/）
 
 ### 6. 前端代码约定
 - 复用既有组件，不引入新依赖/复杂度

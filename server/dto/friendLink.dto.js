@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { parseId } = require('./common.dto');
 
 // 友链图片一律外链：只接受 http(s):// 或协议相对 //。

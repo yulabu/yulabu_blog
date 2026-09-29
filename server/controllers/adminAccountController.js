@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { parseId, paginate } = require('@dto/common.dto');
 const { Admin } = require('@models');
 const { createAdminDTO, updateAdminDTO, changePasswordDTO } = require('@dto/admin.dto');

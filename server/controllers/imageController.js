@@ -1,6 +1,6 @@
 const fs = require('fs').promises
 const { Op } = require('sequelize')
-const AppError = require('@middleware/AppError')
+const AppError = require('@errors/AppError')
 const { saveImageFile, deleteImageFiles } = require('@utils/imageStorage')
 const { Image, Post, Column, PostImage, Diary } = require('@models')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')

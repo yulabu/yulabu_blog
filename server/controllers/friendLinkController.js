@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { FriendLink } = require('@models');
 const { createFriendLinkDTO, updateFriendLinkDTO, friendLinkIdDTO } = require('@dto/friendLink.dto');
 const { friendLinkDetail, friendLinkList } = require('@vo/friendLink.vo');

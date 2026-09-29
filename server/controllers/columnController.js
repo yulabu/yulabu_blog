@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const { Op } = require('sequelize');
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { sequelize, Column, ColumnPost, Post, Tag, Image } = require('@models');
 const { createColumnDTO, updateColumnDTO, columnIdDTO, columnPostIdsDTO } = require('@dto/column.dto');
 const { columnDetail, columnList, columnPostItem } = require('@vo/column.vo');

@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const zlib = require('zlib');
 const { spawn, execFile } = require('child_process');
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { UPLOAD_DIR } = require('@config/image');
 const { BACKUP_DIR, BACKUP_KEEP } = require('@config/backup');
 

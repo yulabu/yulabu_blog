@@ -1,5 +1,5 @@
 const { fn, col } = require('sequelize');
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { recordVisitDTO, listVisitsDTO } = require('@dto/visit.dto');
 const { VisitLog, Post, DailyStat } = require('@models');
 const { visitLogsVO, visitStatsVO } = require('@vo/visit.vo');

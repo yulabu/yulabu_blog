@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { Sequelize } = require('sequelize');
 const { createTagDTO, updateTagDTO, tagIdDTO } = require('@dto/tag.dto');
 const { Post, Tag } = require('@models');

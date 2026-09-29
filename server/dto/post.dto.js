@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { parseId, paginate } = require('./common.dto');
 
 // ========== 创建文章 ==========

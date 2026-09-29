@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 
 const { Admin } = require('@models');
 const { loginDTO } = require('@dto/auth.dto');

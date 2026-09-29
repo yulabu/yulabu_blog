@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 
 function validateAdminName(admin_name) {
   const name = (admin_name || '').trim();

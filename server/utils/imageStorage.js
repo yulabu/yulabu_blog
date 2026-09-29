@@ -1,7 +1,7 @@
 const fs = require('fs').promises
 const path = require('path')
 const sharp = require('sharp')
-const AppError = require('@middleware/AppError')
+const AppError = require('@errors/AppError')
 const { UPLOAD_DIR, THUMB_WIDTH, IMAGE_QUALITY } = require('@config/image')
 
 const ALLOWED_FORMATS = ['jpeg', 'jpg', 'png', 'webp']

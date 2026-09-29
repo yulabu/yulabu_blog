@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { MulterError } = require('multer');
 const { MAX_FILE_SIZE, MAX_FILES } = require('@middleware/imageUpload');
 

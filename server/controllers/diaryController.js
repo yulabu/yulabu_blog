@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { Diary, Image } = require('@models');
 const { createDiaryDTO, updateDiaryDTO, diaryIdDTO } = require('@dto/diary.dto');
 const { diaryDetail, diaryList } = require('@vo/diary.vo');

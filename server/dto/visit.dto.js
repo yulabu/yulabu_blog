@@ -1,4 +1,4 @@
-const AppError = require('@middleware/AppError');
+const AppError = require('@errors/AppError');
 const { paginate } = require('./common.dto');
 
 // ========== 记录访问 ==========
