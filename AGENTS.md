@@ -62,7 +62,10 @@ cd /var/www/yulabu_blog/server && node scripts/sync-schema.js
 # 验证对外 OG / 友链抓图链路
 curl -s https://blog.yulabu.cn/ | grep -o 'og:image'
 curl -I https://blog.yulabu.cn/og-image.jpg
-pm2 logs blog-server --err                         # 抓图/限流类错误看这里
+pm2 logs blog-server --err                         # 5xx / 限流命中看这里（4xx 看 nginx access log）
+pm2 logs blog-server                               # 启动、GC、统计聚合、备份进度
+# 日志轮转（PM2 自身没有轮转，不装会无限增长）
+pm2 install pm2-logrotate && pm2 set pm2-logrotate:max_size 10M && pm2 set pm2-logrotate:retain 7
 # 证书续期（已配置定时任务，一般无需手动）
 certbot renew --dry-run
 注意事项
@@ -118,6 +121,7 @@ certbot renew --dry-run
 
 ### 5. 后端代码约定
 - 校验集中在 server/dto/*.dto.js（白名单过滤）；异常用 server/errors/AppError.js 抛 400/404
+- **错误出口唯一**：一律 `throw`（含 auth 中间件的 401），由 `middleware/errorHandler.js` 统一出响应，别在中间件/控制器里自己 `res.status(4xx).json()`；错误响应形状只在 `errors/contract.js`、日志行格式只在 `utils/log.js`；哪些错误记日志、记到哪，见 server/README.md「错误处理与日志」（铁律：5xx 必记 stderr、4xx 不记、绝不记请求体与 Authorization）
 - 响应统一经 server/vo/*.vo.js 组装（相对路径补 /uploads/ 前缀等）
 - /api/admin/* 受 auth 中间件保护
 - app.js 已设 trust proxy 'loopback'（express-rate-limit 8.x 必需，否则报 ERR_ERL_UNEXPECTED_X_FORWARDED_FOR）

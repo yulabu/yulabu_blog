@@ -137,7 +137,13 @@ async function dumpDatabase() {
     await fsp.unlink(outPath).catch(() => {});
     throw e;
   } finally {
-    await fsp.unlink(cnfPath).catch(() => {});
+    // 这个临时 cnf 里含数据库账号密码（建时 chmod 600）：删除失败必须留痕，
+    // 否则凭据可能静默留在磁盘上而无人知道
+    await fsp.unlink(cnfPath).catch((err) => {
+      if (err.code !== 'ENOENT') {
+        console.error(`[backup] 临时凭据文件删除失败（内含 DB 凭据，请手工删除）: ${cnfPath} :: ${err.message}`);
+      }
+    });
   }
 }
 
@@ -262,7 +268,12 @@ async function streamExportBackup(filename, res) {
 
     // 粗略预估包体积：webp 本身已压缩，tar.gz ≈ 原体积；预留 128MB 余量
     const { totalSize } = await walkStats(UPLOADS_MIRROR_DIR);
-    const free = await freeDiskBytes().catch(() => Number.POSITIVE_INFINITY);
+    // df 失败被当成「磁盘无限大」会让下面那次余量检查静默失效（导出可能把盘写满）。
+    // 留痕但仍放行：不因为测量失败就拒绝「导出备份」这个正常操作
+    const free = await freeDiskBytes().catch((err) => {
+      console.warn(`[backup] 读取磁盘余量失败，本次跳过空间检查：${err.message}`);
+      return Number.POSITIVE_INFINITY;
+    });
     const needBytes = totalSize + dumpSize + 128 * 1024 * 1024;
     if (free < needBytes) {
       throw new AppError(507, `磁盘剩余空间不足（打包约需 ${Math.round((totalSize + dumpSize) / 1024 / 1024)}MB），导出已取消`);

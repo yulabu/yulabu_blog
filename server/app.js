@@ -140,7 +140,11 @@ app.get('/', (req, res) => {
   res.send('Hello, Blog Backend!');
 });
 
-// 错误处理中间件，需在所有路由之后使用
+// 未命中路由：JSON 404 终结器（它是终结器不是错误处理器，挂在 errorHandler 之前）
+const notFound = require('@middleware/notFound');
+app.use(notFound);
+
+// 错误处理中间件，需在所有路由之后，且必须是最后一个
 const errorHandler = require('@middleware/errorHandler');
 app.use(errorHandler);
 

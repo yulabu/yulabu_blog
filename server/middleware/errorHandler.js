@@ -1,68 +1,38 @@
-const AppError = require('@errors/AppError');
-const { MulterError } = require('multer');
-const { MAX_FILE_SIZE, MAX_FILES } = require('@middleware/imageUpload');
+const { translate } = require('@errors/translate');
+const { errorBody } = require('@errors/contract');
+const { errorLine } = require('@utils/log');
 
-// 把字节上限写成「5MB / 20MB」这类文案，避免提示里只有一句「超过限制」让人不知道上限是多少
-function mbText(bytes) {
-  return `${Math.round((bytes / (1024 * 1024)) * 100) / 100}MB`;
-}
-
+// 全站唯一的错误出口（app.js 里最后一个 app.use）。四步，顺序即语义：
+//   ① 响应已开始 → 交回 Express 默认处理器
+//   ② 翻译表命中 → 用翻译结果（第三方错误 → { status, message }）
+//   ③ 通用兜底 → 带 4xx 语义的框架错误 / 无法识别的错误（结构性排在整张表之后）
+//   ④ 写响应；日志策略只在这一处按最终状态码判定（5xx 记、4xx 不记）
+//
+// 约定：所有业务错误靠 throw（全站没有一处手工 next(err)，Express 5 会自动接住 async 抛错）。
+// 签名必须是 4 个参数——Express 靠参数个数识别错误处理中间件，不要把 next 当未使用变量删掉。
 function errorHandler(err, req, res, next) {
-  if (err instanceof AppError) {
-    return res.status(err.status).json({ message: err.message });
+  // Express 官方要求：headers 已发出时必须交回默认处理器（默认处理器会中断连接）。
+  // 本项目有流式端点（备份导出把 tar 直接 pipe 到 res），这不是理论情况
+  if (res.headersSent) {
+    return next(err);
   }
 
-  if (err instanceof MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({ message: `单张图片不能超过 ${mbText(MAX_FILE_SIZE)}` });
-    }
-    if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(413).json({ message: `单次最多上传 ${MAX_FILES} 张图片` });
-    }
-    // 文件字段名不对（或 upload.single 收到多张）。以前这里直接回英文 Unexpected field，
-    // 用户看到英文提示完全无从下手；具体字段名各接口不同（images / image），提示里不写死
-    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ message: '上传字段名不正确，请从页面上传入口重新上传' });
-    }
-    return res.status(400).json({ message: err.message });
+  const hit = translate(err);
+
+  // 兜底只看 err.status/statusCode 里的 4xx：刻意只放 4xx 通过——5xx 与无 status 的
+  // 意外错误仍走 500，不能被伪装成客户端错误
+  const claimed = Number(err.status || err.statusCode);
+  const status = hit ? hit.status : (claimed >= 400 && claimed < 500 ? claimed : 500);
+  const message = hit ? hit.message : (status === 500 ? '服务器内部错误' : '请求无效');
+
+  // 日志策略的唯一判据。5xx 必记，且**包含 AppError(5xx)**——旧实现对 AppError 早返回，
+  // 备份链那四句运维级失败（缺 mysqldump / dump 产物异常 / 磁盘不足 / 打包失败）
+  // 在日志里完全看不见，与「5xx 必须可追溯」直接冲突
+  if (status >= 500) {
+    console.error(`${errorLine(req, status, err)}\n${err.stack || ''}`);
   }
 
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ message: '请求格式错误' });
-  }
-
-  // body-parser 自己抛的错误带 4xx status（请求体超限 413、不支持的 charset 415），
-  // 以前没有对应分支，一律掉到最后那档、被当成"服务器内部错误"。
-  // app.js 的 express.json 限 2mb，nginx 的 client_max_body_size 是 10m（见 deploy/astro.md），
-  // 所以 2mb~10m 之间的请求会原样打到 Express 并由这里接住
-  if (err.type === 'entity.too.large') {
-    return res.status(413).json({ message: '请求体过大（正文过长或单次提交数据过多）' });
-  }
-  if (err.type === 'charset.unsupported') {
-    return res.status(415).json({ message: '不支持的字符集' });
-  }
-  // 兜住其余带 4xx 语义的框架错误（http-errors 系）。刻意只放 4xx 通过：
-  // 5xx 与无 status 的意外错误仍然走下面的兜底，不能被伪装成客户端错误
-  const status = err.status || err.statusCode;
-  if (status >= 400 && status < 500) {
-    return res.status(status).json({ message: '请求无效' });
-  }
-
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    return res.status(409).json({ message: '数据已存在，请勿重复提交' });
-  }
-
-  if (err.name === 'SequelizeValidationError') {
-    const msg = err.errors?.[0]?.message || '数据校验失败';
-    return res.status(400).json({ message: msg });
-  }
-
-  if (err.name === 'SequelizeForeignKeyConstraintError') {
-    return res.status(400).json({ message: '关联数据不存在' });
-  }
-
-  console.error('服务器内部错误:', err);
-  res.status(500).json({ message: '服务器内部错误' });
+  res.status(status).json(errorBody(message));
 }
 
 module.exports = errorHandler;

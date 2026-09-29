@@ -236,9 +236,9 @@ node seed.js
 ### 请求处理流程
 
 ```
-请求 → 路由 → auth 中间件 → Controller → DTO 校验 → Model → VO 格式化 → 响应
-                                          ↓ 异常
-                                errorHandler 统一兜底
+请求 → 路由（未命中 → notFound：JSON 404） → auth 中间件 → Controller → DTO 校验 → Model → VO 格式化 → 响应
+                                                        ↓ 抛错（throw AppError / 框架错误）
+                                              errorHandler 统一兜底（唯一出口）+ 5xx 记 stderr
 ```
 
 ### 各层职责
@@ -252,8 +252,43 @@ node seed.js
 | VO | 转换为前端友好的驼峰 JSON |
 | utils/image | 图片保存、文章图片同步、临时目录清理 |
 
-### 错误处理
+### 错误处理（唯一出口）
 
-- 业务错误统一使用 `throw new AppError(status, message)`
-- `errorHandler` 捕获后返回对应状态码与消息
-- Controller 无需手写 try-catch
+- 业务错误统一 `throw new AppError(status, message)`；**不在中间件/控制器里自己写错误响应**——
+  401 也走 throw，429 用 `errors/contract.js` 的形状，形状只有一处定义
+- `middleware/errorHandler.js` 是唯一出口，四步走：`res.headersSent` 守卫（交回 Express 默认处理器，
+  官方要求；本项目有流式导出端点，不是理论情况）→ 翻译表命中 → 通用兜底（**只放 4xx 通过**，
+  5xx 与无 status 的意外错误一律 500，不许伪装成客户端错误）→ 写响应
+- 翻译表 `errors/translate/*` 把第三方错误映射成 `{ status, message }`：
+  - multer：单张超限 413 / 张数超限 413 / 字段名不对 400（未逐码映射的码 → 400 中文通用文案）
+  - body-parser：JSON 语法 400 / 请求体超限 413 / charset 415
+  - Sequelize：唯一约束 **409** / 外键 400 / 校验 400 / **连接类 503**（一个 ConnectionError 覆盖 7 个子类）
+  - 新增错误源 = 加一个文件 + 在 `errors/translate/index.js` 数组里加一行
+- 两条顺序约束（**具体类必须排在基类之前**）：`UniqueConstraintError` 在 `ValidationError` 之前、
+  `ForeignKeyConstraintError` 在 `DatabaseError` 之前——顺序错了状态码会静默退化（409→400、400→500）
+- Controller 无需手写 try-catch（Express 5 自动接住 async 抛错，全站没有一处手工 `next(err)`）
+- 回归护栏：`node scripts/check-errors.js`（23 条断言，零依赖、不连库、不占端口）。依赖升级改了
+  body-parser 的 `err.type` 字符串或 Sequelize 的错误类时，它会立刻红，而不是让错误静默变成 500
+
+### 日志（只写 stdout/stderr，由 PM2 收集）
+
+| 记什么 | 记在哪 | 说明 |
+| --- | --- | --- |
+| 5xx（含 `AppError(5xx)` 与 DB 连接类 503） | stderr → `/root/.pm2/logs/blog-server-error.log` | 带请求上下文 + 堆栈，可定位到请求 |
+| 限流命中（写明哪个桶） | 同上 | 应用层唯一的节流/暴破信号 |
+| 启动、GC、统计聚合、访问日志清理、备份进度 | stdout → `/root/.pm2/logs/blog-server-out.log` | 定时任务启动时先跑一次再进周期 |
+| 4xx 业务拒绝 | **不记** | nginx access log 已有状态码/IP/UA，应用层重复记只会淹没真信号 |
+| 静态资源 `/uploads/*` | **不记** | 同上 |
+| 请求体、`Authorization` 头 | **绝不记** | 登录与改密接口的 body 是明文密码 |
+
+行格式唯一出处 `utils/log.js`（时间戳带 `+08:00` 偏移，便于与 nginx 的时间戳对上）：
+
+```
+[err]  2026-09-29T20:15:03.123+08:00 GET /api/admin/backups 500 ip=203.0.113.7 name=SequelizeConnectionRefusedError :: <message>
+[warn] 2026-09-29T20:15:03.123+08:00 限流命中 login ip=203.0.113.7 POST /api/auth/login
+```
+
+- **不自己写文件日志、不引日志库**：PM2 负责收集，轮转靠 `pm2-logrotate`（生产配置见
+  `deploy/astro.md` 第八节「日志与运行时环境」）
+- `AppError` 的 message 会**原样返回给客户端**（含 5xx）：只写可执行的人话
+  （例「未找到 mysqldump，请先安装 mariadb-client」），绝不塞堆栈、密钥、内部路径

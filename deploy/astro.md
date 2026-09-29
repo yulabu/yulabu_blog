@@ -149,3 +149,45 @@ cd frontend/home && npm install && npm run build
 - admin 的上传（编辑器粘贴多张、导入 Markdown 附图片）由前端**分片串行**发送，每片 ≤10 张且 ≤8MB——所以张数/总量上限不再是用户能撞到的墙，它们是护栏；每片都落在 nginx 的 10m 与后端 20MB 之内
 - nginx 若小于后端的 `UPLOAD_MAX_TOTAL_SIZE`，超限时用户看到的是 nginx 的 HTML 413（前端只显示「上传失败」），后端写好的文案被跳过
 - 长正文走 JSON（2mb），图片走 multipart，两者额度互不影响
+
+## 八、日志与运行时环境（2026-09 补）
+
+应用只往 stdout/stderr 写，由 PM2 收集——**不自己写文件日志**（避免自管轮转与并发写）。完整策略（哪些记、行格式）见 `server/README.md` 的「错误处理与日志」。
+
+| 日志 | 位置 | 内容 |
+| --- | --- | --- |
+| 应用错误 | `/root/.pm2/logs/blog-server-error.log` | 5xx（含 AppError(5xx) 与 DB 连接类 503）、限流命中 warn |
+| 应用常规 | `/root/.pm2/logs/blog-server-out.log` | 启动、GC / 统计聚合 / 访问日志清理、备份进度 |
+| 前端 SSR | `/root/.pm2/logs/blog-web-{out,error}.log` | Astro SSR 进程输出 |
+| 请求级 | nginx access log | 状态码 / IP / UA / 耗时（4xx 只看这里，应用层刻意不记） |
+| 备份作业 | `/var/log/blog-backup.log`（cron 重定向） | 每日 04:00 备份 CLI |
+
+维护命令（**当前 pm2-logrotate 未安装、NODE_ENV 未设**，两者都建议补）：
+
+```bash
+# 1) 日志轮转（PM2 自身没有轮转，不装会无限增长）
+pm2 install pm2-logrotate
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 7
+pm2 set pm2-logrotate:compress true
+
+# 2) 固定 NODE_ENV=production（Express 默认处理器在 production 下不把堆栈写进响应体；
+#    本项目自己的 errorHandler 从不外发堆栈，所以这条属补强而非必需）
+NODE_ENV=production pm2 restart blog-server --update-env
+pm2 save
+
+# 3) 排查错误（应用只记 5xx，4xx/429 看 nginx access log）
+pm2 logs blog-server --err
+grep '^\[err\]' /root/.pm2/logs/blog-server-error.log | tail -50
+```
+
+日志行格式（唯一出处 `server/utils/log.js`，时间戳带 +08:00 偏移以便与 nginx 对上）：
+
+```
+[err]  2026-09-29T20:15:03.123+08:00 GET /api/admin/backups 500 ip=203.0.113.7 name=SequelizeConnectionRefusedError :: <message> + 堆栈
+[warn] 2026-09-29T20:15:03.123+08:00 限流命中 login ip=203.0.113.7 POST /api/auth/login
+```
+
+- `pm2 flush blog-server` 会清空日志文件（排查前先确认不需要保留现场）
+- 临时排查完记得 `start` 时用 `--time` 可给 PM2 自己的输出加时间戳；应用侧的日志行本来就有时间戳，不依赖它
+

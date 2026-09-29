@@ -1,17 +1,21 @@
 const jwt = require('jsonwebtoken');
+const AppError = require('@errors/AppError');
 
+// 只验签，不查库：token 载荷直接给下游用（adminAccountController 靠 admin_id 判「只能改自己密码」）。
+// 取舍：删掉管理员后旧 token 仍有效到 7 天过期——本项目不做实时吊销，规模上不值得为此查库。
+// 401 一律 throw（由 errorHandler 统一出响应）：错误出口只有一处，别在这里自己写 JSON
 module.exports = (req, res, next) => {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
-    return res.status(401).json({ message: '未登录，请先登录' });
+    throw new AppError(401, '未登录，请先登录');
   }
 
   const token = header.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.admin = decoded;
-    next();
+    req.admin = jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
-    return res.status(401).json({ message: 'token 无效或已过期' });
+    throw new AppError(401, 'token 无效或已过期');
   }
+
+  next();
 };

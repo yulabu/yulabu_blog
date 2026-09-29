@@ -5,7 +5,7 @@ const { saveImageFile, deleteImageFiles } = require('@utils/imageStorage')
 const { Image, Post, Column, PostImage, Diary } = require('@models')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
 const { imageVO } = require('@vo/image.vo')
-const { MAX_TOTAL_SIZE } = require('@middleware/imageUpload')
+const { UPLOAD_MAX_TOTAL_SIZE } = require('@config/image')
 
 // 批量上传图片：转码落盘 + 写入 image 记录（纯上传，不绑定业务；引用由业务表持有）
 const uploadBatch = async (req, res) => {
@@ -20,8 +20,8 @@ const uploadBatch = async (req, res) => {
     for (const file of files) {
       totalSize += (await fs.stat(file.path)).size
     }
-    if (totalSize > MAX_TOTAL_SIZE) {
-      throw new AppError(413, '单次上传总大小不能超过 ' + (MAX_TOTAL_SIZE / (1024 * 1024)).toFixed(2) + 'MB')
+    if (totalSize > UPLOAD_MAX_TOTAL_SIZE) {
+      throw new AppError(413, '单次上传总大小不能超过 ' + (UPLOAD_MAX_TOTAL_SIZE / (1024 * 1024)).toFixed(2) + 'MB')
     }
 
     const images = []

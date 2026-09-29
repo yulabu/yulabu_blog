@@ -106,6 +106,12 @@ async function cleanupOldTmpFiles() {
   try {
     files = await fs.readdir(TMP_DIR)
   } catch (err) {
+    // ENOENT = 临时目录还不存在（只有过上传才有），属正常；其它错误必须留痕：
+    // 本函数返回 0，而调用方（app.js 的 runGCSafe）只在非 0 时才打日志，
+    // 所以读取失败会表现为「临时文件清理长期静默失效」
+    if (err.code !== 'ENOENT') {
+      console.error(`临时文件清理失败：无法读取 ${TMP_DIR}`, err.message)
+    }
     return 0
   }
 
