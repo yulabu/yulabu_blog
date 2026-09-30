@@ -3,7 +3,8 @@ require('module-alias/register');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const sequelize = require('@config/database');
+const env = require('@config/env');
+const { sequelize } = require('@config/database');
 const { publicLimiter, staticLimiter, adminLimiter } = require('@middleware/rateLimiter');
 
 const app = express();
@@ -149,7 +150,7 @@ const errorHandler = require('@middleware/errorHandler');
 app.use(errorHandler);
 
 // 启动服务器
-const PORT = process.env.PORT || 3000;
+const PORT = env.port;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

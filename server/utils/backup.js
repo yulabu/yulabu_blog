@@ -7,6 +7,7 @@ const { spawn, execFile } = require('child_process');
 const AppError = require('@errors/AppError');
 const { UPLOAD_DIR } = require('@config/image');
 const { BACKUP_DIR, BACKUP_KEEP } = require('@config/backup');
+const { dbConfig } = require('@config/database');
 
 // 备份布局：<BACKUP_DIR>/db/blog-*.sql.gz + <BACKUP_DIR>/uploads/（rsync 镜像）
 // 导出包时会在 BACKUP_DIR 根下生成 restore.sh 与 README-恢复说明.txt 一并打包
@@ -70,15 +71,17 @@ async function resolveDumpBin() {
   throw new AppError(500, '未找到 mariadb-dump / mysqldump，请先安装 mariadb-client');
 }
 
-// 凭据经 defaults-extra-file 传入（必须是第一个参数），避免密码出现在进程命令行
+// 凭据经 defaults-extra-file 传入（必须是第一个参数），避免密码出现在进程命令行。
+// 值只从 dbConfig 取——与应用连的是同一份参数（改前这里自己读 env 并自带默认值，
+// 缺 DB_NAME 时应用起不来、dump 却会静默去备一个叫 'blog' 的库）
 async function writeDefaultsExtraFile() {
   const cnfPath = path.join(os.tmpdir(), `blog-dump-${process.pid}-${Date.now()}.cnf`);
   const content = [
     '[client]',
-    `host=${process.env.DB_HOST || '127.0.0.1'}`,
-    `port=${process.env.DB_PORT || '3306'}`,
-    `user=${process.env.DB_USER || 'root'}`,
-    `password=${process.env.DB_PASSWORD || ''}`,
+    `host=${dbConfig.host}`,
+    `port=${dbConfig.port}`,
+    `user=${dbConfig.user}`,
+    `password=${dbConfig.password}`,
     ''
   ].join('\n');
   await fsp.writeFile(cnfPath, content, { mode: 0o600 });
@@ -114,7 +117,7 @@ async function dumpDatabase() {
       '--quick',
       '--default-character-set=utf8mb4',
       ...(isMysql ? ['--set-gtid-purged=OFF'] : []),
-      process.env.DB_NAME || 'blog'
+      dbConfig.name
     ];
     await new Promise((resolve, reject) => {
       const dump = spawn(bin, args);

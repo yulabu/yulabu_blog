@@ -1,7 +1,7 @@
 require('module-alias/register');
 require('dotenv').config();
 const { QueryTypes } = require('sequelize');
-const sequelize = require('@config/database');
+const { sequelize } = require('@config/database');
 const { DailyStat } = require('@models');
 
 // 从 visit_log 全量重算每日 PV/UV 并 UPSERT 到 daily_stat。

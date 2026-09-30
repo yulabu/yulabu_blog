@@ -1,7 +1,7 @@
 require('module-alias/register');
 require('dotenv').config();
 const { QueryTypes } = require('sequelize');
-const sequelize = require('@config/database');
+const { sequelize } = require('@config/database');
 const { Image, Post, Column, PostImage } = require('@models');
 const { extractReferencedImages, storageKeyFromUrl } = require('@utils/image');
 const { ORPHAN_RECONCILE_SQL } = require('@utils/gc');

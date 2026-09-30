@@ -1,6 +1,6 @@
 require('module-alias/register');
 require('dotenv').config();
-const sequelize = require('@config/database');
+const { sequelize } = require('@config/database');
 
 // 一次性幂等结构同步：补齐 sync() 不做的 ALTER（新增列 + ENUM 追加）
 // 设计约束：

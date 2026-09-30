@@ -13,11 +13,16 @@ const os = require('os');
 const fs = require('fs');
 
 function main() {
-  // 必须在 require 业务模块之前设置：config/image.js 在 require 期就读 env
+  // 必须在 require 业务模块之前设置：config/env.js 与 config/image.js 都在 require 期求值 env
   process.env.UPLOAD_DIR = path.join(os.tmpdir(), 'check-errors-uploads');
   delete process.env.UPLOAD_MAX_SIZE;
   delete process.env.UPLOAD_MAX_TOTAL_SIZE;
   delete process.env.UPLOAD_MAX_FILES;
+  // config/env.js 的必填项占位值：本脚本不连库、不验签，但 require @config/image（经
+  // errors/translate/multer）会连带求值 env.js 的必填校验。不给真值 —— 这里要的就是「能加载」
+  process.env.DB_NAME = process.env.DB_NAME || 'check-errors';
+  process.env.DB_USER = process.env.DB_USER || 'check-errors';
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'check-errors';
 
   require('module-alias/register');
 

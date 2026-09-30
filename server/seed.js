@@ -2,11 +2,11 @@ require('module-alias/register');
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const { Admin, sequelize } = require('@models');
+const { seed: seedAdmin } = require('@config/env');
 
 async function seed() {
   await sequelize.sync();
-  const name = process.env.SEED_ADMIN_NAME || 'yulabu';
-  const password = process.env.SEED_ADMIN_PASSWORD || 'yulabu123';
+  const { name, password } = seedAdmin;
   const hash = await bcrypt.hash(password, 12);
   await Admin.create({
     admin_name: name,

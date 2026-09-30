@@ -5,6 +5,7 @@ const AppError = require('@errors/AppError');
 const { Admin } = require('@models');
 const { loginDTO } = require('@dto/auth.dto');
 const { loginResult } = require('@vo/auth.vo');
+const { secret: jwtSecret, expiresIn: jwtExpiresIn } = require('@config/auth');
 
 exports.login = async (req, res) => {
   const { admin_name, admin_password } = loginDTO(req.body);
@@ -21,8 +22,8 @@ exports.login = async (req, res) => {
 
   const token = jwt.sign(
     { admin_id: admin.admin_id, admin_name: admin.admin_name },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
+    jwtSecret,
+    { expiresIn: jwtExpiresIn }
   );
 
   res.json(loginResult(token, admin));

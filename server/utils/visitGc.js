@@ -24,7 +24,7 @@ module.exports = { cleanupOldVisitLogs, RETENTION_DAYS };
 
 // 支持直接运行：node utils/visitGc.js
 if (require.main === module) {
-  const sequelize = require('@config/database');
+  const { sequelize } = require('@config/database');
   (async () => {
     try {
       await sequelize.authenticate();

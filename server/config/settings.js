@@ -1,4 +1,9 @@
-// 站点设置（setting 表）的键定义。新增一个设置项只需在这里登记一行——
+// 站点设置（setting 表）的键定义与编解码——config/ 里的「动态配置」半边。
+// env 那半边（env.js / database / image / auth / backup）由运维在部署时定；这半边由管理员在后台定
+// （存 DB，缺行即默认值）。二者都是「外部输入」，所以都在 config/。内部实现常量（限流阈值、GC 保留期、
+// 抓图超时等）刻意不进这里——它们随代码走，不进 config 的判据见 AGENTS.md「config/ 的职责边界」。
+//
+// 新增一个设置项只需在这里登记一行——
 // 表结构是 key/value，不需要 ALTER，也不需要给老库补数据（缺行即用 default）。
 // public: true 的键会由 GET /api/settings 暴露给前台；私有项不要标 public。
 const SETTINGS_SCHEMA = {
