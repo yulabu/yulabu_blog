@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
 const { syncPostImages, resolveImageIdByUrl } = require('@services/image/derive');
+const { beijingYearMonth } = require('@utils/date');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
@@ -103,9 +104,10 @@ exports.getArchive = async (req, res) => {
 
   const grouped = {};
   for (const post of posts) {
-    const date = new Date(post.createdAt);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
+    // 按北京自然月分组：createdAt 是绝对时刻，年月必须由 utils/date 派生——直接用
+    // getFullYear()/getMonth() 取的是进程本地时区，UTC 进程下北京时间月初 00:00–08:00
+    // 发的文章会归到上个月（实改过）。响应形状与字段名不变
+    const { year, month } = beijingYearMonth(post.createdAt);
 
     if (!grouped[year]) grouped[year] = {};
     if (!grouped[year][month]) grouped[year][month] = [];

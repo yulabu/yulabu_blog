@@ -24,4 +24,13 @@ function beijingDayStart(dateStr) {
   return new Date(`${dateStr}T00:00:00${TZ_OFFSET}`);
 }
 
-module.exports = { BEIJING_OFFSET_MS, beijingDateStr, shiftDateStr, beijingDayStart };
+// 指定时刻（默认当前）落在北京的哪一年哪一月（按北京自然月分组用，如文章归档）。
+// 参数是绝对时刻（Sequelize 取出的 Date 就是绝对时刻），年月必须由 beijingDateStr 派生——
+// 直接 getFullYear()/getMonth() 用的是进程本地时区，UTC 进程下北京时间月初 00:00–08:00
+// 的记录会落到上个月
+function beijingYearMonth(date = new Date()) {
+  const [year, month] = beijingDateStr(date).split('-').map(Number);
+  return { year, month };
+}
+
+module.exports = { BEIJING_OFFSET_MS, beijingDateStr, shiftDateStr, beijingDayStart, beijingYearMonth };

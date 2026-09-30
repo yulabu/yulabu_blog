@@ -4,7 +4,12 @@ const { recordVisitDTO, listVisitsDTO } = require('@dto/visit.dto');
 const { VisitLog, Post, DailyStat } = require('@models');
 const { visitLogsVO, visitStatsVO } = require('@vo/visit.vo');
 const { Op } = require('sequelize');
-const { beijingDateStr, beijingDayStart } = require('@utils/date');
+const { beijingDateStr, shiftDateStr, beijingDayStart } = require('@utils/date');
+
+// 后台日志筛选的时间窗：相对今天的北京自然日偏移（today=含今天 1 天，7days=含今天 7 天）。
+// 与「今日 PV/UV」卡、工作台图表、visitGc 的保留期同源；改前用进程本地零点与 now-N*24h
+// 滚动窗口，UTC 进程下与同页统计卡差 8 小时（实改过）
+const RANGE_START_OFFSET_DAYS = { today: 0, '7days': -6, '30days': -29 };
 
 // ========== 记录访问（公开接口，前端文章页 fire-and-forget 调用） ==========
 exports.recordVisit = async (req, res) => {
@@ -30,19 +35,12 @@ exports.recordVisit = async (req, res) => {
 exports.getVisits = async (req, res) => {
   const { page, limit, offset, dateRange, ip, post_id } = listVisitsDTO(req.query);
 
-  // 构建时间范围条件
+  // 构建时间范围条件（listVisitsDTO 已把 dateRange 归一到四个白名单值，查不到即 'all' 不过滤）
   const where = {};
-  if (dateRange !== 'all') {
-    const now = new Date();
-    let cutoff;
-    if (dateRange === 'today') {
-      cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (dateRange === '7days') {
-      cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    } else if (dateRange === '30days') {
-      cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    }
-    if (cutoff) where.created_at = { [Op.gte]: cutoff };
+  const startOffset = RANGE_START_OFFSET_DAYS[dateRange];
+  if (startOffset !== undefined) {
+    const startDateStr = shiftDateStr(beijingDateStr(), startOffset);
+    where.created_at = { [Op.gte]: beijingDayStart(startDateStr) };
   }
 
   if (ip) where.ip_address = { [Op.like]: `%${ip}%` };

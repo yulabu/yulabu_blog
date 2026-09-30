@@ -91,31 +91,10 @@ async function syncSchema() {
     }
   }
 
-  // visit_log 表
-  {
-    const [tables] = await sequelize.query(
-      `SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'visit_log' LIMIT 1`
-    );
-    if (tables.length === 0) {
-      await sequelize.query(`
-        CREATE TABLE \`visit_log\` (
-          \`visit_id\` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-          \`post_id\` BIGINT UNSIGNED NULL,
-          \`ip_address\` VARCHAR(45) NOT NULL COMMENT '访客IP',
-          \`user_agent\` VARCHAR(512) NULL COMMENT '浏览器UA',
-          \`referrer\` VARCHAR(512) NULL COMMENT '来源页',
-          \`page_path\` VARCHAR(256) NOT NULL COMMENT '访问路径',
-          \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          FOREIGN KEY (\`post_id\`) REFERENCES \`post\`(\`post_id\`) ON DELETE SET NULL,
-          INDEX \`idx_post_id\` (\`post_id\`),
-          INDEX \`idx_created_at\` (\`created_at\`),
-          INDEX \`idx_ip\` (\`ip_address\`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-      `);
-      console.log('[sync-schema] visit_log 表已创建');
-    }
-  }
+  // visit_log 的建表与索引由模型负责（models/VisitLog.js 的 indexes + models/index.js 的
+  // belongsTo 外键）：sync() 建表时内联外键，并会对**已存在**的表补齐模型声明但库中缺失的索引。
+  // 这里原有一份 CREATE TABLE visit_log（带 idx_post_id / idx_created_at / idx_ip），因 sync()
+  // 总是先建表而永不执行，属第二份 DDL 出处，已删除——表结构只认模型。
 
   // daily_stat 表（每日访问统计，由 utils/dailyStat.js 全量重算 UPSERT；独立于 90 天访问日志）
   {

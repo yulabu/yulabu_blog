@@ -4,7 +4,7 @@
 // 就会在几次迭代后悄悄失效（utils/ 就是这么变成杂物抽屉的）。本脚本静态扫描 require 字符串，
 // **不 require 被测文件**——config/*.js 在 require 期会求值 env 并可能抛错，扫文本才是零副作用。
 //
-// 四条断言：
+// 五条断言：
 //  ① process.env 只允许出现在 config/env.js（全项目唯一 env 出口）
 //     —— 例外 scripts/check-errors.js：它必须在 require 业务模块之前注入占位值（见该文件注释）
 //  ② 依赖只能向下：每层禁止依赖上层的表见 LAYER_RULES（config 是共享内核，不依赖任何项目模块）
@@ -12,6 +12,9 @@
 //  ④ utils/ 必须是纯函数：禁 I/O（fs / child_process）、禁第三方运行时（sharp / sequelize）、
 //     禁进程引导（dotenv / module-alias）、禁业务数据（@models / @services / @jobs）。
 //     判据：同一输入必得同一输出、不碰磁盘/数据库/网络/子进程 —— 碰了的属于 services 或 jobs
+//  ⑤ 本地零点不得冒充北京零点：取当天零点只允许出现在 utils/date.js。用进程本地零点取
+//     「今天」在生产（进程时区可能是 UTC）会与库里的 +08:00 墙钟错开 8 小时——访问日志
+//     筛选、工作台「今日新增」、归档分组三处都因此实修过
 //
 // 特性：零依赖、不连库、不占端口；退出码非 0 = 有违规。
 const fs = require('fs');
@@ -55,6 +58,10 @@ const UTILS_FORBIDDEN_REQUIRES = new Set([
   'express', 'multer', 'sharp', 'sequelize', 'mysql2', 'dotenv', 'module-alias',
   '@models', '@services', '@jobs', '@middleware', '@controllers', '@routes'
 ]);
+
+// 断言⑤：允许取本地零点的文件（北京日期只有 utils/date.js 一个实现，别处一律用它）
+const LOCAL_MIDNIGHT_ALLOWLIST = new Set(['utils/date.js']);
+const LOCAL_MIDNIGHT_RE = /\bsetHours\s*\(/;
 
 const REQUIRE_RE = /require\(\s*['"]([^'"]+)['"]\s*\)/g;
 
@@ -104,6 +111,11 @@ function main() {
       violations.push(`① ${rel} 读了环境变量 —— 只允许 config/env.js 读`);
     }
 
+    // 断言⑤：本地零点不得冒充北京零点（见文件头说明）
+    if (LOCAL_MIDNIGHT_RE.test(code) && !LOCAL_MIDNIGHT_ALLOWLIST.has(rel)) {
+      violations.push(`⑤ ${rel} 用进程本地零点取「今天」 —— 北京日期一律走 @utils/date（唯一入口）`);
+    }
+
     // 断言②③④：依赖方向与 utils 纯度
     for (const match of code.matchAll(REQUIRE_RE)) {
       const target = match[1];
@@ -134,7 +146,7 @@ function main() {
     for (const v of violations) console.error('  ✗ ' + v);
     process.exit(1);
   }
-  console.log(`分层护栏通过：${scanned} 个文件，断言 4 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度）`);
+  console.log(`分层护栏通过：${scanned} 个文件，断言 5 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js）`);
 }
 
 main();

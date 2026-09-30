@@ -1,4 +1,5 @@
 const AppError = require('@errors/AppError');
+const { paginateBySize } = require('./common.dto');
 
 // 日记单图契约：images 最多 1 张（images[0] 即封面，与 cover_image_id 一一对应）。
 // 超出必须报错而非静默截断——静默丢弃会让多出的图片变成无指针孤儿被 GC 回收
@@ -46,4 +47,10 @@ function diaryIdDTO(params) {
   return id;
 }
 
-module.exports = { createDiaryDTO, updateDiaryDTO, diaryIdDTO };
+// ========== 列表分页 ==========
+// 公开列表与后台列表共用（改前两个端点各自 parseInt，pageSize 无上限）
+function listDiariesDTO(query) {
+  return paginateBySize(query, 20);
+}
+
+module.exports = { createDiaryDTO, updateDiaryDTO, diaryIdDTO, listDiariesDTO };

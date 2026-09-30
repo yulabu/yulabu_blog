@@ -33,7 +33,16 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'visit_log',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    // 索引只在这里声明一处：范围查询（后台日志筛选、今日 PV/UV）与 visitGc 的 DELETE 都按
+    // created_at 走。不声明 post_id——它的索引由 belongsTo 外键自带（models/index.js），
+    // 再声明会像 post_image 那样出现两个同列索引；不声明 ip_address——查询是 LIKE '%..%'，
+    // B 树索引用不上。
+    // 注意 sync() 的能力边界：**索引**对已存在的表也会补（showIndex 比对后 addIndex），
+    // 但**列与 ENUM 值**不会，那些仍归 scripts/sync-schema.js
+    indexes: [
+      { fields: ['created_at'] }
+    ]
   });
   return VisitLog;
 };

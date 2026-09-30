@@ -12,12 +12,13 @@ exports.getDashboard = async (req, res) => {
   const published = await Post.count({ where: { post_status: 'published' } });
   const trash = await Post.count({ where: { post_status: 'trash' } });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 「今日新增」必须与下方图表（getDashboardCharts）同源：都按北京自然日。
+  // 改前是 today.setHours(0,0,0,0)（进程本地零点），UTC 进程下与图表当天的柱子差 8 小时窗口
+  const todayStart = beijingDayStart(beijingDateStr());
   const todayCount = await Post.count({
     where: {
       post_status: 'published',
-      created_at: { [Op.gte]: today }
+      created_at: { [Op.gte]: todayStart }
     }
   });
 

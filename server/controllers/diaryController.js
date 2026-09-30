@@ -1,19 +1,18 @@
 const AppError = require('@errors/AppError');
 const { Diary, Image } = require('@models');
-const { createDiaryDTO, updateDiaryDTO, diaryIdDTO } = require('@dto/diary.dto');
+const { createDiaryDTO, updateDiaryDTO, diaryIdDTO, listDiariesDTO } = require('@dto/diary.dto');
 const { diaryDetail, diaryList } = require('@vo/diary.vo');
 const { resolveImageIdByUrl } = require('@services/image/derive');
 
 exports.getPublicDiaries = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const pageSize = parseInt(req.query.pageSize) || 20;
+  const { page, pageSize, offset } = listDiariesDTO(req.query);
 
   const { count, rows } = await Diary.findAndCountAll({
     // 书架的封面走 400px 缩略图（VO 的 coverThumb），见 vo/diary.vo.js
     include: [{ model: Image, as: 'coverImage', attributes: ['thumb_path'] }],
     order: [['createdAt', 'DESC']],
     limit: pageSize,
-    offset: (page - 1) * pageSize
+    offset
   });
 
   res.json({
@@ -26,13 +25,12 @@ exports.getPublicDiaries = async (req, res) => {
 };
 
 exports.getAdminDiaries = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const pageSize = parseInt(req.query.pageSize) || 20;
+  const { page, pageSize, offset } = listDiariesDTO(req.query);
 
   const { count, rows } = await Diary.findAndCountAll({
     order: [['createdAt', 'DESC']],
     limit: pageSize,
-    offset: (page - 1) * pageSize
+    offset
   });
 
   res.json({
