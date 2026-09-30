@@ -2,7 +2,7 @@ const AppError = require('@errors/AppError');
 const { FriendLink } = require('@models');
 const { createFriendLinkDTO, updateFriendLinkDTO, friendLinkIdDTO } = require('@dto/friendLink.dto');
 const { friendLinkDetail, friendLinkList } = require('@vo/friendLink.vo');
-const { fetchOgMeta } = require('@utils/ogImage');
+const { fetchOgMeta } = require('@services/ogImage');
 
 function truncate(str, max) {
   return str.length > max ? str.slice(0, max) : str;

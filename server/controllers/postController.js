@@ -5,7 +5,7 @@ const { sequelize, Post, Tag, ColumnPost, Column, PostImage, Image } = require('
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
-const { syncPostImages, resolveImageIdByUrl } = require('@utils/image');
+const { syncPostImages, resolveImageIdByUrl } = require('@services/image/derive');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {

@@ -3,14 +3,15 @@ require('dotenv').config();
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('@config/database');
 const { Image, Post, Column, PostImage } = require('@models');
-const { extractReferencedImages, storageKeyFromUrl } = require('@utils/image');
-const { ORPHAN_RECONCILE_SQL } = require('@utils/gc');
+const { extractReferencedImages, storageKeyFromUrl } = require('@services/image/derive');
+// 孤儿对账 SQL 从账本模块取（唯一出处），不再借道某个工具的私有实现
+const { ORPHAN_RECONCILE_SQL } = require('@services/image/refs');
 
 // 一次性幂等数据迁移：图片引用从 image.reference_type/reference_id 迁至业务表外键/关联表
 // 设计约束：
 // - URL 匹配是唯一可信依据：业务表存的 /uploads/ URL 与 image.storage_path 一致才建立引用
 //   （绝不按旧 reference_id 盲迁——旧 cover 类型在文章/专栏/日记间共用整数空间，正是本次事故根源）
-// - URL → key 统一走 utils/image.js 的 storageKeyFromUrl（兼容本站绝对域名 / markdown title /
+// - URL → key 统一走 services/image/derive.js 的 storageKeyFromUrl（兼容本站绝对域名 / markdown title /
 //   HTML 实体 / query 后缀），与线上保存逻辑单一来源；重跑只会多建指针不会少建
 // - 旧 reference_type/reference_id 列不清洗，作为回滚保障保留
 // - 重复执行安全（按当前业务数据重建关联，结果收敛）

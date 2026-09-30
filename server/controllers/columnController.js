@@ -1,11 +1,12 @@
 const fs = require('fs').promises;
 const { Op } = require('sequelize');
 const AppError = require('@errors/AppError');
-const { sequelize, Column, ColumnPost, Post, Tag, Image } = require('@models');
+const { sequelize, Column, ColumnPost, Post, Tag } = require('@models');
 const { createColumnDTO, updateColumnDTO, columnIdDTO, columnPostIdsDTO } = require('@dto/column.dto');
 const { columnDetail, columnList, columnPostItem } = require('@vo/column.vo');
-const { resolveImageIdByUrl } = require('@utils/image');
-const { saveImageFile } = require('@utils/imageStorage');
+const { resolveImageIdByUrl } = require('@services/image/derive');
+const { createImageFromUpload } = require('@services/image/upload');
+const { uploadedImageVO } = require('@vo/image.vo');
 
 // 统计每个专栏的文章数
 async function countPostsByColumn(columns) {
@@ -71,19 +72,7 @@ exports.uploadColumnCover = async (req, res) => {
   }
 
   try {
-    const info = await saveImageFile(file.path);
-    const record = await Image.create({
-      storage_path: info.storagePath,
-      thumb_path: info.thumbPath,
-      file_size: info.fileSize
-    });
-    res.json({
-      image: {
-        image_id: record.image_id,
-        url: `/uploads/${info.storagePath}`,
-        thumb_url: `/uploads/${info.thumbPath}`
-      }
-    });
+    res.json({ image: uploadedImageVO(await createImageFromUpload(file.path)) });
   } finally {
     try {
       await fs.unlink(file.path);

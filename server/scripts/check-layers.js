@@ -4,11 +4,14 @@
 // 就会在几次迭代后悄悄失效（utils/ 就是这么变成杂物抽屉的）。本脚本静态扫描 require 字符串，
 // **不 require 被测文件**——config/*.js 在 require 期会求值 env 并可能抛错，扫文本才是零副作用。
 //
-// 三条断言：
+// 四条断言：
 //  ① process.env 只允许出现在 config/env.js（全项目唯一 env 出口）
 //     —— 例外 scripts/check-errors.js：它必须在 require 业务模块之前注入占位值（见该文件注释）
 //  ② 依赖只能向下：每层禁止依赖上层的表见 LAYER_RULES（config 是共享内核，不依赖任何项目模块）
 //  ③ @config/env 只允许 config/ 内部与 app.js / seed.js 引用：消费者一律走 @config/<domain>
+//  ④ utils/ 必须是纯函数：禁 I/O（fs / child_process）、禁第三方运行时（sharp / sequelize）、
+//     禁进程引导（dotenv / module-alias）、禁业务数据（@models / @services / @jobs）。
+//     判据：同一输入必得同一输出、不碰磁盘/数据库/网络/子进程 —— 碰了的属于 services 或 jobs
 //
 // 特性：零依赖、不连库、不占端口；退出码非 0 = 有违规。
 const fs = require('fs');
@@ -17,7 +20,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 // 扫描范围：显式列出（不递归整个仓库，避开 frontend/ 与产物目录）
-const SCAN_DIRS = ['config', 'controllers', 'dto', 'errors', 'middleware', 'models', 'routes', 'utils', 'vo', 'scripts'];
+const SCAN_DIRS = ['config', 'controllers', 'dto', 'errors', 'jobs', 'middleware', 'models', 'routes', 'scripts', 'services', 'utils', 'vo'];
 const SCAN_FILES = ['app.js', 'seed.js'];
 
 // 断言①：允许出现 process.env 的文件（仓库相对路径）
@@ -26,18 +29,32 @@ const ENV_ALLOWLIST = new Set(['config/env.js', 'scripts/check-errors.js']);
 // 断言②：每层禁止依赖的别名前缀。没列出的层（routes / controllers / scripts / 顶层入口）不设限
 const LAYER_RULES = {
   // config = 共享内核：不依赖任何项目模块（只用 node 内置、第三方包、config/ 内部相对引用）
-  config: ['@errors', '@utils', '@models', '@dto', '@vo', '@middleware', '@controllers', '@routes'],
+  config: ['@errors', '@utils', '@models', '@dto', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
   // errors = 共享内核（唯一允许的例外是 @config：errors/translate/multer.js 用上传限额拼错误文案）
-  errors: ['@utils', '@models', '@dto', '@vo', '@middleware', '@controllers', '@routes'],
-  models: ['@utils', '@dto', '@vo', '@middleware', '@controllers', '@routes'],
-  vo: ['@utils', '@models', '@dto', '@middleware', '@controllers', '@routes'],
-  dto: ['@utils', '@models', '@vo', '@middleware', '@controllers', '@routes'],
-  utils: ['@dto', '@vo', '@middleware', '@controllers', '@routes'],
-  middleware: ['@models', '@dto', '@vo', '@controllers', '@routes']
+  errors: ['@utils', '@models', '@dto', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
+  models: ['@utils', '@dto', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
+  // vo / dto = 出参与入参的纯转换。vo 例外允许 @utils：utils 已被断言④ 保证是纯函数，
+  // 而响应里的图片 URL 前缀（@utils/uploadUrl）正是 vo 要用的值（dto 目前不需要，需要时同样放行）
+  vo: ['@models', '@dto', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
+  dto: ['@utils', '@models', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
+  // utils = 纯函数共享内核：只依赖 node 内置与 @config/@errors（纯度另由断言④ 把守）
+  utils: ['@dto', '@vo', '@middleware', '@controllers', '@routes', '@models', '@services', '@jobs'],
+  // services = 领域能力（碰 I/O/DB）：可依赖 models/config/errors/utils，不认识上层与 jobs
+  services: ['@dto', '@vo', '@middleware', '@controllers', '@routes', '@jobs'],
+  // jobs = 定时任务：可依赖 services/models/config/errors/utils，不认识控制器与入参出参
+  jobs: ['@dto', '@vo', '@middleware', '@controllers', '@routes'],
+  middleware: ['@models', '@dto', '@vo', '@controllers', '@routes', '@services', '@jobs']
 };
 
 // 断言③：@config/env 的合法引用方（其余文件一律走 @config/<domain>）
 const ENV_MODULE_ALLOWLIST = new Set(['config/database.js', 'config/image.js', 'config/backup.js', 'config/auth.js', 'app.js', 'seed.js']);
+
+// 断言④：utils/ 里禁止出现的依赖（纯函数才会被各层安全共用）
+const UTILS_FORBIDDEN_REQUIRES = new Set([
+  'fs', 'fs/promises', 'child_process', 'net', 'http', 'https', 'dgram', 'worker_threads',
+  'express', 'multer', 'sharp', 'sequelize', 'mysql2', 'dotenv', 'module-alias',
+  '@models', '@services', '@jobs', '@middleware', '@controllers', '@routes'
+]);
 
 const REQUIRE_RE = /require\(\s*['"]([^'"]+)['"]\s*\)/g;
 
@@ -87,12 +104,18 @@ function main() {
       violations.push(`① ${rel} 读了环境变量 —— 只允许 config/env.js 读`);
     }
 
-    // 断言②③：依赖方向
+    // 断言②③④：依赖方向与 utils 纯度
     for (const match of code.matchAll(REQUIRE_RE)) {
       const target = match[1];
 
       if (target === '@config/env' && !ENV_MODULE_ALLOWLIST.has(rel)) {
         violations.push(`③ ${rel} 直接引用 @config/env —— 请经由 @config/<domain>（或按需登记到白名单）`);
+      }
+
+      // 断言④ 先判：utils 的纯度违规不重复走 ②（同一行只报一次）
+      if (layer === 'utils' && UTILS_FORBIDDEN_REQUIRES.has(target)) {
+        violations.push(`④ ${rel} 依赖 ${target} —— utils/ 只放纯函数（无 I/O、无 DB、无进程引导）；碰了的属于 services/ 或 jobs/`);
+        continue;
       }
 
       if (!target.startsWith('@') || !layer) continue;
@@ -111,7 +134,7 @@ function main() {
     for (const v of violations) console.error('  ✗ ' + v);
     process.exit(1);
   }
-  console.log(`分层护栏通过：${scanned} 个文件，断言 3 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单）`);
+  console.log(`分层护栏通过：${scanned} 个文件，断言 4 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度）`);
 }
 
 main();

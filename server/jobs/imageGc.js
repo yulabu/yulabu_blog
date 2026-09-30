@@ -1,9 +1,14 @@
+// 图片维护任务（job）：孤儿图片回收 + 废弃草稿清理 + 上传临时文件兜底。
+// 由 jobs/index.js 注册（启动即跑、此后每 24 小时）；也可手工触发：node scripts/gc.js
+// 策略常量（宽限期/保留期）留在本文件——外部不能配、只有本任务用，按 config 判据不进 config/
 const fs = require('fs').promises
 const path = require('path')
 const { Op, QueryTypes } = require('sequelize')
 const { sequelize, Image, PostImage } = require('@models')
-const { deleteImageFiles } = require('@utils/imageStorage')
+const { deleteImageFiles } = require('@services/image/store')
 const { TMP_DIR } = require('@config/image')
+// 孤儿对账 SQL 的唯一出处在 services/image/refs.js（与后台图片库的引用判定同源）
+const { ORPHAN_RECONCILE_SQL } = require('@services/image/refs')
 
 // 孤儿图片宽限期：首次确认无引用后 24 小时才物理删除（反悔窗口）
 const ORPHAN_GRACE_MS = 24 * 60 * 60 * 1000
@@ -14,26 +19,6 @@ const ORPHAN_MIN_AGE_MS = 72 * 60 * 60 * 1000
 const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 // 上传临时文件保留期：multer 落盘文件正常秒级被消费，残留仅来自崩溃/中断
 const TMP_MAX_AGE_MS = 60 * 60 * 1000
-
-// 孤儿对账：image 是否被任一业务引用
-// 新增持有图片的业务表时，在此追加一行 LEFT JOIN + 对应 IS NULL 判断即可
-// （友链已退出图片系统：只被友链引用过的图会被正常回收）
-const ORPHAN_RECONCILE_SQL = `
-  SELECT i.image_id AS imageId,
-         i.storage_path AS storagePath,
-         i.thumb_path AS thumbPath,
-         i.orphan_since AS orphanSince,
-         i.created_at AS createdAt,
-         (p.post_id IS NOT NULL
-          OR c.column_id IS NOT NULL
-          OR pi.post_image_id IS NOT NULL
-          OR d.diary_id IS NOT NULL) AS referenced
-  FROM image i
-  LEFT JOIN post p ON p.cover_image_id = i.image_id
-  LEFT JOIN blog_column c ON c.cover_image_id = i.image_id
-  LEFT JOIN post_image pi ON pi.image_id = i.image_id
-  LEFT JOIN diary d ON d.cover_image_id = i.image_id
-`
 
 // 回收孤儿图片：对账三态处理
 // 有引用 → 清除孤儿标记；无引用未标记 → 打标；
@@ -145,14 +130,29 @@ async function runGC() {
   return { orphans, drafts, tmpFiles }
 }
 
+// 定时执行入口（注册表调用）：进度日志与失败日志都在这里（改前在 app.js 的 runGCSafe 里）。
+// 三项都为 0 时不打日志——这是每 24 小时的常驻任务，安静即正常
+async function runImageGc() {
+  try {
+    const { orphans, drafts, tmpFiles } = await runGC()
+    if (orphans || drafts || tmpFiles) {
+      console.log(`GC 完成：孤儿图片 ${orphans} 张，废弃草稿 ${drafts} 篇，临时文件 ${tmpFiles} 个`)
+    }
+    return true
+  } catch (err) {
+    console.error('GC 失败:', err)
+    return false
+  }
+}
+
 module.exports = {
   gcOrphanImages,
   gcAbandonedDrafts,
   cleanupOldTmpFiles,
   runGC,
+  runImageGc,
   ORPHAN_GRACE_MS,
   ORPHAN_MIN_AGE_MS,
   DRAFT_MAX_AGE_MS,
-  TMP_MAX_AGE_MS,
-  ORPHAN_RECONCILE_SQL
+  TMP_MAX_AGE_MS
 }

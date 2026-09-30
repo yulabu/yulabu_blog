@@ -32,7 +32,7 @@
 
 ```
 server/
-├── app.js                      # 入口：中间件、路由、数据库同步、定时清理
+├── app.js                      # 入口：中间件、路由、数据库同步、启动定时任务（一行）
 ├── package.json
 ├── .env                        # 环境变量（不提交）
 ├── .env_example                # 环境变量模板
@@ -45,15 +45,41 @@ server/
 │   ├── image.js                # 上传目录 / 缩略图 / 图片质量 / 上传限额
 │   ├── backup.js               # 备份目录与保留份数
 │   └── settings.js             # 站点设置（setting 表）键定义 + 文本↔强类型编解码
-├── controllers/                # 业务逻辑
+├── controllers/                # 业务逻辑（认 req/res）
+├── services/                   # 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、不认识 HTTP
+│   ├── image/
+│   │   ├── refs.js             # 图片引用账本（唯一出处）：谁引用了我 / 某类引用有哪些图
+│   │   ├── derive.js           # 业务表的 URL/正文 → image_id 派生（保存时同步引用指针）
+│   │   ├── store.js            # 文件层：转码落盘 / 物理删除
+│   │   └── upload.js           # 上传落库：store + 建 image 记录（两个上传入口共用）
+│   ├── ogImage.js              # 友链抓图：出站 HTTP + OG 元信息解析
+│   └── backup/                 # 备份链（cron 与后台按钮共用）
+│       ├── layout.js           # 目录布局与 dump 文件名白名单
+│       ├── lock.js             # 跨进程互斥（cron 与 pm2 是两个进程）
+│       ├── run.js              # dump / uploads 镜像 / 清理 / 列表（无 HTTP）
+│       ├── export.js           # 导出包准备 + tar 流（无 HTTP）
+│       └── assets.js           # 随包附带的 restore.sh 与恢复说明文本
+├── jobs/                       # 定时任务：进程内调度、批量、幂等自愈、策略常量自带
+│   ├── index.js                # 注册表：间隔 / 启动即跑 / 依赖声明（app.js 只调它）
+│   ├── imageGc.js              # 孤儿图片回收 + 废弃草稿 + 临时文件兜底
+│   ├── dailyStat.js            # visit_log → daily_stat 全量重算
+│   └── visitGc.js              # 访问日志按自然日清理
 ├── models/                     # 数据模型与关联
 ├── routes/                     # 路由定义
 ├── middleware/                 # 管道层：鉴权、限流、错误处理、上传解析
-├── errors/                     # 共享内核：AppError（dto / controllers / utils 共用）
+├── errors/                     # 共享内核：AppError（dto / controllers / services 共用）
 ├── dto/                        # 入参校验
 ├── vo/                         # 出参格式化
-└── utils/
-    └── image.js                # 图片保存、迁移、清理
+├── scripts/                    # 人触发的入口：护栏 / 一次性迁移 / 定时任务的 CLI 壳
+│   ├── check-errors.js         # 错误翻译表回归（23 条断言）
+│   ├── check-layers.js         # 分层护栏（4 类断言，含 utils 纯度）
+│   ├── gc.js / daily-stat.js / visit-gc.js   # 任务的 CLI 壳（手工触发）
+│   ├── backup.js               # 备份 CLI 壳（cron 调用）
+│   ├── sync-schema.js / migrate-image-ref.js # 幂等结构/数据迁移
+└── utils/                      # 纯函数共享内核：无 I/O、无 DB、无副作用（护栏断言④ 把守）
+    ├── date.js                 # 北京时间日界（「今天」的唯一入口）
+    ├── log.js                  # 日志行格式（唯一出处）
+    └── uploadUrl.js            # /uploads/ URL 契约：拼接（vo）与剥离（services）共用
 ```
 
 ## 快速开始
@@ -253,12 +279,24 @@ node seed.js
 | 层 | 职责 |
 |---|---|
 | Middleware | JWT 鉴权、限流、multer 文件解析、全局错误处理（管道层） |
-| errors | AppError：业务异常类型，dto / controllers / utils 共用（共享内核，不属于中间件层） |
+| errors | AppError：业务异常类型，dto / controllers / services / jobs 共用（共享内核，不属于中间件层） |
 | config | 外部输入边界：env 派生的环境配置（唯一出口 config/env.js）+ 站点设置契约（config/settings.js） |
 | DTO | 白名单提取 + 参数校验，非法输入抛出 AppError |
-| Controller | 调用 DTO → 操作数据库 → VO 格式化 |
+| Controller | 调用 DTO → service / model → VO 格式化；**只有这层认 req/res** |
 | VO | 转换为前端友好的驼峰 JSON |
-| utils/image | 图片保存、文章图片同步、临时目录清理 |
+| services | 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、不认识 HTTP（图片账本/落盘、抓图、备份核心） |
+| jobs | 定时任务：进程内调度、批量、幂等自愈、策略常量自带、失败不拖垮服务 |
+| utils | 纯函数共享内核：无 I/O、无 DB、无副作用（date / log / uploadUrl） |
+
+**三分判据（2026-09 重构确立）**：一个新文件该放哪儿，只看两件事——
+
+1. **碰 I/O 吗？**（磁盘 / 数据库 / 网络 / 子进程）不碰 → `utils/`；碰了 → 继续问 ②。护栏 `scripts/check-layers.js` 断言④ 会挡住往 utils 里塞 I/O
+2. **由时间驱动还是由调用方驱动？** 进程内定时器调度、批量改数据、幂等自愈 → `jobs/`；被请求或其它代码按需调用 → `services/`
+
+配套约定：
+- `services/` 与 `jobs/` 都不许出现 `req`/`res`（导出这类流式响应由 controller 接管管道：设置头、pipe、客户端断开时通知服务层）
+- `jobs/` 的调度声明（间隔、启动即跑、依赖谁成功）集中在 `jobs/index.js`，`app.js` 只调 `startJobs()`；任务的手工入口统一为 `node scripts/<任务>.js`（CLI 壳负责 module-alias + dotenv + 退出码，任务模块本身不是程序）
+- 任务失败只记日志、不抛给调用方（失败隔离），进度与失败日志由任务自己写（文案是任务的事）
 
 ### 配置（config/）
 
@@ -267,14 +305,14 @@ config/ 只收「外部能定的值」，分两类：
 - **环境配置（运维在部署时定）**：`config/env.js` 是**后端唯一读 `process.env` 的文件**，负责默认值、类型转换与必填校验（缺 `DB_NAME` / `DB_USER` / `JWT_SECRET` 时**启动即失败**并写明缺哪个；这三项缺失以前会伪装成别的故障——缺 `JWT_SECRET` 时登录 500、其余后台接口回 401「token 无效或已过期」）。`config/{database,image,backup,auth}.js` 只从 env.js 派生语义，自己不读 env
 - **站点设置（管理员在后台定）**：`config/settings.js` 是 setting 表的键定义与「文本 ↔ 强类型」唯一转换入口
 
-**不进 config/ 的**：内部实现常量随代码走——限流阈值留在 `middleware/rateLimiter.js`、GC 保留期留在 `utils/gc.js`、访问日志保留留在 `utils/visitGc.js`、抓图超时留在 `utils/ogImage.js`、允许格式留在 `utils/imageStorage.js`、图表窗口白名单留在 `controllers/adminController.js`。判据：**这个值外部能定吗？被两层以上共用吗？**都不满足就留在自己的模块里。
+**不进 config/ 的**：内部实现常量随代码走——限流阈值留在 `middleware/rateLimiter.js`、GC 保留期留在 `jobs/imageGc.js`、访问日志保留留在 `jobs/visitGc.js`、任务间隔留在 `jobs/index.js`、抓图超时留在 `services/ogImage.js`、允许格式留在 `services/image/store.js`、图表窗口白名单留在 `controllers/adminController.js`。判据：**这个值外部能定吗？被两层以上共用吗？**都不满足就留在自己的模块里。
 
 两条配套不变量：
 
-- `config/database.js` 具名导出 `{ sequelize, dbConfig }`；备份链（`utils/backup.js`）的 dump 凭据与库名必须取 `dbConfig`——两套默认值会让「应用连的库」与「备的库」分叉
+- `config/database.js` 具名导出 `{ sequelize, dbConfig }`；备份链（`services/backup/run.js`）的 dump 凭据与库名必须取 `dbConfig`——两套默认值会让「应用连的库」与「备的库」分叉
 - 时区 `+08:00` 的唯一事实是 `config/timezone.js`（Sequelize 的 timezone 与 `utils/date.js` 的偏移量都从它派生，错开会出现「图表日期与 DB 分组差一天」）
 
-护栏：`node scripts/check-layers.js`（零依赖、不连库）断言 env 唯一出口、依赖只能向下、`@config/env` 白名单。
+护栏：`node scripts/check-layers.js`（零依赖、不连库）断言 4 类——env 唯一出口、依赖只能向下、`@config/env` 白名单、**utils 纯度**（禁 fs / child_process / sharp / sequelize / dotenv / module-alias / @models / @services / @jobs）。
 
 ### 错误处理（唯一出口）
 

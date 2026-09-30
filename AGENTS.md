@@ -109,29 +109,29 @@ certbot renew --dry-run
 - image 表仅存 storage_path / thumb_path / file_size / orphan_since，**无引用语义**；引用由业务表持 image_id：
   - 1:1 单列：post.cover_image_id、blog_column.cover_image_id、diary.cover_image_id
   - 1:N 关联表：post_image(post_id, image_id)，仅文章正文图使用
-- 双层语义：业务表里的 URL（post_cover / diary.images / 正文内嵌）是输入真相源；*_image_id 是保存时由 URL 派生的引用指针（utils/image.js 的 resolveImageIdByUrl / syncPostImages 全量 replace），仅供 GC 对账。API 契约全是 URL，前端无感知，DB 内部才用 id
-- URL→key 派生统一走 utils/image.js 的 storageKeyFromUrl（唯一入口，勿另写副本）：兼容相对路径 / 本站绝对域名 / 协议相对 //host / markdown title 后缀 / &amp; 实体，query、hash 丢弃；不校验 host（任意域名接受，storage_path 精确匹配把关）。派生失败只会在保存时以 console.warn（[image-ref]）暴露——"图显示着却被 GC 删"类问题先查这里
+- 双层语义：业务表里的 URL（post_cover / diary.images / 正文内嵌）是输入真相源；*_image_id 是保存时由 URL 派生的引用指针（services/image/derive.js 的 resolveImageIdByUrl / syncPostImages 全量 replace），仅供 GC 对账。API 契约全是 URL，前端无感知，DB 内部才用 id
+- URL→key 派生统一走 services/image/derive.js 的 storageKeyFromUrl（唯一入口，勿另写副本）：兼容相对路径 / 本站绝对域名 / 协议相对 //host / markdown title 后缀 / &amp; 实体，query、hash 丢弃；不校验 host（任意域名接受，storage_path 精确匹配把关）。派生失败只会在保存时以 console.warn（[image-ref]）暴露——"图显示着却被 GC 删"类问题先查这里
 - diary 为单图契约：DTO 拒绝 images 超过 1 张（400），images[0] ↔ cover_image_id 一一对应；存量多图由 migrate-image-ref.js 截断
-- GC（utils/gc.js 的 ORPHAN_RECONCILE_SQL）：LEFT JOIN 各业务表判定引用，三态处理——有引用清 orphan_since（复活）/ 无引用打标 / 标记超 24h（ORPHAN_GRACE_MS）**且文件创建超 72h（ORPHAN_MIN_AGE_MS）** 才删文件+记录。服务启动时 + 每 24h 跑
+- GC（jobs/imageGc.js；对账 SQL 来自 services/image/refs.js 的 ORPHAN_RECONCILE_SQL）：LEFT JOIN 各业务表判定引用，三态处理——有引用清 orphan_since（复活）/ 无引用打标 / 标记超 24h（ORPHAN_GRACE_MS）**且文件创建超 72h（ORPHAN_MIN_AGE_MS）** 才删文件+记录。服务启动时 + 每 24h 跑
 - 删除文章/专栏/日记/友链**不再即时删图**：引用随行消失，物理文件由 GC 延迟回收；后台图片库会短暂出现无主图，属正常
-- 新增持图业务的标准步骤（缺③④会把在用图误判为孤儿）：① 业务表加 *_image_id 列（1:1）或建关联表（1:N）→ ② 保存逻辑派生 image_id → ③ gc.js 对账 SQL 加一行 LEFT JOIN + IS NULL 判断 → ④ imageController 的 findReferencedImageIds / attachReferences 加同类型分支
+- 新增持图业务的标准步骤（2026-09 收口：改前③④是两处，漏一处就把在用图误判为孤儿）：① 业务表加 *_image_id 列（1:1）或建关联表（1:N）→ ② 保存逻辑派生 image_id（services/image/derive.js）→ ③ 在 services/image/refs.js 的 REFERENCE_SOURCES 加一条（孤儿对账 SQL、后台按类型筛图、反查引用位置都从它派生）
 - 旧 image.reference_type / reference_id 列已废弃但保留库中未删（回滚保障），代码禁止再读写；稳定后可 DROP。勿再往 image 表加业务语义/枚举
-- 友链图片**彻底外链化、完全退出图片系统**（2026-09 v2）：avatar（头像）/ preview_image（背景图）双外链字段，DTO 共用白名单——只收 http(s):// 或 //（拒绝 /uploads/，无指针的本站路径会被 GC 误删）；「抓图」= ogImage.js 的 fetchOgMeta：og:image→背景图覆盖写、favicon（apple-touch-icon 优先）→头像仅空时填（手填不覆盖，清空后可重抓）；不下载不落盘无 image 记录。preview_image_id 已从模型移除（列留库待 DROP，代码禁止读写），GC 对账 SQL 与 imageController 的 friend_link 分支已删除——只被友链引用过的图会被 GC 正常回收。存量本地留存图由 migrate-image-ref.js 清空，部署后到后台逐条重新「抓图」恢复
-- 图片统一落 uploads/，saveImageFile 转 webp + thumb；frontend/home/public/ 静态资源（og-image.jpg 等）随 vite build 进 dist/；缩略图 *.thumb.webp 只被**首页文章列表的小卡封面**消费（列表接口的 `post.coverThumb`，见 server/models/index.js 的 `Post→Image` 关联 + server/vo/post.vo.js）——大图卡、文章页与过渡卡片仍用 `post_cover` 原图，勿把它当通用缩略图用（移动端实测：小卡显示 112–182px，400px 缩略图在 2x/3x 屏都够清晰）
+- 友链图片**彻底外链化、完全退出图片系统**（2026-09 v2）：avatar（头像）/ preview_image（背景图）双外链字段，DTO 共用白名单——只收 http(s):// 或 //（拒绝 /uploads/，无指针的本站路径会被 GC 误删）；「抓图」= services/ogImage.js 的 fetchOgMeta：og:image→背景图覆盖写、favicon（apple-touch-icon 优先）→头像仅空时填（手填不覆盖，清空后可重抓）；不下载不落盘无 image 记录。preview_image_id 已从模型移除（列留库待 DROP，代码禁止读写），GC 对账 SQL 与 imageController 的 friend_link 分支已删除——只被友链引用过的图会被 GC 正常回收。存量本地留存图由 migrate-image-ref.js 清空，部署后到后台逐条重新「抓图」恢复
+- 图片统一落 uploads/，services/image/store.js 的 saveImageFile 转 webp + thumb；frontend/home/public/ 静态资源（og-image.jpg 等）随 vite build 进 dist/；缩略图 *.thumb.webp 只被**首页文章列表的小卡封面**消费（列表接口的 `post.coverThumb`，见 server/models/index.js 的 `Post→Image` 关联 + server/vo/post.vo.js）——大图卡、文章页与过渡卡片仍用 `post_cover` 原图，勿把它当通用缩略图用（移动端实测：小卡显示 112–182px，400px 缩略图在 2x/3x 屏都够清晰）
 - 涉及图片结构变更的部署顺序：sync-schema.js → migrate-image-ref.js（均幂等，迁移以 URL 匹配为准、不盲信旧 reference_id）→ pm2 restart
 
 ### 5. 后端代码约定
 - 校验集中在 server/dto/*.dto.js（白名单过滤）；异常用 server/errors/AppError.js 抛 400/404
 - **错误出口唯一**：一律 `throw`（含 auth 中间件的 401），由 `middleware/errorHandler.js` 统一出响应，别在中间件/控制器里自己 `res.status(4xx).json()`；错误响应形状只在 `errors/contract.js`、日志行格式只在 `utils/log.js`；哪些错误记日志、记到哪，见 server/README.md「错误处理与日志」（铁律：5xx 必记 stderr、4xx 不记、绝不记请求体与 Authorization）
-- 响应统一经 server/vo/*.vo.js 组装（相对路径补 /uploads/ 前缀等）
+- 响应统一经 server/vo/*.vo.js 组装；**/uploads/ 前缀的唯一出处是 utils/uploadUrl.js**（toUploadUrl 拼、storagePathFromPathname 剥），别在控制器里手拼 URL（改前散在 vo + 两个控制器）
 - /api/admin/* 受 auth 中间件保护
 - app.js 已设 trust proxy 'loopback'（express-rate-limit 8.x 必需，否则报 ERR_ERL_UNEXPECTED_X_FORWARDED_FOR）
-- 分层：routes/*Routes.js → controllers/*Controller.js → models/* + dto/* + vo/*
-- 依赖方向只能向下：errors/（AppError）与 config/ 是共享内核，dto / controllers / utils 都可依赖；middleware/ 是**管道层**（只被 routes 与 app.js 挂载），不要把错误类型、配置常量、业务逻辑放进去（2026-09 已把 AppError 从 middleware/ 迁到 errors/）
-- **config/ 的职责边界（2026-09 重构确立）**：只收「外部能定的值」——① 运维经 env 定的（`config/env.js` 是**后端唯一读 `process.env` 的文件**：默认值 + 类型转换 + 必填校验，缺 DB_NAME / DB_USER / JWT_SECRET 时启动即失败并写明缺哪个；`config/{database,image,backup,auth}.js` 只从它派生，自己不碰 env）② 管理员在后台定的（`config/settings.js`：setting 表键定义 + 文本↔强类型编解码，属「动态配置」）。判据：**外部能定吗？被两层以上共用吗？**都不满足就是内部实现常量，**一律不进 config/**——限流阈值留在 middleware/rateLimiter.js、GC 保留期留在 utils/gc.js、访问日志保留留在 utils/visitGc.js、抓图超时留在 utils/ogImage.js、允许格式留在 utils/imageStorage.js、图表窗口白名单留在 controllers/adminController.js
+- 分层：routes/*Routes.js → controllers/*Controller.js → services/*（领域能力，碰 I/O/DB）→ models/*；dto/* 校验入参、vo/* 组装出参、jobs/* 由调度器驱动（见第 13 节的三分判据）
+- 依赖方向只能向下：errors/（AppError）与 config/ 是共享内核，各层都可依赖；utils/ 是**纯函数共享内核**（无 I/O / DB / 进程引导，由护栏断言④ 把守），所以 vo 这类最底层也能用它；services/ 只依赖 models/config/errors/utils，jobs/ 只依赖 services 及以下，**两者都不许出现 req/res**（流式导出由 controller 接管管道）；middleware/ 是**管道层**（只被 routes 与 app.js 挂载），不要把错误类型、配置常量、业务逻辑放进去（2026-09 已把 AppError 从 middleware/ 迁到 errors/）
+- **config/ 的职责边界（2026-09 重构确立）**：只收「外部能定的值」——① 运维经 env 定的（`config/env.js` 是**后端唯一读 `process.env` 的文件**：默认值 + 类型转换 + 必填校验，缺 DB_NAME / DB_USER / JWT_SECRET 时启动即失败并写明缺哪个；`config/{database,image,backup,auth}.js` 只从它派生，自己不碰 env）② 管理员在后台定的（`config/settings.js`：setting 表键定义 + 文本↔强类型编解码，属「动态配置」）。判据：**外部能定吗？被两层以上共用吗？**都不满足就是内部实现常量，**一律不进 config/**——限流阈值留在 middleware/rateLimiter.js、GC 保留期留在 jobs/imageGc.js、访问日志保留留在 jobs/visitGc.js、任务间隔留在 jobs/index.js、抓图超时留在 services/ogImage.js、允许格式留在 services/image/store.js、图表窗口白名单留在 controllers/adminController.js
 - 时区（+08:00）的唯一事实是 config/timezone.js：config/database.js 的 Sequelize timezone 与 utils/date.js 的偏移量都从它派生（二者错开会让「图表日期 vs DB 分组」差一天，实修过）
-- `config/database.js` 具名导出 `{ sequelize, dbConfig }`：备份链（utils/backup.js）必须用 dbConfig 取 dump 凭据与库名，**不要再自己读 env / 写默认值**——两套默认值会让「应用连的库」与「dump 备的库」分叉（缺 DB_NAME 时应用起不来、dump 却静默去备一个叫 blog 的库）
-- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（三条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单）
+- `config/database.js` 具名导出 `{ sequelize, dbConfig }`：备份链（services/backup/run.js）必须用 dbConfig 取 dump 凭据与库名，**不要再自己读 env / 写默认值**——两套默认值会让「应用连的库」与「dump 备的库」分叉（缺 DB_NAME 时应用起不来、dump 却静默去备一个叫 blog 的库）
+- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（四条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度）
 
 ### 6. 前端代码约定
 - 复用既有组件，不引入新依赖/复杂度
@@ -149,13 +149,13 @@ certbot renew --dry-run
 
 ### 8. 验证方式
 - 后端 DTO 可直接：node -e "require('module-alias/register'); require('dotenv').config(); const {...}=require('@dto/...')" 验证
-- 后端两条常驻护栏（零依赖、不连库、不占端口）：`node scripts/check-errors.js`（错误翻译表 23 条断言）、`node scripts/check-layers.js`（env 唯一出口 + 依赖只能向下 + @config/env 白名单）；动了错误层/依赖边/配置读法就该跑
+- 后端两条常驻护栏（零依赖、不连库、不占端口）：`node scripts/check-errors.js`（错误翻译表 23 条断言）、`node scripts/check-layers.js`（env 唯一出口 + 依赖只能向下 + @config/env 白名单 + utils 纯度）；动了错误层/依赖边/配置读法/任务分层就该跑
 - home 以 npm run build 通过 + npm run check（astro check）0 error 为门槛；admin 仍以 npm run build（含 vue-tsc）为门槛
 - SSR 链路验证：本地起 server（npm run dev）后 `curl -s localhost:4321/post/<id> | grep -E 'og:title|og:image'`
 - 业务改动建议生产实跑：curl -I https://blog.yulabu.cn/og-image.jpg、pm2 logs --err
 
 ### 9. 备份系统（2026-09）
-- 结构：cron（/etc/cron.d/blog-backup，每天 04:00）→ server/scripts/backup.js（CLI 壳）→ server/utils/backup.js（核心，controller 共用）；产物在 <仓库根>/backups/（db/ 存 dump 保留 BACKUP_KEEP=30 份，uploads/ 为 rsync 镜像，排除 .tmp）；配置在 server/config/backup.js，git 已忽略 /backups
+- 结构：cron（/etc/cron.d/blog-backup，每天 04:00）→ server/scripts/backup.js（CLI 壳）→ server/services/backup/run.js（核心，controller 与 cron CLI 共用；HTTP 管道在 backupController，导出流不会认识 res）；产物在 <仓库根>/backups/（db/ 存 dump 保留 BACKUP_KEEP=30 份，uploads/ 为 rsync 镜像，排除 .tmp）；配置在 server/config/backup.js，git 已忽略 /backups
 - dump 命令自动探测：mariadb-dump（生产）→ mysqldump（macOS brew）；凭据经临时 defaults-extra-file（chmod 600）传入，值与应用连接共用 config/database.js 的 dbConfig（唯一出处，2026-09 起不再自读 env），MySQL 系 dump 追加 --set-gtid-purged=OFF（向启用 GTID 的库导入会报错，实踩）；产物 <1KB 视为失败删除
 - 后台「备份管理」页（/admin/backups）：列表 / 立即备份 / 导出完整包 / 删除 dump；接口挂在 adminRoutes.js（GET·POST /admin/backups、GET /admin/backups/:filename/export 流式下载、DELETE）；文件名白名单 ^blog-\d{8}-\d{6}\.sql\.gz$ 防路径穿越；备份与导出经 backups/.lock 文件锁跨进程互斥（wx 原子创建，PID+时间戳，重复触发 409，残留超 30 分钟自动接管；cron 与 pm2 是两个进程，模块级变量防不住跨进程，实改为文件锁）
 - 导出包 = dump + 最新 uploads 镜像 + restore.sh（MYSQL_PWD 传密码，空密码不退化成交互提示，实踩）+ README-恢复说明.txt；**不含 server/.env**（迁移单独 scp）；打包前检查磁盘剩余空间（不足 507）
@@ -198,7 +198,7 @@ certbot renew --dry-run
 
 ### 11. 访问统计（visit_log + daily_stat，2026-09）
 - 分工：`visit_log` 只存原始明细（公开写入 + 后台分页列表 + 今日实时统计 + GC），保留 90 个**完整自然日**；`daily_stat` 存每日聚合（stat_date 主键 + pv + uv，一天一行，**永久保留**）。工作台折线图的 visitsByDate 与访问日志页「总浏览量/总独立访客」只读 daily_stat；「今日 PV/UV」实时读 visit_log（今日窗口永远在保留期内，无丢失风险）
-- 聚合：`utils/dailyStat.js` 的 aggregateDailyStats 全量重算（`SELECT DATE(created_at) … GROUP BY DATE(created_at)` → `bulkCreate(updateOnDuplicate:['pv','uv'])`，幂等自愈），`app.js` 启动跑一次（自动回填日志中尚存的近 90 天）+ 每 10 分钟一次；24h 的 visitGc 任务**先聚合再清理**，聚合失败则跳过本次清理。CLI：`cd server && node utils/dailyStat.js`
+- 聚合：`jobs/dailyStat.js` 的 aggregateDailyStats 全量重算（`SELECT DATE(created_at) … GROUP BY DATE(created_at)` → `bulkCreate(updateOnDuplicate:['pv','uv'])`，幂等自愈），`jobs/index.js` 注册表启动即跑一次（自动回填日志中尚存的近 90 天）+ 每 10 分钟一次；24h 的 visitGc 任务**先聚合再清理**（注册表里的依赖声明，不是进程入口里的顺序），聚合失败则跳过本次清理。CLI：`cd server && node scripts/daily-stat.js`
 - **三条勿破坏的不变式**：① 聚合只 UPSERT 日志中仍存在的日期，**绝不写 0 行、绝不删除 daily_stat 行**——日志里没有的日期（已过保留期）不在分组结果里，历史行因此安全；别为了「补齐空白天」预生成 0 行，那会让这条保证失效 ② visitGc 的 cutoff 必须按北京自然日对齐（`beijingDayStart(shiftDateStr(beijingDateStr(), -(RETENTION_DAYS - 1)))`）：用「now-90d」时间戳截断会把最老一天切成半截，重算时用半截数据覆盖完整行（实修） ③ 后端判定「今天」一律走 `utils/date.js` 的 beijingDateStr / shiftDateStr / beijingDayStart，勿用 `new Date().setHours(0,0,0,0)`——库里 DATETIME 按 +08:00 存墙钟，而生产 Node 进程时区可能是 UTC，会错开 8 小时（北京时间 00:00–08:00 图表日期序列与 DB 分组差一天，实修）
 - 口径（已知取舍）：totalUV = SUM(daily_stat.uv)，是各日去重后求和，长期访客会被逐日重复计入（偏大但永不缩水）；「清空访问日志」只删明细，不再重置总量，要重置历史统计须手工清 daily_stat
 - 部署：纯增量新表，无数据迁移；`sequelize.sync()` 与 sync-schema.js 都会建表，启动即自动回填。首次上线只能回填日志尚存的最近 90 天，更早历史无法找回
@@ -214,3 +214,15 @@ certbot renew --dry-run
 - 开关生效链路：`post/[id].astro` SSR 时取 `/api/settings`，把 `commentsEnabled` 经 props 注入 `PostDetailView`，为 false 时整个评论区不渲染（岛也不挂）。取不到设置接口时按**开启**处理（fail-soft，与其它取数一致）
 - `setting` 表由 `sequelize.sync()` 启动时自动创建（**新表不需要 sync-schema**，那是给 ALTER 用的），且随整库 dump 进备份包——恢复备份后开关状态不丢
 - giscus 的第三方请求只发生在评论区进入视口之后：`giscus.app`、`api.github.com`、`avatars.githubusercontent.com`（评论头像），以及主题里官方自带的两个 `github.com` 加载图
+
+### 13. 后端分层：utils / services / jobs 三分（2026-09 重构）
+改前 `utils/` 一间屋住四种角色（纯函数 / 领域服务 / 定时任务 / 一个 409 行的备份功能模块），且图片引用账本有两个真相源（GC 的 SQL 与 imageController 的查询各写一遍表清单），漏改一处就把在用的图当孤儿删掉。现在按**纯度**三分，判据与护栏都固化下来：
+
+- **判据（新文件放哪儿）**：① **碰 I/O 吗**（磁盘/DB/网络/子进程）→ 不碰进 `utils/`，碰了问 ② ② **谁驱动它**：进程内定时器调度、批量改数据、幂等自愈 → `jobs/`；被请求或其它代码按需调用 → `services/`
+- `utils/`（纯函数共享内核，只剩 3 个文件）：`date.js`（北京时间日界）、`log.js`（日志行格式）、`uploadUrl.js`（`/uploads/` 契约：`toUploadUrl` 拼、`storagePathFromPathname` 剥）。**护栏断言④ 禁止** utils 里出现 `fs` / `child_process` / `express` / `multer` / `sharp` / `sequelize` / `mysql2` / `dotenv` / `module-alias` / `@models` / `@services` / `@jobs`
+- `services/`（领域能力，≥2 个调用方共用，**不认识 req/res**）：`image/refs.js` 图片引用账本、`image/derive.js` URL→image_id 派生、`image/store.js` 文件层、`image/upload.js` 上传落库、`ogImage.js` 抓图、`backup/{layout,lock,run,export,assets}.js` 备份链
+- `jobs/`（定时任务，**不认识 req/res**）：`imageGc.js`、`dailyStat.js`、`visitGc.js`，注册表 `jobs/index.js` 管「间隔 / 启动即跑 / 依赖谁成功」，`app.js` 只调 `startJobs()`。手工入口统一 `node scripts/<任务>.js`（CLI 壳负责 module-alias + dotenv + 退出码，任务模块本身不是程序）
+- **图片引用账本的唯一出处是 `services/image/refs.js`**：`REFERENCE_SOURCES` 一张清单同时派生孤儿对账 SQL、后台按类型筛图、反查引用位置；gc 任务、imageController、migrate-image-ref 三处都从它取。**新增持图业务只改这一处**（改前要在 gc 的 SQL 与 imageController 两处各加一遍）
+- **上传响应形状的唯一出处是 `vo/image.vo.js` 的 `uploadedImageVO`**：批量上传与专栏封面上传共用，字段固定 `{ image_id, url, thumb_url }`（前端 `UploadedImage` 契约，别换成 `imageVO`）
+- 迁移前的老路径（`utils/image.js`、`utils/imageStorage.js`、`utils/ogImage.js`、`utils/backup.js`、`utils/gc.js`、`utils/dailyStat.js`、`utils/visitGc.js`）**已不存在**，引用它们会 require 失败；CLI 也从 `node utils/dailyStat.js` 改为 `node scripts/daily-stat.js`
+- 备份链的一条行为修正：导出时客户端断开现在会结束 tar 进程（改前只记 clientGone，Node 仍持有读端导致 tar 永久阻塞、`.lock` 一直不释放，中断一次导出后 30 分钟内备份都被 409）

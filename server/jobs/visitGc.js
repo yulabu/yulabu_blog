@@ -1,5 +1,3 @@
-require('module-alias/register');
-require('dotenv').config();
 const { VisitLog } = require('@models');
 const { Op } = require('sequelize');
 const { beijingDateStr, shiftDateStr, beijingDayStart } = require('@utils/date');
@@ -20,20 +18,15 @@ async function cleanupOldVisitLogs() {
   return deleted;
 }
 
-module.exports = { cleanupOldVisitLogs, RETENTION_DAYS };
-
-// 支持直接运行：node utils/visitGc.js
-if (require.main === module) {
-  const { sequelize } = require('@config/database');
-  (async () => {
-    try {
-      await sequelize.authenticate();
-      const count = await cleanupOldVisitLogs();
-      console.log(`[visit-gc] 完成，清理 ${count} 条（保留 ${RETENTION_DAYS} 天）`);
-      await sequelize.close();
-    } catch (e) {
-      console.error('[visit-gc] 失败:', e.message);
-      process.exit(1);
-    }
-  })();
+// 定时执行入口（注册表调用；先聚合成功才轮到本任务清理，见 jobs/index.js 的依赖声明）
+async function runVisitGc() {
+  try {
+    await cleanupOldVisitLogs();
+    return true;
+  } catch (err) {
+    console.error('[visit-gc] 失败:', err);
+    return false;
+  }
 }
+
+module.exports = { cleanupOldVisitLogs, runVisitGc, RETENTION_DAYS };

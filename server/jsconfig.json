@@ -10,7 +10,9 @@
       "@dto/*": ["./dto/*"],
       "@vo/*": ["./vo/*"],
       "@routes/*": ["./routes/*"],
-      "@utils/*": ["./utils/*"]
+      "@utils/*": ["./utils/*"],
+      "@services/*": ["./services/*"],
+      "@jobs/*": ["./jobs/*"]
     }
   },
   "exclude": ["node_modules"]

@@ -1,7 +1,8 @@
 const { Op } = require('sequelize')
 const { sequelize, Image, PostImage } = require('@models')
+const { storagePathFromPathname } = require('@utils/uploadUrl')
 
-// URL → uploads 存储 key 归一化（所有引用派生的唯一入口）
+// URL → uploads 存储 key 归一化（所有引用派生的唯一入口；剥离用的前缀字面量在 utils/uploadUrl.js）
 // 兼容：相对路径 /uploads/...、本站任意绝对域名、协议相对 //host/...；
 // &amp; 实体还原；query/hash 丢弃（URL API 只取 pathname）。
 // 不校验 host：任意域名的 /uploads/ 路径都接受，能否建立引用由
@@ -11,8 +12,7 @@ function storageKeyFromUrl(url) {
   if (!url) return null
   try {
     const parsed = new URL(String(url).trim().replace(/&amp;/g, '&'), 'https://yulabu.cn')
-    if (!parsed.pathname.startsWith('/uploads/')) return null
-    return decodeURIComponent(parsed.pathname.slice('/uploads/'.length)) || null
+    return storagePathFromPathname(parsed.pathname)
   } catch (err) {
     return null
   }

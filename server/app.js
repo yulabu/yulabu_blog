@@ -63,10 +63,9 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
   dotfiles: 'deny',
   index: false
 }));
-// 图片 GC：孤儿回收 + 废弃草稿清理 + 上传临时文件兜底
-const { runGC } = require('@utils/gc');
-// 每日访问统计聚合：从 visit_log 全量重算 daily_stat（图表与历史总量读它）
-const { aggregateDailyStats } = require('@utils/dailyStat');
+// 定时任务：图片 GC / 每日统计聚合 / 访问日志清理。调度、间隔与依赖声明都在 jobs/index.js，
+// 本文件只负责「数据库就绪后启动它们」——任务细节（阈值、幂等、失败日志）不进进程入口
+const { startJobs } = require('@jobs');
 // 导入模型
 const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary } = require('@models');
 
@@ -74,33 +73,6 @@ const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary
 // 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。
 // 长期开启 alter: true 在 MySQL 上容易因索引名不匹配而产生重复索引，
 // 最终触发 ER_TOO_MANY_KEYS（max 64 keys allowed）。
-const GC_INTERVAL_MS = 24 * 60 * 60 * 1000;
-// 每日统计聚合间隔：比 GC 频繁得多，让图表当天数据接近实时
-const STAT_INTERVAL_MS = 10 * 60 * 1000;
-
-async function runGCSafe() {
-  try {
-    const { orphans, drafts, tmpFiles } = await runGC();
-    if (orphans || drafts || tmpFiles) {
-      console.log(`GC 完成：孤儿图片 ${orphans} 张，废弃草稿 ${drafts} 篇，临时文件 ${tmpFiles} 个`);
-    }
-  } catch (err) {
-    console.error('GC 失败:', err);
-  }
-}
-
-// 返回是否成功，供调用方决定能否继续（清理前必须先聚合成功）
-async function runStatSafe() {
-  try {
-    const days = await aggregateDailyStats();
-    if (days) console.log(`[daily-stat] 已聚合 ${days} 天`);
-    return true;
-  } catch (err) {
-    console.error('[daily-stat] 失败:', err);
-    return false;
-  }
-}
-
 sequelize.sync()
   .then(async () => {
     console.log('所有模型同步成功');
@@ -111,25 +83,8 @@ sequelize.sync()
     } catch (e) {
       console.error('[sync-schema] 同步失败:', e.message);
     }
-    // 依赖数据库表，需在 sync 之后执行；启动先跑一次，再每 24 小时执行
-    runGCSafe();
-    setInterval(runGCSafe, GC_INTERVAL_MS);
-    // 每日统计聚合：启动先跑一次（自动回填日志中尚存的近 90 天），此后每 10 分钟重算
-    runStatSafe();
-    setInterval(runStatSafe, STAT_INTERVAL_MS);
-    // 访问日志 GC：先聚合当日统计再清理 90 天前的日志；聚合失败则跳过，避免边界日统计丢失
-    const { cleanupOldVisitLogs } = require('@utils/visitGc');
-    const runVisitGcSafe = async () => {
-      try {
-        if (!(await runStatSafe())) {
-          console.error('[visit-gc] 聚合未成功，跳过本次清理');
-          return;
-        }
-        await cleanupOldVisitLogs();
-      } catch (err) { console.error('[visit-gc] 失败:', err); }
-    };
-    runVisitGcSafe();
-    setInterval(runVisitGcSafe, GC_INTERVAL_MS);
+    // 依赖数据库表，需在 sync 之后启动
+    startJobs();
   })
   .catch(err => {
     console.error('同步失败:', err);

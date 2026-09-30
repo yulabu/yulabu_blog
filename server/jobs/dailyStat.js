@@ -1,5 +1,3 @@
-require('module-alias/register');
-require('dotenv').config();
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('@config/database');
 const { DailyStat } = require('@models');
@@ -35,19 +33,17 @@ async function aggregateDailyStats() {
   return rows.length;
 }
 
-module.exports = { aggregateDailyStats };
-
-// 支持直接运行：node utils/dailyStat.js
-if (require.main === module) {
-  (async () => {
-    try {
-      await sequelize.authenticate();
-      const days = await aggregateDailyStats();
-      console.log(`[daily-stat] 完成，聚合 ${days} 天`);
-      await sequelize.close();
-    } catch (e) {
-      console.error('[daily-stat] 失败:', e.message);
-      process.exit(1);
-    }
-  })();
+// 定时执行入口（注册表调用）：任务自己的进度/失败日志在这里，失败不抛出——
+// 失败隔离由注册表保证（一个任务挂了不影响别的任务与 HTTP 服务），成功与否用返回值表达（供依赖方判断）
+async function runDailyStat() {
+  try {
+    const days = await aggregateDailyStats();
+    if (days) console.log(`[daily-stat] 已聚合 ${days} 天`);
+    return true;
+  } catch (err) {
+    console.error('[daily-stat] 失败:', err);
+    return false;
+  }
 }
+
+module.exports = { aggregateDailyStats, runDailyStat };

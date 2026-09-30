@@ -10,7 +10,7 @@
 | 存放位置 | `/var/www/yulabu_blog/backups/`（`db/` 存 dump，`uploads/` 存镜像） |
 | 自动执行 | `/etc/cron.d/blog-backup`：每天 04:00，日志 `/var/log/blog-backup.log` |
 | 保留策略 | dump 保留最近 30 份（`BACKUP_KEEP` 可调），镜像恒为最新一份 |
-| 核心代码 | `server/utils/backup.js`（逻辑）；`server/scripts/backup.js`（cron CLI 壳） |
+| 核心代码 | `server/services/backup/`（run 逻辑 / export 打包 / lock 互斥 / layout 布局 / assets 包内文本）；`server/scripts/backup.js`（cron CLI 壳）；HTTP 管道在 `server/controllers/backupController.js` |
 | 配置 | `server/config/backup.js`，env 可覆盖 `BACKUP_DIR` / `BACKUP_KEEP` |
 
 - dump 文件名：`blog-YYYYMMDD-HHmmss.sql.gz`，导出后校验大小（<1KB 视为失败并删除）。

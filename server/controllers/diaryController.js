@@ -2,7 +2,7 @@ const AppError = require('@errors/AppError');
 const { Diary, Image } = require('@models');
 const { createDiaryDTO, updateDiaryDTO, diaryIdDTO } = require('@dto/diary.dto');
 const { diaryDetail, diaryList } = require('@vo/diary.vo');
-const { resolveImageIdByUrl } = require('@utils/image');
+const { resolveImageIdByUrl } = require('@services/image/derive');
 
 exports.getPublicDiaries = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
