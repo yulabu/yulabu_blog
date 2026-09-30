@@ -94,8 +94,9 @@ certbot renew --dry-run
 - 服务器 1G 内存，禁用无头浏览器截图（puppeteer/playwright 等）
 
 ### 2. 数据库迁移
-- sequelize.sync() 仅建表（表不存在时），不会 ALTER 已有表 / 追加 ENUM 值
-- 新增字段或 ENUM 值必须手动 ALTER，或跑 server/scripts/sync-schema.js（幂等、可重复执行）；涉及图片引用结构的变更还需跑 migrate-image-ref.js（见第 4 节）
+- sequelize.sync() 仅建表（表不存在时），不会 ALTER 已有表 / 追加 ENUM 值；但**它会补齐模型里声明而库里缺失的索引**（showIndex → addIndex，对已存在的表也跑）
+- **结构出处**：列 / 索引 / 外键都声明在模型里（`models/*.js` 的 `indexes`、`models/index.js` 的关联）——建表时内联外键；改索引＝改模型 + 重启
+- 新增字段或 ENUM 值必须手动 ALTER，或跑 server/scripts/sync-schema.js（幂等、可重复执行）；涉及图片引用结构的变更还需跑 migrate-image-ref.js（见第 4 节）。**别再往 sync-schema 里加建表语句**：sync() 总是先建表，那些分支永不执行，只会变成第二份会漂移的 DDL（2026-09-30 已删掉 visit_log 那份）
 - 上线前自查：新模型字段 / 新 ENUM 值是否已在生产库存在
 - ENUM 追加新值必须放末尾（MySQL 按索引存储，插前面会让存量数据错位，见 models/Post.js:40）
 - 连接用 blog_user@localhost（utf8mb4）；root 走 unix_socket，不可密码登录
@@ -199,9 +200,9 @@ certbot renew --dry-run
 ### 11. 访问统计（visit_log + daily_stat，2026-09）
 - 分工：`visit_log` 只存原始明细（公开写入 + 后台分页列表 + 今日实时统计 + GC），保留 90 个**完整自然日**；`daily_stat` 存每日聚合（stat_date 主键 + pv + uv，一天一行，**永久保留**）。工作台折线图的 visitsByDate 与访问日志页「总浏览量/总独立访客」只读 daily_stat；「今日 PV/UV」实时读 visit_log（今日窗口永远在保留期内，无丢失风险）
 - 聚合：`jobs/dailyStat.js` 的 aggregateDailyStats 全量重算（`SELECT DATE(created_at) … GROUP BY DATE(created_at)` → `bulkCreate(updateOnDuplicate:['pv','uv'])`，幂等自愈），`jobs/index.js` 注册表启动即跑一次（自动回填日志中尚存的近 90 天）+ 每 10 分钟一次；24h 的 visitGc 任务**先聚合再清理**（注册表里的依赖声明，不是进程入口里的顺序），聚合失败则跳过本次清理。CLI：`cd server && node scripts/daily-stat.js`
-- **三条勿破坏的不变式**：① 聚合只 UPSERT 日志中仍存在的日期，**绝不写 0 行、绝不删除 daily_stat 行**——日志里没有的日期（已过保留期）不在分组结果里，历史行因此安全；别为了「补齐空白天」预生成 0 行，那会让这条保证失效 ② visitGc 的 cutoff 必须按北京自然日对齐（`beijingDayStart(shiftDateStr(beijingDateStr(), -(RETENTION_DAYS - 1)))`）：用「now-90d」时间戳截断会把最老一天切成半截，重算时用半截数据覆盖完整行（实修） ③ 后端判定「今天」一律走 `utils/date.js` 的 beijingDateStr / shiftDateStr / beijingDayStart，勿用 `new Date().setHours(0,0,0,0)`——库里 DATETIME 按 +08:00 存墙钟，而生产 Node 进程时区可能是 UTC，会错开 8 小时（北京时间 00:00–08:00 图表日期序列与 DB 分组差一天，实修）
+- **三条勿破坏的不变式**：① 聚合只 UPSERT 日志中仍存在的日期，**绝不写 0 行、绝不删除 daily_stat 行**——日志里没有的日期（已过保留期）不在分组结果里，历史行因此安全；别为了「补齐空白天」预生成 0 行，那会让这条保证失效 ② visitGc 的 cutoff 必须按北京自然日对齐（`beijingDayStart(shiftDateStr(beijingDateStr(), -(RETENTION_DAYS - 1)))`）：用「now-90d」时间戳截断会把最老一天切成半截，重算时用半截数据覆盖完整行（实修） ③ 后端判定「今天」/「年月」一律走 `utils/date.js` 的 beijingDateStr / shiftDateStr / beijingDayStart / beijingYearMonth，勿用 `new Date().setHours(0,0,0,0)`——库里 DATETIME 按 +08:00 存墙钟，而生产 Node 进程时区可能是 UTC，会错开 8 小时（北京时间 00:00–08:00 图表日期序列与 DB 分组差一天，实修）。**2026-09-30 又收口三处曾漏网点**：后台访问日志筛选（today / 7days / 30days 改为北京自然日，含今天共 N 天）、工作台「今日新增」卡（原用本地零点，与同一文件下方的图表口径冲突）、文章归档的年月分组（改用 beijingYearMonth）；并加护栏断言⑤（`setHours(` 只许出现在 utils/date.js，`node scripts/check-layers.js` 现在 5 类断言）
 - 口径（已知取舍）：totalUV = SUM(daily_stat.uv)，是各日去重后求和，长期访客会被逐日重复计入（偏大但永不缩水）；「清空访问日志」只删明细，不再重置总量，要重置历史统计须手工清 daily_stat
-- 部署：纯增量新表，无数据迁移；`sequelize.sync()` 与 sync-schema.js 都会建表，启动即自动回填。首次上线只能回填日志尚存的最近 90 天，更早历史无法找回
+- 部署：纯增量新表，无数据迁移；建表由 `sequelize.sync()` 负责（启动即自动回填；`visit_log` 的 `created_at` 索引也由模型声明、sync 补建）。首次上线只能回填日志尚存的最近 90 天，更早历史无法找回
 - 前端零改动即可受益（接口字段与结构未变）；后续若要 90 天/一年窗口，后端 range 白名单已支持 90days/365days，前端加下拉项即可
 
 ### 12. 评论区（giscus，2026-09）
