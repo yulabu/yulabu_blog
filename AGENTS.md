@@ -127,6 +127,10 @@ certbot renew --dry-run
 - app.js 已设 trust proxy 'loopback'（express-rate-limit 8.x 必需，否则报 ERR_ERL_UNEXPECTED_X_FORWARDED_FOR）
 - 分层：routes/*Routes.js → controllers/*Controller.js → models/* + dto/* + vo/*
 - 依赖方向只能向下：errors/（AppError）与 config/ 是共享内核，dto / controllers / utils 都可依赖；middleware/ 是**管道层**（只被 routes 与 app.js 挂载），不要把错误类型、配置常量、业务逻辑放进去（2026-09 已把 AppError 从 middleware/ 迁到 errors/）
+- **config/ 的职责边界（2026-09 重构确立）**：只收「外部能定的值」——① 运维经 env 定的（`config/env.js` 是**后端唯一读 `process.env` 的文件**：默认值 + 类型转换 + 必填校验，缺 DB_NAME / DB_USER / JWT_SECRET 时启动即失败并写明缺哪个；`config/{database,image,backup,auth}.js` 只从它派生，自己不碰 env）② 管理员在后台定的（`config/settings.js`：setting 表键定义 + 文本↔强类型编解码，属「动态配置」）。判据：**外部能定吗？被两层以上共用吗？**都不满足就是内部实现常量，**一律不进 config/**——限流阈值留在 middleware/rateLimiter.js、GC 保留期留在 utils/gc.js、访问日志保留留在 utils/visitGc.js、抓图超时留在 utils/ogImage.js、允许格式留在 utils/imageStorage.js、图表窗口白名单留在 controllers/adminController.js
+- 时区（+08:00）的唯一事实是 config/timezone.js：config/database.js 的 Sequelize timezone 与 utils/date.js 的偏移量都从它派生（二者错开会让「图表日期 vs DB 分组」差一天，实修过）
+- `config/database.js` 具名导出 `{ sequelize, dbConfig }`：备份链（utils/backup.js）必须用 dbConfig 取 dump 凭据与库名，**不要再自己读 env / 写默认值**——两套默认值会让「应用连的库」与「dump 备的库」分叉（缺 DB_NAME 时应用起不来、dump 却静默去备一个叫 blog 的库）
+- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（三条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单）
 
 ### 6. 前端代码约定
 - 复用既有组件，不引入新依赖/复杂度
@@ -144,13 +148,14 @@ certbot renew --dry-run
 
 ### 8. 验证方式
 - 后端 DTO 可直接：node -e "require('module-alias/register'); require('dotenv').config(); const {...}=require('@dto/...')" 验证
+- 后端两条常驻护栏（零依赖、不连库、不占端口）：`node scripts/check-errors.js`（错误翻译表 23 条断言）、`node scripts/check-layers.js`（env 唯一出口 + 依赖只能向下 + @config/env 白名单）；动了错误层/依赖边/配置读法就该跑
 - home 以 npm run build 通过 + npm run check（astro check）0 error 为门槛；admin 仍以 npm run build（含 vue-tsc）为门槛
 - SSR 链路验证：本地起 server（npm run dev）后 `curl -s localhost:4321/post/<id> | grep -E 'og:title|og:image'`
 - 业务改动建议生产实跑：curl -I https://blog.yulabu.cn/og-image.jpg、pm2 logs --err
 
 ### 9. 备份系统（2026-09）
 - 结构：cron（/etc/cron.d/blog-backup，每天 04:00）→ server/scripts/backup.js（CLI 壳）→ server/utils/backup.js（核心，controller 共用）；产物在 <仓库根>/backups/（db/ 存 dump 保留 BACKUP_KEEP=30 份，uploads/ 为 rsync 镜像，排除 .tmp）；配置在 server/config/backup.js，git 已忽略 /backups
-- dump 命令自动探测：mariadb-dump（生产）→ mysqldump（macOS brew）；凭据经临时 defaults-extra-file（chmod 600）传入，MySQL 系 dump 追加 --set-gtid-purged=OFF（向启用 GTID 的库导入会报错，实踩）；产物 <1KB 视为失败删除
+- dump 命令自动探测：mariadb-dump（生产）→ mysqldump（macOS brew）；凭据经临时 defaults-extra-file（chmod 600）传入，值与应用连接共用 config/database.js 的 dbConfig（唯一出处，2026-09 起不再自读 env），MySQL 系 dump 追加 --set-gtid-purged=OFF（向启用 GTID 的库导入会报错，实踩）；产物 <1KB 视为失败删除
 - 后台「备份管理」页（/admin/backups）：列表 / 立即备份 / 导出完整包 / 删除 dump；接口挂在 adminRoutes.js（GET·POST /admin/backups、GET /admin/backups/:filename/export 流式下载、DELETE）；文件名白名单 ^blog-\d{8}-\d{6}\.sql\.gz$ 防路径穿越；备份与导出经 backups/.lock 文件锁跨进程互斥（wx 原子创建，PID+时间戳，重复触发 409，残留超 30 分钟自动接管；cron 与 pm2 是两个进程，模块级变量防不住跨进程，实改为文件锁）
 - 导出包 = dump + 最新 uploads 镜像 + restore.sh（MYSQL_PWD 传密码，空密码不退化成交互提示，实踩）+ README-恢复说明.txt；**不含 server/.env**（迁移单独 scp）；打包前检查磁盘剩余空间（不足 507）
 - 前端下载用 http.get<Blob> + responseType:'blob' + timeout:0（http.ts 全局 15s 超时会掐断备份/导出，实踩）；http.ts 响应拦截器已支持解析 blob 错误体中的 JSON message

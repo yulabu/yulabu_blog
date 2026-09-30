@@ -37,9 +37,14 @@ server/
 ├── .env                        # 环境变量（不提交）
 ├── .env_example                # 环境变量模板
 ├── seed.js                     # 创建初始管理员
-├── config/
-│   ├── database.js             # Sequelize 配置
-│   └── image.js                # 上传目录 / 缩略图 / 图片质量配置
+├── config/                     # 配置边界：只收「外部能定的值」（见「配置（config/）」）
+│   ├── env.js                  # 全项目唯一读 process.env：默认值 / 类型转换 / 必填校验
+│   ├── timezone.js             # 北京时间偏移（+08:00）的唯一事实
+│   ├── database.js             # Sequelize 实例 + dbConfig（连接参数，备份链共用）
+│   ├── auth.js                 # JWT 密钥与有效期（签发 / 验签共用）
+│   ├── image.js                # 上传目录 / 缩略图 / 图片质量 / 上传限额
+│   ├── backup.js               # 备份目录与保留份数
+│   └── settings.js             # 站点设置（setting 表）键定义 + 文本↔强类型编解码
 ├── controllers/                # 业务逻辑
 ├── models/                     # 数据模型与关联
 ├── routes/                     # 路由定义
@@ -80,6 +85,8 @@ JWT_SECRET=随机字符串
 UPLOAD_DIR=/var/lib/yulabu/uploads    # 上传目录绝对路径，默认项目根目录 /uploads
 UPLOAD_MAX_SIZE=5242880               # 单张图片最大 5MB
 ```
+
+必填项：`DB_NAME` / `DB_USER` / `JWT_SECRET`——缺失时服务启动即失败（报错写明缺哪个）。全部环境变量只在 `config/env.js` 读取，详见「配置（config/）」。
 
 ### 4. 创建数据库
 
@@ -247,10 +254,27 @@ node seed.js
 |---|---|
 | Middleware | JWT 鉴权、限流、multer 文件解析、全局错误处理（管道层） |
 | errors | AppError：业务异常类型，dto / controllers / utils 共用（共享内核，不属于中间件层） |
+| config | 外部输入边界：env 派生的环境配置（唯一出口 config/env.js）+ 站点设置契约（config/settings.js） |
 | DTO | 白名单提取 + 参数校验，非法输入抛出 AppError |
 | Controller | 调用 DTO → 操作数据库 → VO 格式化 |
 | VO | 转换为前端友好的驼峰 JSON |
 | utils/image | 图片保存、文章图片同步、临时目录清理 |
+
+### 配置（config/）
+
+config/ 只收「外部能定的值」，分两类：
+
+- **环境配置（运维在部署时定）**：`config/env.js` 是**后端唯一读 `process.env` 的文件**，负责默认值、类型转换与必填校验（缺 `DB_NAME` / `DB_USER` / `JWT_SECRET` 时**启动即失败**并写明缺哪个；这三项缺失以前会伪装成别的故障——缺 `JWT_SECRET` 时登录 500、其余后台接口回 401「token 无效或已过期」）。`config/{database,image,backup,auth}.js` 只从 env.js 派生语义，自己不读 env
+- **站点设置（管理员在后台定）**：`config/settings.js` 是 setting 表的键定义与「文本 ↔ 强类型」唯一转换入口
+
+**不进 config/ 的**：内部实现常量随代码走——限流阈值留在 `middleware/rateLimiter.js`、GC 保留期留在 `utils/gc.js`、访问日志保留留在 `utils/visitGc.js`、抓图超时留在 `utils/ogImage.js`、允许格式留在 `utils/imageStorage.js`、图表窗口白名单留在 `controllers/adminController.js`。判据：**这个值外部能定吗？被两层以上共用吗？**都不满足就留在自己的模块里。
+
+两条配套不变量：
+
+- `config/database.js` 具名导出 `{ sequelize, dbConfig }`；备份链（`utils/backup.js`）的 dump 凭据与库名必须取 `dbConfig`——两套默认值会让「应用连的库」与「备的库」分叉
+- 时区 `+08:00` 的唯一事实是 `config/timezone.js`（Sequelize 的 timezone 与 `utils/date.js` 的偏移量都从它派生，错开会出现「图表日期与 DB 分组差一天」）
+
+护栏：`node scripts/check-layers.js`（零依赖、不连库）断言 env 唯一出口、依赖只能向下、`@config/env` 白名单。
 
 ### 错误处理（唯一出口）
 
