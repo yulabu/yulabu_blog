@@ -85,6 +85,7 @@ certbot renew --dry-run
 
 ## 开发惯例
 ### 1. 部署流程
+- **部署只走 GitHub 推送这一条路径（2026-09-30 用户要求）**：先 `git push origin main`，再在服务器 `git pull` + `pm2 restart`。不得用 bundle / scp / 手工改服务器文件等旁路把代码送上去——旁路会让 GitHub 与生产分叉，之后无法用 git 判断生产到底跑的哪一版
 - 改动须先提交 git，服务器拉取：cd /var/www/yulabu_blog && git pull
 - 前端变更：cd frontend/home && npm install && npm run build（前台，SSR 变更后 pm2 restart blog-web）/ cd frontend/admin && npm install && npm run build（后台）
 - 后端依赖变动：cd server && npm install；之后 pm2 restart blog-server
