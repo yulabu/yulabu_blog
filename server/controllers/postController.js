@@ -4,9 +4,10 @@ const { Post, Tag, ColumnPost, Column, Image } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
-const { syncPostImages, resolveImageIdByUrl } = require('@services/image/derive');
-// 归档分组（领域派生）与彻底删除（多表事务）都在 service（判据②④）
-const { groupByBeijingMonth, forceRemove } = require('@services/post');
+const { syncPostImages } = require('@services/image/derive');
+// 归档分组（领域派生）与文章写入/删除（多表事务）都在 service（判据②④）：
+// 写入是「业务行 + 封面派生 + 正文图片关联」一个事务，见 services/post.js 的 createWithRefs
+const { groupByBeijingMonth, createWithRefs, updateWithRefs, softRemove, forceRemove } = require('@services/post');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
@@ -113,34 +114,19 @@ exports.getArchive = async (req, res) => {
   res.json({ archives });
 };
 
-// 创建文章
+// 创建文章：写入（业务行 + 封面派生 + 正文图片关联）在同一事务里，见 services/post.js（判据②）
 exports.createPost = async (req, res) => {
-  const data = createPostDTO(req.body);
-  if (data.post_cover !== undefined) {
-    data.cover_image_id = await resolveImageIdByUrl(data.post_cover);
-  }
-  const post = await Post.create(data);
-  await syncPostImages(post.post_id, post.post_content);
-
+  const post = await createWithRefs(createPostDTO(req.body));
   res.status(201).json({ id: post.post_id, message: '创建成功' });
 };
 
-// 更新文章
+// 更新文章：同上；正文变更时在同一事务里重建图片关联（幂等）
 exports.updatePost = async (req, res) => {
   const postId = postIdDTO(req.params);
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
-  const data = updatePostDTO(req.body);
-  if (data.post_cover !== undefined) {
-    data.cover_image_id = await resolveImageIdByUrl(data.post_cover);
-  }
-  await post.update(data);
-
-  // 正文变更后按正文重新同步图片关联（幂等）；解引用的图片由 GC 对账回收
-  if (data.post_content !== undefined) {
-    await syncPostImages(postId, data.post_content);
-  }
+  await updateWithRefs(post, updatePostDTO(req.body));
 
   res.json({ id: post.post_id, message: '更新成功' });
 };
@@ -155,14 +141,13 @@ exports.unbindImages = async (req, res) => {
   res.json({ id: postId, count: synced, message: `已同步 ${synced} 张` });
 };
 
-// 删除文章（软删除，改为 trash 状态；顺带移出专栏）
+// 删除文章（软删除，改为 trash 状态；顺带移出专栏）——两次写在同一事务，见 services/post.js（判据②）
 exports.deletePost = async (req, res) => {
   const postId = postIdDTO(req.params);
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
-  await post.update({ post_status: 'trash' });
-  await ColumnPost.destroy({ where: { post_id: postId } });
+  await softRemove(postId);
   res.json({ id: postId, message: '已移入回收站' });
 };
 

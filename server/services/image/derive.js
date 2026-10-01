@@ -81,11 +81,14 @@ async function resolveImageIdByUrl(url) {
   return ids[0] || null
 }
 
-// 同步文章正文图片关联：以正文为真相源全量 replace（幂等），返回关联图片数
-async function syncPostImages(postId, content) {
+// 同步文章正文图片关联：以正文为真相源全量 replace（幂等），返回关联图片数。
+// transaction 传入时并入调用方事务——写文章的「业务行 + 引用行」必须原子（见 services/post.js
+// 的 createWithRefs；改前两步各管各的事务，第二步失败会留下「文章在、指针不在」的图，
+// 宽限后被 GC 当孤儿删掉）。不传则自开一个（unbind-images 这类独立同步入口）。
+async function syncPostImages(postId, content, transaction) {
   const imageIds = await resolveImageIdsByKeys(extractReferencedImages(content), `post#${postId}`)
 
-  await sequelize.transaction(async (t) => {
+  const replace = async (t) => {
     await PostImage.destroy({ where: { post_id: postId }, transaction: t })
     if (imageIds.length > 0) {
       await PostImage.bulkCreate(
@@ -93,7 +96,10 @@ async function syncPostImages(postId, content) {
         { transaction: t }
       )
     }
-  })
+  }
+
+  if (transaction) await replace(transaction)
+  else await sequelize.transaction(replace)
 
   return imageIds.length
 }
