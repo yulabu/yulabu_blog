@@ -1,5 +1,5 @@
-require('module-alias/register');
-require('dotenv').config({ quiet: true });
+// 统一引导：模块别名 + 环境变量 + 进程级未处理异常兜底（见 server/bootstrap.js）
+require('../bootstrap');
 const { runBackup } = require('@services/backup/run');
 
 // 每日备份 CLI（cron / 手动执行）：导出数据库 + 刷新 uploads 镜像 + 清理过期 dump

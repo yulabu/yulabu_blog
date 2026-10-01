@@ -194,3 +194,18 @@ grep '^\[err\]' /root/.pm2/logs/blog-server-error.log | tail -50
 - `pm2 flush blog-server` 会清空日志文件（排查前先确认不需要保留现场）
 - 临时排查完记得 `start` 时用 `--time` 可给 PM2 自己的输出加时间戳；应用侧的日志行本来就有时间戳，不依赖它
 
+### 启动顺序与失败策略（2026-10 起）
+
+后端启动顺序：`sequelize.sync()` → `scripts/sync-schema.js` → 定时任务 → **最后才 `app.listen()`**。语义是「端口开着 = 服务可用」——改前 listen 在最前面，数据库没起来时端口已经接受连接、接口全 503，属说不清状态的半死态。
+
+任一步失败（含端口占用）都会记 `[err]` + 堆栈后 `process.exit(1)`，交 PM2 重启。因此**要给 PM2 配退避**，否则 DB 长时间不可用时会变成紧凑重启循环：
+
+```bash
+cd /var/www/yulabu_blog/server
+pm2 delete blog-server
+pm2 start app.js --name blog-server --exp-backoff-restart-delay=2000
+pm2 save
+```
+
+排查启动问题：`pm2 logs blog-server --out` 看是否有 `[err] [server] 启动失败` 或 `[err] [server] 端口 … 监听失败`；重启窗口内 nginx 会 502、前台文章页（SSR）短暂返回 404——这是「宁可连接被拒，也不假装活着」的预期代价。
+

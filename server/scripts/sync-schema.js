@@ -1,5 +1,5 @@
-require('module-alias/register');
-require('dotenv').config({ quiet: true });
+// 统一引导：模块别名 + 环境变量 + 进程级未处理异常兜底（见 server/bootstrap.js）
+require('../bootstrap');
 const { sequelize } = require('@config/database');
 // 本文件既被 app.js 在启动时调用（于是这些行会进 PM2 的 out 日志），也能单独当 CLI 跑，
 // 所以走统一的日志行格式（scripts/ 的其余 CLI 壳是人看的输出，不受此约束）

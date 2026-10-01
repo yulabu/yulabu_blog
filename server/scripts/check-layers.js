@@ -30,7 +30,7 @@ const ROOT = path.resolve(__dirname, '..');
 
 // 扫描范围：显式列出（不递归整个仓库，避开 frontend/ 与产物目录）
 const SCAN_DIRS = ['config', 'controllers', 'dto', 'errors', 'jobs', 'middleware', 'models', 'routes', 'scripts', 'services', 'utils', 'vo'];
-const SCAN_FILES = ['app.js', 'seed.js'];
+const SCAN_FILES = ['app.js', 'seed.js', 'bootstrap.js'];
 
 // 断言①：允许出现 process.env 的文件（仓库相对路径）
 const ENV_ALLOWLIST = new Set(['config/env.js', 'scripts/check-errors.js']);

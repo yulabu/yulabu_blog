@@ -72,7 +72,7 @@ npm run dev     # nodemon 热重载
 npm start       # 直接跑 app.js（生产由 PM2 守护）
 ```
 
-启动时依次：`sequelize.sync()` 建表 → `scripts/sync-schema.js` 补齐 sync 不做的 ALTER → `startJobs()` 起定时任务。健康检查：`curl localhost:3000/` 返回 `Hello, Blog Backend!`。
+启动顺序：`sequelize.sync()` 建表 → `scripts/sync-schema.js` 补齐 sync 不做的 ALTER → `startJobs()` 起定时任务 → **最后才 `app.listen()`**（端口开着 = 服务可用）。任一步失败都会记 `[err]`（含堆栈）并 `exit(1)`，交 PM2 按退避策略重启——不会再出现「端口开着但接口全 503」的半死状态。健康检查：`curl localhost:3000/` 返回 `Hello, Blog Backend!`。
 
 ### 6. 创建管理员
 
@@ -222,7 +222,7 @@ grep '^\[err\]'  /root/.pm2/logs/blog-server-error.log | tail -50      # 请求�
 grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # 某一类任务的历史
 ```
 
-- tag 词表固定这几个：`server` / `sync-schema` / `image-gc` / `daily-stat` / `visit-gc` / `backup` / `image-ref` / `image-store` / `og-image` / `seed`
+- tag 词表固定这几个：`server` / `sync-schema` / `image-gc` / `daily-stat` / `visit-gc` / `backup` / `image-ref` / `image-store` / `og-image` / `process`（请求链之外的未处理拒绝 / 未捕获异常）/ `seed`
 - 轮转：`pm2 install pm2-logrotate` + `max_size 10M` / `retain 7`（**未安装的话 out 日志会无限增长**；生产安装步骤见 `deploy/astro.md` 第八节）
 - `pm2 flush blog-server` 会清空日志文件，排查前先确认不需要留现场
 

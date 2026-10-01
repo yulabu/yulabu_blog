@@ -1,7 +1,5 @@
-// 基础配置
-require('module-alias/register');
-// quiet：关掉 dotenv 每次启动打的 `◇ injected env (N) from .env` 提示行——它会混进 PM2 的 out 日志
-require('dotenv').config({ quiet: true });
+// 基础配置：别名 + 环境变量 + 进程级未处理异常兜底（唯一出处 server/bootstrap.js）
+require('./bootstrap');
 const express = require('express');
 const cors = require('cors');
 const env = require('@config/env');
@@ -68,30 +66,9 @@ app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
 // 定时任务：图片 GC / 每日统计聚合 / 访问日志清理。调度、间隔与依赖声明都在 jobs/index.js，
 // 本文件只负责「数据库就绪后启动它们」——任务细节（阈值、幂等、失败日志）不进进程入口
 const { startJobs } = require('@jobs');
-// 导入模型
+// 导入模型（保证所有模型在 sync 前注册完成）
 const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary } = require('@models');
-
-// 同步数据库（创建表）
-// 注意：开发期修改表结构时建议先手动迁移，或临时改为 { alter: true }。
-// 长期开启 alter: true 在 MySQL 上容易因索引名不匹配而产生重复索引，
-// 最终触发 ER_TOO_MANY_KEYS（max 64 keys allowed）。
-sequelize.sync()
-  .then(async () => {
-    console.log(infoLine('server', '所有模型同步成功'));
-    // 一次性幂等结构同步：补齐 sync() 不处理的 ALTER（新增列/ENUM 追加），重复执行安全
-    try {
-      const syncSchema = require('./scripts/sync-schema');
-      await syncSchema();
-    } catch (e) {
-      console.error(errTagLine('sync-schema', `同步失败: ${e.message}`));
-    }
-    // 依赖数据库表，需在 sync 之后启动
-    startJobs();
-  })
-  .catch(err => {
-    console.error(`${errTagLine('server', '同步失败')}\n${err.stack || err}`);
-  });
-
+const syncSchema = require('./scripts/sync-schema');
 
 // 测试路由
 app.get('/', (req, res) => {
@@ -106,8 +83,37 @@ app.use(notFound);
 const errorHandler = require('@middleware/errorHandler');
 app.use(errorHandler);
 
-// 启动服务器
+// 启动顺序：数据库就绪 → 结构补齐 → 定时任务 → 才接流量。
+//
+// 「端口开着 = 服务可用」是刻意的：改前 listen 在 sync 之前，DB 没起来时端口已经接受连接、
+// 所有接口 5xx/503，进程处在一个说不清状态的「半死」态。现在任一步失败都记 [err]（含堆栈）
+// 后 exit(1)，交 PM2 按退避策略重启——宁可让外部看到连接被拒，也不要一个假装活着的服务。
+//
+// 注意：sync() 只建表 + 补齐模型声明的索引，**不做 ALTER**；新增列 / ENUM 值归 sync-schema.js。
+// 长期开 { alter: true } 在 MySQL 上容易因索引名不匹配产生重复索引，最终 ER_TOO_MANY_KEYS
 const PORT = env.port;
-app.listen(PORT, () => {
-  console.log(infoLine('server', `Server is running on http://localhost:${PORT}`));
+
+async function start() {
+  await sequelize.sync();
+  console.log(infoLine('server', '所有模型同步成功'));
+
+  await syncSchema();   // 一次性幂等结构同步（幂等：重复执行安全）
+  startJobs();          // 定时任务依赖数据库表，必须在 sync 之后
+
+  const server = app.listen(PORT, () => {
+    // 延后一个 tick 再报成功：个别平台（macOS 实测）在 :: 与已有监听冲突时先回调再发 'error'，
+    // 直接打印会留下「Server is running」紧跟一行失败的自相矛盾日志；失败时进程已 exit(1)，
+    // 这行根本不会打出来
+    setImmediate(() => console.log(infoLine('server', `Server is running on http://localhost:${PORT}`)));
+  });
+  // 端口占用这类监听失败要当场说清楚，别让它变成 uncaughtException 里的一行堆栈
+  server.on('error', (err) => {
+    console.error(`${errTagLine('server', `端口 ${PORT} 监听失败: ${err.message}`)}\n${err.stack || ''}`);
+    process.exit(1);
+  });
+}
+
+start().catch((err) => {
+  console.error(`${errTagLine('server', '启动失败')}\n${err.stack || ''}`);
+  process.exit(1);
 });

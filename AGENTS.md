@@ -89,6 +89,7 @@ certbot renew --dry-run
 - 改动须先提交 git，服务器拉取：cd /var/www/yulabu_blog && git pull
 - 前端变更：cd frontend/home && npm install && npm run build（前台，SSR 变更后 pm2 restart blog-web）/ cd frontend/admin && npm install && npm run build（后台）
 - 后端依赖变动：cd server && npm install；之后 pm2 restart blog-server
+- **后端启动策略（2026-10 起）**：启动顺序是 sync → sync-schema → 定时任务 → 最后才 listen（端口开＝可用）；任一步失败记 `[err]` 后 `exit(1)`，交 PM2 退避重启（`--exp-backoff-restart-delay=2000`，命令见 deploy/astro.md 第八节）。排查启动问题看 out 日志里的 `[err] [server] 启动失败` / `端口 … 监听失败`
 - Nginx 变更：nginx -t && systemctl reload nginx
 - 本地改动先 npm run build + npm run check（astro check）验证再提交；home 为 Astro 产物后 vue-tsc 不再适用
 - 服务器 1G 内存，禁用无头浏览器截图（puppeteer/playwright 等）
