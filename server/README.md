@@ -93,7 +93,7 @@ server/
 ├── models/                 # 表定义与关联（sequelize.define）
 ├── dto/                    # 入参：白名单提取 + 校验，非法输入抛 AppError
 ├── vo/                     # 出参：组装成前端契约形状（命名以各文件为准，见「请求生命周期」）
-├── services/               # 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、不认识 HTTP
+├── services/               # 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、不认识 req/res
 ├── jobs/                   # 定时任务：进程内调度、批量、幂等自愈
 ├── middleware/             # 管道层：鉴权、限流、上传解析、404、错误出口
 ├── controllers/            # 业务编排：dto → service/model → vo（只有这层认 req/res）
@@ -105,7 +105,7 @@ server/
 
 ### 数据表
 
-12 张表，全部由 `sequelize.sync()` 建。**结构出处**：列 / 索引 / 外键都由模型声明（`models/*.js` 的 `indexes`、`models/index.js` 的关联）——`sync()` 建表时内联外键，并对**已存在**的表补齐「模型声明了但库里没有」的索引；它**不补列、不追加 ENUM 值**，这两类漂移归 `scripts/sync-schema.js`：
+12 张表，全部由 `sequelize.sync()` 建。**结构出处**：列 / 索引 / 外键都由模型声明（`models/*.js` 的 `indexes`、`models/index.js` 的关联）——`sync()` 建表时内联外键，并对**已存在**的表补齐「模型声明了但库里没有」的索引；它**不补列、不追加 ENUM 值**，这两类漂移归 `scripts/sync-schema.js`。**外键只在建表那一刻生成**，老库缺的关联外键用 `scripts/reconcile-schema.js` 补齐（幂等，默认 dry-run）；老库/开发机可能还带一批无模型的遗留表（各环境不是同一批），实测基线与对账结果见 [deploy/schema.md](../deploy/schema.md)。
 
 | 表 | 说明 |
 |---|---|
@@ -156,11 +156,15 @@ HTTP 请求
 | `errors/` | `AppError` + 错误翻译表 + 响应形状 | 仅额外允许 `@config` |
 | `utils/` | 纯函数 / 纯常量：`date.js`（北京时间日界）、`log.js`（日志行格式）、`uploadUrl.js`（`/uploads/` 契约）、`imageRefTypes.js`（图片引用类型名） | node 内置 + `@config` / `@errors` |
 | `models/` | 表定义与关联 | `@config` / `@errors` |
-| `dto/` `vo/` | 入参校验 / 出参格式化 | 只依赖 `@errors`；二者另允许 `@utils`（utils 已保证是纯函数，vo 取 URL 前缀、dto 取图片类型白名单） |
-| `services/` | 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、**不认识 req/res** | `models` / `config` / `errors` / `utils` |
+| `dto/` `vo/` | 入参校验 / 出参格式化 | 共享内核 `@errors` / `@utils` / `@config`（护栏断言⑩ 钉成白名单；utils 已保证是纯函数：vo 取 URL 前缀、dto 取图片类型白名单与设置 schema） |
+| `services/` | 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、**不认识 req/res**（可用 `AppError` 表达状态，见下） | `models` / `config` / `errors` / `utils` |
 | `jobs/` | 定时任务：进程内调度、批量、幂等自愈、**不认识 req/res** | `services` 及其以下 |
 | `middleware/` | 管道层：只被 `routes/*` 与 `app.js` 挂载，不放错误类型与业务逻辑 | `errors` / `config` / `utils` |
 | `controllers/` `routes/` | HTTP 边界（只有这层认 req/res）：**只做「取参(DTO) → 调 service/model → 组装(VO) → 响应」** | 不设限（路径：route → controller → service → model） |
+
+**共享内核 = `config/` / `errors/` / `utils/`**：三者都没有副作用与进程引导，各层均可依赖（`config/` 是外部输入边界、`errors/` 是错误类型与响应形状、`utils/` 是纯函数）。所以 `models/`、`dto/`、`vo/` 允许 `@config` 不是例外而是这条规则的体现——改前 README 把 dto/vo 写成「只依赖 `@errors`」，而 `dto/setting.dto.js`、`vo/setting.vo.js` 一直在用 `@config/settings`，护栏也不报，属文档与护栏各说一套；现在断言⑩ 把 dto/vo 的 `@` 依赖收成白名单。
+
+**services / jobs 与 HTTP 的关系**：两者都**不认识 req/res**（流式导出由 controller 接管管道），但**可以用 `AppError` 表达结果状态**——4xx 语义由抛错方选定（例：备份导出磁盘不足挑 507、备份进行中挑 409），5xx 与无状态的意外错误由 `errorHandler` 兜底。「不认识 HTTP」指不碰请求对象，不是不能决定状态码。
 
 **新文件放哪儿（2026-09 三分判据）**：只看两件事——
 
@@ -256,7 +260,8 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 - 工作台折线图与「总浏览量 / 总独立访客」读 `daily_stat`；「今日 PV / UV」实时读 `visit_log`
 - 口径取舍：总量是「各日去重 UV 之和」，长期访客会被逐日重复计入（偏大但永不缩水）；「清空访问日志」只删明细，不影响已归档总量
 - 后端判定「今天」一律走 `utils/date.js` 的 `beijingDateStr` / `beijingDayStart` / `beijingYearMonth`：库里 DATETIME 按 +08:00 存墙钟，而生产 Node 进程时区可能是 UTC，用 `new Date().setHours(0,0,0,0)` 会错开 8 小时
-- 三处曾用进程本地口径、2026-09-30 已统一为北京自然日：后台访问日志筛选（`today` / `7days`（含今天共 7 天）/ `30days`）、工作台「今日新增」卡、文章归档的年月分组。规则由护栏断言⑤ 守着：`setHours(` 只允许出现在 `utils/date.js`
+- 三处曾用进程本地口径、2026-09-30 已统一为北京自然日：后台访问日志筛选（`today` / `7days`（含今天共 7 天）/ `30days`）、工作台「今日新增」卡、文章归档的年月分组。规则由护栏断言⑤ 守着：取日期部件 / 本地格式化（`setHours` / `getFullYear` / `getMonth` / `getDate` / `toLocaleString` …）只允许出现在显式白名单里
+- **时间口径的有意例外（2026-10 登记）**：命名 / 展示类时间用**进程本地时间**，不参与北京日界——上传分片目录（`services/image/store.js` 的 `dateShardPath`，`UPLOAD_DIR/YYYY/MM`）、备份 dump 文件名（`services/backup/run.js` 的 `formatStamp`）、导出说明里的「生成时间」（`services/backup/export.js`）。白名单在 `scripts/check-layers.js` 的 `LOCAL_CALENDAR_ALLOWLIST`：新代码要用本地日历必须先去登记并写明理由，否则断言⑤ 会拦
 - `visit_log` 的 `created_at` 索引在 `models/VisitLog.js` 里声明（范围筛选与 `visitGc` 的删除都走它；`post_id` 的索引由外键自带，不重复声明）——改索引＝改模型 + 重启，`sync()` 会补上
 
 ### 备份
@@ -363,8 +368,8 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 | 命令 | 作用 |
 |---|---|
-| `node scripts/check-errors.js` | 错误层回归：23 条断言，守着翻译表与「5xx 必记日志」；**升级 body-parser / sequelize / multer 后必须重跑**（翻译表依赖它们内部的常量与错误类） |
-| `node scripts/check-layers.js` | 分层护栏 9 条断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 取本地零点只允许在 `utils/date.js` ⑥ 运行期日志必须经 `utils/log.js`（不许直接 `console` 写字符串） ⑦ `/uploads/` 前缀只允许在 `utils/uploadUrl.js` ⑧ controller 的入参一律经 DTO（不许 `req.body.X` / `req.query.X`） ⑨ 口令哈希只允许在 `services/auth/password.js` |
+| `node scripts/check-errors.js` | 错误层回归 25 条断言：翻译表与「5xx 必记日志」+ 限流/回环放行（SSR 回源免限流、访客按 XFF 命中 429 并记 warn）；**升级 body-parser / sequelize / multer 后必须重跑**（翻译表依赖它们内部的常量与错误类） |
+| `node scripts/check-layers.js` | 分层护栏 11 类断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 时间口径白名单（取日期部件 / 本地格式化只允许出现在登记的例外文件） ⑥ 运行期日志必须经 `utils/log.js`（不许直接 `console` 写字符串） ⑦ `/uploads/` 前缀只允许在 `utils/uploadUrl.js` ⑧ controller 的入参一律经 DTO（不许 `req.body.X` / `req.query.X`） ⑨ 口令哈希只允许在 `services/auth/password.js` ⑩ dto/vo 的 `@` 依赖只允许共享内核（`@errors` / `@utils` / `@config`） ⑪ `package.json` 的 `_moduleAliases` 与 `jsconfig.json` 的 `paths` 别名表一致 |
 
 需要连库 / 改数据的脚本（幂等，可重复执行）：
 
@@ -381,6 +386,12 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 **新增一个接口**：`routes/` 挂路径（写操作挂 `auth`）→ `controllers/` 编排 → 入参走 `dto/`（分页用 `dto/common.dto.js` 的 `paginate`）→ 出参走 `vo/` → 需要碰 DB / 磁盘的领域逻辑放 `services/`。错误一律 `throw new AppError(status, message)`，不要在控制器里写错误响应。
 
+**三条归属判据（2026-10 第二轮收口，与「分层与依赖方向」的 controller 判据配套）**：
+
+1. **删除守卫**（这个资源还有没有外部引用、能不能删）**一律在 `services/`**：查引用 → 有引用 `throw new AppError(4xx, …)`。样板：`services/image/remove.js`（删图前查引用）、`services/tag.js` 的 `deleteTagWithGuard`（分类下有文章则拒）。controller 只调它，不自己写守卫。
+2. **名字唯一性**：预检命中也用 **409** 并给具体文案（如「分类名称已存在」）；DB 唯一约束是并发兜底，由翻译表统一回 **409**「数据已存在，请勿重复提交」。**两条路的状态码必须一致**——改前分类重名在预检路径回 400、并发路径回 409，同一个错误两种语义。
+3. **一次请求内的多步写**（写多张表、check-then-act、主行 + 关联行）**必须同事务且落在 `services/`**；单模型单条查询 / 写入可以留在 controller。样板：`services/post.js` 的 `createWithRefs` / `updateWithRefs` / `softRemove`（业务行 + 正文图片关联 + 专栏关联同一事务）。
+
 **新增持图业务**（缺一处会把在用的图当成孤儿删掉，或让它在筛选里消失）：
 
 1. 业务表加 `*_image_id` 列（1:1）或建关联表（1:N）
@@ -390,13 +401,14 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 **新增环境变量**：只改 `config/env.js`（默认值 + 类型转换 + 必填校验）与 `.env_example`；消费者从 `@config/<domain>` 取，不要直接读 `process.env`；改完跑 `check-layers.js`。
 
-**改表结构**：新表不用管（`sync()` 自动建）；**索引与外键写进模型**（建表时生效，已存在的表重启即补索引）；新列 / ENUM 值写进 `scripts/sync-schema.js`，部署时执行；涉及图片引用的变更按「图片系统」一节的顺序跑迁移。
+**改表结构**：新表不用管（`sync()` 自动建）；**索引与外键写进模型**——索引对已存在的表**重启即补**，但**外键只对「建表那一刻」生效**（老库的表不会被补上，靠 `scripts/reconcile-schema.js` 批量对齐，默认 dry-run）；新列 / ENUM 值写进 `scripts/sync-schema.js`，部署时执行；涉及图片引用的变更按「图片系统」一节的顺序跑迁移。结构出处的完整规则与实测基线见 [deploy/schema.md](../deploy/schema.md)。
 
 **新增定时任务**：写 `jobs/<name>.js`（导出 `run()`，自带进度与失败日志、失败返回 `false` 不抛）→ 在 `jobs/index.js` 登记间隔、是否启动即跑、依赖谁成功 → 需要手工入口就在 `scripts/` 加一个 CLI 壳（`module-alias` + `dotenv` + 退出码）。内部阈值留在任务文件里，不进 `config/`。
 
 ## 相关文档
 
 - 仓库根 [AGENTS.md](../AGENTS.md)：生产环境清单、部署流程、开发惯例（部署只走 GitHub 推送这一条路径）
+- [deploy/schema.md](../deploy/schema.md)：数据库结构基线与对账（外键生成规则、遗留对象清单、reconcile 脚本用法与回滚）
 - [deploy/astro.md](../deploy/astro.md)：前台 Astro 的 nginx / PM2 配置与回滚、上传链路的三层上限、日志与运行时环境
 - [deploy/backup.md](../deploy/backup.md)：备份 cron 配置、恢复与异机迁移步骤
 - [frontend/home/README.md](../frontend/home/README.md) · [frontend/admin/README.md](../frontend/admin/README.md)：两个前端的开发说明

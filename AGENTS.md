@@ -81,7 +81,7 @@ certbot renew --dry-run
 - blog.yulabu.cn 须出现在 Nginx server_name 且指向 frontend/home/dist，部署前确认（曾不确定是否配置）
 - 必须使用项目 engines 指定的 Node LTS（^22.18.0 或 >=24.12.0），生产服务器为 Node 22.23.2 / npm 10.9.8；Windows 本地若用 Node 25（奇数版）/ npm 11，peer dependency 解析会异常，导致 `@vue/devtools-api`、echarts 等包缺包，前端报 `Failed to resolve import`（实踩）。解决：本地切到 Node 22/24 LTS，或在 package.json dependencies 显式补齐 peer dep
 - 初始管理员账号密码来自 server/.env 的 SEED_ADMIN_NAME/PASSWORD，上线后应已修改
-- 部署文档已固化在仓库 deploy/（backup.md 异机迁移与恢复、astro.md 前台 Astro 部署/回滚）
+- 部署文档已固化在仓库 deploy/（backup.md 异机迁移与恢复、astro.md 前台 Astro 部署/回滚、schema.md 数据库结构基线与对账）
 
 ## 开发惯例
 ### 1. 部署流程
@@ -96,8 +96,8 @@ certbot renew --dry-run
 
 ### 2. 数据库迁移
 - sequelize.sync() 仅建表（表不存在时），不会 ALTER 已有表 / 追加 ENUM 值；但**它会补齐模型里声明而库里缺失的索引**（showIndex → addIndex，对已存在的表也跑）
-- **结构出处**：列 / 索引 / 外键都声明在模型里（`models/*.js` 的 `indexes`、`models/index.js` 的关联）——建表时内联外键；改索引＝改模型 + 重启
-- 新增字段或 ENUM 值必须手动 ALTER，或跑 server/scripts/sync-schema.js（幂等、可重复执行）；涉及图片引用结构的变更还需跑 migrate-image-ref.js（见第 4 节）。**别再往 sync-schema 里加建表语句**：sync() 总是先建表，那些分支永不执行，只会变成第二份会漂移的 DDL（2026-09-30 已删掉 visit_log 那份）
+- **结构出处**：列 / 索引 / 外键都声明在模型里（`models/*.js` 的 `indexes`、`models/index.js` 的关联）——索引改模型 + 重启即补；**外键只在「建表那一刻」内联生成，已存在的表不会被补**（2026-09 加的 `Post.belongsTo(Image)` 这类关联在老库上不产生 ALTER）。老库与新库的外键差异用 `server/scripts/reconcile-schema.js` 对齐（幂等，**默认 dry-run**，`--apply` 才执行），基线、遗留对象与回滚 SQL 见 deploy/schema.md
+- 新增字段或 ENUM 值必须手动 ALTER，或跑 server/scripts/sync-schema.js（幂等、可重复执行）；涉及图片引用结构的变更还需跑 migrate-image-ref.js（见第 4 节）。**别再往 sync-schema 里加建表语句**：sync() 总是先建表，那些分支永不执行，只会变成第二份会漂移的 DDL（2026-09-30 已删掉 visit_log 那份；daily_stat / diary / post_image 三份死分支仍在，清理牵连「新库带外键、老库不带」的基线决策，见 deploy/schema.md）
 - 上线前自查：新模型字段 / 新 ENUM 值是否已在生产库存在
 - ENUM 追加新值必须放末尾（MySQL 按索引存储，插前面会让存量数据错位，见 models/Post.js:40）
 - 连接用 blog_user@localhost（utf8mb4）；root 走 unix_socket，不可密码登录
@@ -131,11 +131,12 @@ certbot renew --dry-run
 - app.js 已设 trust proxy 'loopback'（express-rate-limit 8.x 必需，否则报 ERR_ERL_UNEXPECTED_X_FORWARDED_FOR）
 - 分层：routes/*Routes.js → controllers/*Controller.js → services/*（领域能力，碰 I/O/DB）→ models/*；dto/* 校验入参、vo/* 组装出参、jobs/* 由调度器驱动（见第 13 节的三分判据）
 - **controller 的职责边界（2026-10-01 收口）**：controller 只做「取参（DTO）→ 调 service / model → 组装（VO）→ 响应」。命中任一条**必须**进 services：① 聚合 / 分组 SQL（fn / col / group / raw）② 一次请求写多张表（必须带事务）③ 被 ≥2 个调用方复用 ④ 领域派生逻辑。单模型单条查询 / 写入可以留在 controller（多数 CRUD 属此）。**controller 里现在 0 事务、0 聚合**——新增接口时按这条判据放代码
-- 依赖方向只能向下：errors/（AppError）与 config/ 是共享内核，各层都可依赖；utils/ 是**纯函数共享内核**（无 I/O / DB / 进程引导，由护栏断言④ 把守），所以 vo 这类最底层也能用它；services/ 只依赖 models/config/errors/utils，jobs/ 只依赖 services 及以下，**两者都不许出现 req/res**（流式导出由 controller 接管管道）；middleware/ 是**管道层**（只被 routes 与 app.js 挂载），不要把错误类型、配置常量、业务逻辑放进去（2026-09 已把 AppError 从 middleware/ 迁到 errors/）
+- **三条归属判据（2026-10-01 第二轮收口，配套上一条）**：① **删除守卫**（有无外部引用、能不能删）一律在 `services/` 用 AppError 拒绝（`services/image/remove.js`、`services/tag.js` 的 `deleteTagWithGuard`）；② **名字唯一性**：预检回 **409** + 具体文案（如「分类名称已存在」），DB 唯一约束是并发兜底（翻译表统一 409「数据已存在，请勿重复提交」），两条路状态码必须一致；③ **一次请求内的多步写 / check-then-act** 必须同事务且落在 `services/`（样板 `services/post.js` 的 `createWithRefs` / `updateWithRefs` / `softRemove`）
+- 依赖方向只能向下：**共享内核 = config/ / errors/ / utils/**（三者无副作用、无进程引导，各层均可依赖——所以 `models`、`dto`、`vo` 允许 `@config` 是规则本身，不是例外；护栏断言⑩ 把 dto/vo 的 `@` 依赖收成 `@errors`/`@utils`/`@config` 白名单）；utils/ 是**纯函数共享内核**（无 I/O / DB / 进程引导，由护栏断言④ 把守），所以 vo 这类最底层也能用它；services/ 只依赖 models/config/errors/utils，jobs/ 只依赖 services 及以下，**两者都不许出现 req/res**（流式导出由 controller 接管管道）——但**可以用 AppError 表达结果状态**（4xx 语义由抛错方定，如备份导出的 507/409；5xx 与无状态错误由 errorHandler 兜底）；middleware/ 是**管道层**（只被 routes 与 app.js 挂载），不要把错误类型、配置常量、业务逻辑放进去（2026-09 已把 AppError 从 middleware/ 迁到 errors/）
 - **config/ 的职责边界（2026-09 重构确立）**：只收「外部能定的值」——① 运维经 env 定的（`config/env.js` 是**后端唯一读 `process.env` 的文件**：默认值 + 类型转换 + 必填校验，缺 DB_NAME / DB_USER / JWT_SECRET 时启动即失败并写明缺哪个；`config/{database,image,backup,auth}.js` 只从它派生，自己不碰 env）② 管理员在后台定的（`config/settings.js`：setting 表键定义 + 文本↔强类型编解码，属「动态配置」）。判据：**外部能定吗？被两层以上共用吗？**都不满足就是内部实现常量，**一律不进 config/**——限流阈值留在 middleware/rateLimiter.js、GC 保留期留在 jobs/imageGc.js、访问日志保留留在 jobs/visitGc.js、任务间隔留在 jobs/index.js、抓图超时留在 services/ogImage.js、允许格式留在 services/image/store.js、图表窗口白名单留在 controllers/adminController.js
 - 时区（+08:00）的唯一事实是 config/timezone.js：config/database.js 的 Sequelize timezone 与 utils/date.js 的偏移量都从它派生（二者错开会让「图表日期 vs DB 分组」差一天，实修过）
 - `config/database.js` 具名导出 `{ sequelize, dbConfig }`：备份链（services/backup/run.js）必须用 dbConfig 取 dump 凭据与库名，**不要再自己读 env / 写默认值**——两套默认值会让「应用连的库」与「dump 备的库」分叉（缺 DB_NAME 时应用起不来、dump 却静默去备一个叫 blog 的库）
-- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（九条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口）
+- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（11 类断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 时间口径白名单 / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口 / dto-vo 只依赖共享内核 / 别名表一致）
 
 ### 6. 前端代码约定
 - 复用既有组件，不引入新依赖/复杂度
@@ -153,7 +154,7 @@ certbot renew --dry-run
 
 ### 8. 验证方式
 - 后端 DTO 可直接：node -e "require('module-alias/register'); require('dotenv').config(); const {...}=require('@dto/...')" 验证
-- 后端两条常驻护栏（零依赖、不连库、不占端口）：`node scripts/check-errors.js`（错误翻译表 23 条断言）、`node scripts/check-layers.js`（env 唯一出口 + 依赖只能向下 + @config/env 白名单 + utils 纯度）；动了错误层/依赖边/配置读法/任务分层就该跑
+- 后端两条常驻护栏（零依赖、不连库、不占端口）：`node scripts/check-errors.js`（错误翻译表 25 条断言：原 23 条 + 2026-10 新增「回环免限流 / 访客按 XFF 命中 429 并记 warn」2 条）、`node scripts/check-layers.js`（11 类：env 唯一出口 + 依赖只能向下 + @config/env 白名单 + utils 纯度 + 时间口径白名单 + 日志经 utils/log + 上传前缀 + controller 入参经 DTO + 口令哈希 + dto/vo 依赖白名单 + 别名表一致）；动了错误层/依赖边/配置读法/任务分层/限流桶挂载就该跑
 - home 以 npm run build 通过 + npm run check（astro check）0 error 为门槛；admin 仍以 npm run build（含 vue-tsc）为门槛
 - SSR 链路验证：本地起 server（npm run dev）后 `curl -s localhost:4321/post/<id> | grep -E 'og:title|og:image'`
 - 业务改动建议生产实跑：curl -I https://blog.yulabu.cn/og-image.jpg、pm2 logs --err
@@ -204,7 +205,7 @@ certbot renew --dry-run
 ### 11. 访问统计（visit_log + daily_stat，2026-09）
 - 分工：`visit_log` 只存原始明细（公开写入 + 后台分页列表 + 今日实时统计 + GC），保留 90 个**完整自然日**；`daily_stat` 存每日聚合（stat_date 主键 + pv + uv，一天一行，**永久保留**）。工作台折线图的 visitsByDate 与访问日志页「总浏览量/总独立访客」只读 daily_stat；「今日 PV/UV」实时读 visit_log（今日窗口永远在保留期内，无丢失风险）
 - 聚合：`jobs/dailyStat.js` 的 aggregateDailyStats 全量重算（`SELECT DATE(created_at) … GROUP BY DATE(created_at)` → `bulkCreate(updateOnDuplicate:['pv','uv'])`，幂等自愈），`jobs/index.js` 注册表启动即跑一次（自动回填日志中尚存的近 90 天）+ 每 10 分钟一次；24h 的 visitGc 任务**先聚合再清理**（注册表里的依赖声明，不是进程入口里的顺序），聚合失败则跳过本次清理。CLI：`cd server && node scripts/daily-stat.js`
-- **三条勿破坏的不变式**：① 聚合只 UPSERT 日志中仍存在的日期，**绝不写 0 行、绝不删除 daily_stat 行**——日志里没有的日期（已过保留期）不在分组结果里，历史行因此安全；别为了「补齐空白天」预生成 0 行，那会让这条保证失效 ② visitGc 的 cutoff 必须按北京自然日对齐（`beijingDayStart(shiftDateStr(beijingDateStr(), -(RETENTION_DAYS - 1)))`）：用「now-90d」时间戳截断会把最老一天切成半截，重算时用半截数据覆盖完整行（实修） ③ 后端判定「今天」/「年月」一律走 `utils/date.js` 的 beijingDateStr / shiftDateStr / beijingDayStart / beijingYearMonth，勿用 `new Date().setHours(0,0,0,0)`——库里 DATETIME 按 +08:00 存墙钟，而生产 Node 进程时区可能是 UTC，会错开 8 小时（北京时间 00:00–08:00 图表日期序列与 DB 分组差一天，实修）。**2026-09-30 又收口三处曾漏网点**：后台访问日志筛选（today / 7days / 30days 改为北京自然日，含今天共 N 天）、工作台「今日新增」卡（原用本地零点，与同一文件下方的图表口径冲突）、文章归档的年月分组（改用 beijingYearMonth）；并加护栏断言⑤（`setHours(` 只许出现在 utils/date.js，`node scripts/check-layers.js` 现在 5 类断言）
+- **三条勿破坏的不变式**：① 聚合只 UPSERT 日志中仍存在的日期，**绝不写 0 行、绝不删除 daily_stat 行**——日志里没有的日期（已过保留期）不在分组结果里，历史行因此安全；别为了「补齐空白天」预生成 0 行，那会让这条保证失效 ② visitGc 的 cutoff 必须按北京自然日对齐（`beijingDayStart(shiftDateStr(beijingDateStr(), -(RETENTION_DAYS - 1)))`）：用「now-90d」时间戳截断会把最老一天切成半截，重算时用半截数据覆盖完整行（实修） ③ 后端判定「今天」/「年月」一律走 `utils/date.js` 的 beijingDateStr / shiftDateStr / beijingDayStart / beijingYearMonth，勿用 `new Date().setHours(0,0,0,0)`——库里 DATETIME 按 +08:00 存墙钟，而生产 Node 进程时区可能是 UTC，会错开 8 小时（北京时间 00:00–08:00 图表日期序列与 DB 分组差一天，实修）。**2026-09-30 又收口三处曾漏网点**：后台访问日志筛选（today / 7days / 30days 改为北京自然日，含今天共 N 天）、工作台「今日新增」卡（原用本地零点，与同一文件下方的图表口径冲突）、文章归档的年月分组（改用 beijingYearMonth）；并加护栏断言⑤（时间口径白名单：`setHours` / 取日期部件 / `toLocaleString` 只许出现在登记过的例外文件——**命名/展示类时间用进程本地时间是有意例外**（上传分片目录、备份文件名、导出说明文本），白名单在 check-layers.js 的 LOCAL_CALENDAR_ALLOWLIST；`node scripts/check-layers.js` 现在 11 类断言）
 - 口径（已知取舍）：totalUV = SUM(daily_stat.uv)，是各日去重后求和，长期访客会被逐日重复计入（偏大但永不缩水）；「清空访问日志」只删明细，不再重置总量，要重置历史统计须手工清 daily_stat
 - 部署：纯增量新表，无数据迁移；建表由 `sequelize.sync()` 负责（启动即自动回填；`visit_log` 的 `created_at` 索引也由模型声明、sync 补建）。首次上线只能回填日志尚存的最近 90 天，更早历史无法找回
 - 前端零改动即可受益（接口字段与结构未变）；后续若要 90 天/一年窗口，后端 range 白名单已支持 90days/365days，前端加下拉项即可
