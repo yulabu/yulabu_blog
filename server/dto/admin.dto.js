@@ -1,4 +1,5 @@
 const AppError = require('@errors/AppError');
+const { parseId } = require('./common.dto');
 
 function validateAdminName(admin_name) {
   const name = (admin_name || '').trim();
@@ -22,6 +23,9 @@ function createAdminDTO(body) {
   return { admin_name, admin_password, admin_avatar };
 }
 
+// 更新管理员资料：返回值把「资料字段」与「改密」分开。
+// 带 new_password 时顺带跑 changePasswordDTO（校验 old 非空、new ≥8 位、新旧不同），
+// 于是控制器不必再直读 req.body 判断分支——改密规则的唯一入口仍是 changePasswordDTO
 function updateAdminDTO(body) {
   const admin_name = body.admin_name !== undefined
     ? validateAdminName(body.admin_name)
@@ -30,7 +34,10 @@ function updateAdminDTO(body) {
     ? ((body.admin_avatar || '').trim() || null)
     : undefined;
 
-  return { admin_name, admin_avatar };
+  return {
+    fields: { admin_name, admin_avatar },
+    passwordChange: body.new_password ? changePasswordDTO(body) : null
+  };
 }
 
 function changePasswordDTO(body) {
@@ -45,8 +52,13 @@ function changePasswordDTO(body) {
   return { old_password, new_password };
 }
 
+function adminIdDTO(params) {
+  return parseId(params, '管理员');
+}
+
 module.exports = {
   createAdminDTO,
+  adminIdDTO,
   updateAdminDTO,
   changePasswordDTO
 };

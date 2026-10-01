@@ -202,3 +202,21 @@ export interface BackupListResponse {
 export interface SiteSettings {
   comments_enabled: boolean
 }
+
+// 日记（单图契约：images 最多 1 张，images[0] 即封面；coverThumb 是 400px 缩略图）
+export interface Diary {
+  id: number
+  content: string
+  images: string[]
+  created_at: string
+  updated_at: string
+  coverThumb: string | null
+}
+
+export interface PaginatedDiaries {
+  diaries: Diary[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}

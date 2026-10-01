@@ -1,5 +1,5 @@
 const AppError = require('@errors/AppError');
-const { paginateBySize } = require('./common.dto');
+const { paginateBySize, parseId } = require('./common.dto');
 
 // 日记单图契约：images 最多 1 张（images[0] 即封面，与 cover_image_id 一一对应）。
 // 超出必须报错而非静默截断——静默丢弃会让多出的图片变成无指针孤儿被 GC 回收
@@ -42,9 +42,7 @@ function updateDiaryDTO(body) {
 }
 
 function diaryIdDTO(params) {
-  const id = parseInt(params.id);
-  if (isNaN(id) || id <= 0) throw new AppError(400, '日记ID无效');
-  return id;
+  return parseId(params, '日记');
 }
 
 // ========== 列表分页 ==========

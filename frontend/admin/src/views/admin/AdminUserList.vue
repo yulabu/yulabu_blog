@@ -92,7 +92,7 @@ import { useMessageBox } from '@/composables/useMessageBox'
 import { useAdminList } from '@/composables/useAdminList'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
 import { useAuthStore } from '@/stores/auth'
-import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
+import { getAdmins, getCurrentAdmin, createAdmin, updateAdmin, deleteAdmin } from '@/api/admin'
 import { formatDate } from '@/utils/date'
 import AdminPageCard from '@/components/admin/AdminPageCard.vue'
 import AdminDataTable from '@/components/admin/AdminDataTable.vue'
@@ -173,9 +173,10 @@ async function submitForm() {
     }
 
     if (isEditing.value) {
-      const updated = await updateAdmin(form.value.id, payload)
+      await updateAdmin(form.value.id, payload)
+      // 写接口统一回 { id, message }（不再回完整对象）：改的是自己就重拉一次资料刷新头像/用户名
       if (form.value.id === currentAdmin.value.id) {
-        authStore.updateProfile(updated)
+        authStore.updateProfile(await getCurrentAdmin())
       }
     } else {
       await createAdmin(payload)

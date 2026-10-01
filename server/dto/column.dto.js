@@ -69,6 +69,16 @@ function columnIdDTO(params) {
   return parseId(params, '专栏');
 }
 
+// 「把文章加进专栏」的入参：body.post_id（改前在 controller 里内联 Number + if）
+function addColumnPostDTO(body) {
+  return { post_id: parseId(body, '文章', 'post_id') };
+}
+
+// 「从专栏移出文章」的路径参数：:postId（改前在 controller 里内联 Number + if）
+function columnPostParamsDTO(params) {
+  return { post_id: parseId(params, '文章', 'postId') };
+}
+
 function columnPostIdsDTO(body) {
   const postIds = body.post_ids;
   if (!Array.isArray(postIds) || postIds.length === 0) {
@@ -84,4 +94,4 @@ function columnPostIdsDTO(body) {
   return ids;
 }
 
-module.exports = { createColumnDTO, updateColumnDTO, columnIdDTO, columnPostIdsDTO };
+module.exports = { createColumnDTO, updateColumnDTO, columnIdDTO, addColumnPostDTO, columnPostParamsDTO, columnPostIdsDTO };

@@ -1,6 +1,5 @@
 const AppError = require('@errors/AppError');
-const { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO } = require('@dto/post.dto');
-const { parseId, paginate } = require('@dto/common.dto');
+const { createPostDTO, updatePostDTO, listPostsDTO, listAdminPostsDTO, postIdDTO } = require('@dto/post.dto');
 const { sequelize, Post, Tag, ColumnPost, Column, PostImage, Image } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
@@ -173,7 +172,7 @@ exports.unbindImages = async (req, res) => {
   if (!post) throw new AppError(404, '文章不存在');
 
   const synced = await syncPostImages(postId, post.post_content);
-  res.json({ message: `已同步 ${synced} 张` });
+  res.json({ id: postId, count: synced, message: `已同步 ${synced} 张` });
 };
 
 // 删除文章（软删除，改为 trash 状态；顺带移出专栏）
@@ -184,19 +183,17 @@ exports.deletePost = async (req, res) => {
 
   await post.update({ post_status: 'trash' });
   await ColumnPost.destroy({ where: { post_id: postId } });
-  res.json({ message: '已移入回收站' });
+  res.json({ id: postId, message: '已移入回收站' });
 };
 
 // ========== 后台文章管理（三种状态统一列表，前端按 status 切换） ==========
 
-// 后台文章列表：status 参数分别筛选 published / trash / draft 三种枚举，分页沿用项目惯例
+// 后台文章列表：status 三态白名单 + q 关键词，规则都在 listAdminPostsDTO 里（控制器不直读 query）
 exports.getAdminPosts = async (req, res) => {
-  const { page, limit, offset } = paginate(req.query);
-  const q = (req.query.q || '').trim().slice(0, 32) || null;
-  const status = req.query.status;
+  const { page, limit, offset, q, status } = listAdminPostsDTO(req.query);
 
   const where = {};
-  if (status === 'published' || status === 'trash' || status === 'draft') {
+  if (status) {
     where.post_status = status;
   }
   if (q) {
@@ -221,7 +218,7 @@ exports.getAdminPosts = async (req, res) => {
 
 // 后台文章详情（不过滤状态，草稿/回收站均可查看编辑）
 exports.getAdminPostById = async (req, res) => {
-  const postId = parseId(req.params, '文章');
+  const postId = postIdDTO(req.params);
   const post = await Post.findByPk(postId, {
     include: [
       { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
@@ -234,20 +231,20 @@ exports.getAdminPostById = async (req, res) => {
 
 // 恢复文章
 exports.restorePost = async (req, res) => {
-  const postId = parseId(req.params, '文章');
+  const postId = postIdDTO(req.params);
 
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
   if (post.post_status !== 'trash') throw new AppError(400, '文章不在回收站');
 
   await post.update({ post_status: 'draft' });
-  res.json({ message: '已恢复至草稿' });
+  res.json({ id: postId, message: '已恢复至草稿' });
 };
 
 // 彻底删除文章：仅清理文章自身与关联行
 // 图片引用（正文关联行、封面外键）随行消失，物理文件由 GC 对账宽限后回收
 exports.forceDeletePost = async (req, res) => {
-  const postId = parseId(req.params, '文章');
+  const postId = postIdDTO(req.params);
 
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
@@ -258,5 +255,5 @@ exports.forceDeletePost = async (req, res) => {
     await post.destroy({ transaction: t });
   });
 
-  res.json({ message: '已彻底删除' });
+  res.json({ id: postId, message: '已彻底删除' });
 };

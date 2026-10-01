@@ -19,6 +19,8 @@
 //     scripts/ 除外——那是人看的命令行输出，且 check-errors.js 靠猴补丁 console 做断言）
 //  ⑦ /uploads/ 前缀只允许出现在 utils/uploadUrl.js：拼 URL 用 toUploadUrl、剥 pathname 用
 //     storagePathFromPathname（改前散在 vo 与派生层里手拼，换前缀会漏改）
+//  ⑧ controller 的入参一律经 DTO：不许 req.body.X / req.query.X 这种字段直读（整对象交 DTO 可以）
+//  ⑨ 口令哈希的唯一出口是 services/auth/password.js：bcrypt 不许在别处 import（轮数也只在那里）
 //
 // 特性：零依赖、不连库、不占端口；退出码非 0 = 有违规。
 const fs = require('fs');
@@ -85,6 +87,13 @@ const RAW_CONSOLE_RES = [
 // 提示文案里刻意不带该字面量，免得扫自己时误报
 const UPLOADS_ALLOWLIST = new Set(['utils/uploadUrl.js']);
 const UPLOADS_LITERAL_RE = /(?:['"`])\/uploads\//;
+
+// 断言⑧：只对 controllers/ 生效——入参字段直读一律违规（整对象交 DTO 是合法形态）
+const CONTROLLER_FIELD_READ_RE = /req\.(?:body|query)(?:\.\w|\[)/g;
+
+// 断言⑨：口令哈希的唯一出口（提示文案同样不带 require 字面量）
+const BCRYPT_ALLOWLIST = new Set(['services/auth/password.js']);
+const BCRYPT_REQUIRE_RE = /require\(\s*['"]bcrypt['"]\s*\)/;
 
 const REQUIRE_RE = /require\(\s*['"]([^'"]+)['"]\s*\)/g;
 
@@ -153,6 +162,18 @@ function main() {
       violations.push(`⑦ ${rel} 手拼上传 URL 前缀 —— 拼用 toUploadUrl、剥用 storagePathFromPathname（@utils/uploadUrl）`);
     }
 
+    // 断言⑧：controller 的入参一律经 DTO（整对象传 DTO 合法，字段直读违规）
+    if (layer === 'controllers') {
+      for (const _ of code.matchAll(CONTROLLER_FIELD_READ_RE)) {
+        violations.push(`⑧ ${rel} 直读请求字段 —— 入参校验集中到 dto/，把整个 req.body / req.query 交给它`);
+      }
+    }
+
+    // 断言⑨：口令哈希的唯一出口
+    if (BCRYPT_REQUIRE_RE.test(code) && !BCRYPT_ALLOWLIST.has(rel)) {
+      violations.push(`⑨ ${rel} 自己引入了口令哈希库 —— 只用 @services/auth/password 的 hash / verify`);
+    }
+
     // 断言②③④：依赖方向与 utils 纯度
     for (const match of code.matchAll(REQUIRE_RE)) {
       const target = match[1];
@@ -183,7 +204,7 @@ function main() {
     for (const v of violations) console.error('  ✗ ' + v);
     process.exit(1);
   }
-  console.log(`分层护栏通过：${scanned} 个文件，断言 7 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼）`);
+  console.log(`分层护栏通过：${scanned} 个文件，断言 9 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口）`);
 }
 
 main();

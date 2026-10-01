@@ -1,7 +1,9 @@
 const AppError = require('@errors/AppError');
 
-function parseId(params, label) {
-  const id = Number(params.id);
+// 路径/请求体里的单个 id：默认读 params.id，也可指定键名（如 :postId、body 里的 post_id）
+// ——这是全站唯一的 id 校验实现（改前散着三套：这里、diary.dto 自写 parseInt、columnController 内联 Number）
+function parseId(params, label, key = 'id') {
+  const id = Number(params[key]);
   if (!id || id < 1) throw new AppError(400, `无效的${label}ID`);
   return id;
 }

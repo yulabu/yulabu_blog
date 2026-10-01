@@ -2,7 +2,7 @@ const fs = require('fs').promises;
 const { Op } = require('sequelize');
 const AppError = require('@errors/AppError');
 const { sequelize, Column, ColumnPost, Post, Tag } = require('@models');
-const { createColumnDTO, updateColumnDTO, columnIdDTO, columnPostIdsDTO } = require('@dto/column.dto');
+const { createColumnDTO, updateColumnDTO, columnIdDTO, addColumnPostDTO, columnPostParamsDTO, columnPostIdsDTO } = require('@dto/column.dto');
 const { columnDetail, columnList, columnPostItem } = require('@vo/column.vo');
 const { resolveImageIdByUrl } = require('@services/image/derive');
 const { createImageFromUpload } = require('@services/image/upload');
@@ -123,7 +123,7 @@ exports.deleteColumn = async (req, res) => {
     await column.destroy({ transaction: t });
   });
 
-  res.json({ message: '删除成功' });
+  res.json({ id, message: '删除成功' });
 };
 
 // 专栏文章排序页数据：专栏内文章 + 候选文章
@@ -168,8 +168,7 @@ exports.getColumnPosts = async (req, res) => {
 // 添加文章到专栏（自动追加末尾；若已在其他专栏先移出）
 exports.addColumnPost = async (req, res) => {
   const columnId = columnIdDTO(req.params);
-  const postId = Number(req.body.post_id);
-  if (!postId || postId < 1) throw new AppError(400, '无效的文章ID');
+  const { post_id: postId } = addColumnPostDTO(req.body);
 
   const column = await Column.findByPk(columnId);
   if (!column) throw new AppError(404, '专栏不存在');
@@ -186,21 +185,20 @@ exports.addColumnPost = async (req, res) => {
     }, { transaction: t });
   });
 
-  res.json({ message: '已添加到专栏' });
+  res.json({ id: columnId, message: '已添加到专栏' });
 };
 
 // 从专栏移出
 exports.removeColumnPost = async (req, res) => {
   const columnId = columnIdDTO(req.params);
-  const postId = Number(req.params.postId);
-  if (!postId || postId < 1) throw new AppError(400, '无效的文章ID');
+  const { post_id: postId } = columnPostParamsDTO(req.params);
 
   const count = await ColumnPost.destroy({
     where: { column_id: columnId, post_id: postId }
   });
   if (!count) throw new AppError(404, '该文章不在专栏中');
 
-  res.json({ message: '已移出专栏' });
+  res.json({ id: columnId, message: '已移出专栏' });
 };
 
 // 拖拽提交顺序（按数组序重写 sort_order）
@@ -217,5 +215,5 @@ exports.updateColumnPostOrder = async (req, res) => {
     }
   });
 
-  res.json({ message: '排序已保存' });
+  res.json({ id: columnId, message: '排序已保存' });
 };

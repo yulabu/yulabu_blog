@@ -24,8 +24,10 @@ export function getAdmins(page = 1, limit = 10) {
   return http.get<PaginatedAdmins>('/admin/admins', { params: { page, limit } })
 }
 
+// 写接口统一回 { id, message }（见后端 README 的「成功响应契约」）；
+// 需要最新资料时单独 GET /admin/admins/me（AdminUserList 改自己资料后就是这么刷新的）
 export function createAdmin(form: AdminForm) {
-  return http.post<Admin>('/admin/admins', {
+  return http.post<IdResponse>('/admin/admins', {
     admin_name: form.name,
     admin_password: form.password,
     admin_avatar: form.avatar || null
@@ -39,9 +41,9 @@ export function updateAdmin(id: number, form: AdminForm) {
   if (form.oldPassword !== undefined) payload.old_password = form.oldPassword
   if (form.newPassword !== undefined) payload.new_password = form.newPassword
 
-  return http.put<Admin>(`/admin/admins/${id}`, payload)
+  return http.put<IdResponse>(`/admin/admins/${id}`, payload)
 }
 
 export function deleteAdmin(id: number) {
-  return http.delete<{ message: string }>(`/admin/admins/${id}`)
+  return http.delete<IdResponse>(`/admin/admins/${id}`)
 }

@@ -1,9 +1,10 @@
-const bcrypt = require('bcrypt');
 const AppError = require('@errors/AppError');
-const { parseId, paginate } = require('@dto/common.dto');
+const { paginate } = require('@dto/common.dto');
 const { Admin } = require('@models');
-const { createAdminDTO, updateAdminDTO, changePasswordDTO } = require('@dto/admin.dto');
+const { createAdminDTO, adminIdDTO, updateAdminDTO } = require('@dto/admin.dto');
 const { adminProfile } = require('@vo/admin.vo');
+// 口令哈希与验签的唯一出口（轮数也在那里）
+const password = require('@services/auth/password');
 
 // GET /api/admin/admins
 exports.getAdminList = async (req, res) => {
@@ -42,69 +43,60 @@ exports.createAdmin = async (req, res) => {
   const exists = await Admin.findOne({ where: { admin_name } });
   if (exists) throw new AppError(409, '用户名已存在');
 
-  const hash = await bcrypt.hash(admin_password, 12);
-
   const admin = await Admin.create({
     admin_name,
-    admin_password: hash,
+    admin_password: await password.hash(admin_password),
     admin_avatar
   });
 
-  res.status(201).json(adminProfile(admin));
+  res.status(201).json({ id: admin.admin_id, message: '创建成功' });
 };
 
 // PUT /api/admin/admins/:id
 exports.updateAdmin = async (req, res) => {
-  const adminId = parseId(req.params, '管理员');
+  const adminId = adminIdDTO(req.params);
 
   const admin = await Admin.findByPk(adminId);
   if (!admin) throw new AppError(404, '管理员不存在');
 
-  // 修改基础资料
-  const updates = updateAdminDTO(req.body);
+  // 资料字段与改密都来自 DTO（控制器不直读 req.body；改密校验在 changePasswordDTO 里）
+  const { fields, passwordChange } = updateAdminDTO(req.body);
   const changedFields = {};
 
-  if (updates.admin_name !== undefined) {
-    if (updates.admin_name !== admin.admin_name) {
-      const exists = await Admin.findOne({ where: { admin_name: updates.admin_name } });
+  if (fields.admin_name !== undefined) {
+    if (fields.admin_name !== admin.admin_name) {
+      const exists = await Admin.findOne({ where: { admin_name: fields.admin_name } });
       if (exists) throw new AppError(409, '用户名已存在');
     }
-    changedFields.admin_name = updates.admin_name;
+    changedFields.admin_name = fields.admin_name;
   }
 
-  if (updates.admin_avatar !== undefined) {
-    changedFields.admin_avatar = updates.admin_avatar;
+  if (fields.admin_avatar !== undefined) {
+    changedFields.admin_avatar = fields.admin_avatar;
   }
 
   // 修改密码：只能改自己的密码，且必须提供旧密码
-  if (req.body.new_password) {
+  if (passwordChange) {
     if (adminId !== req.admin.admin_id) {
       throw new AppError(403, '只能修改自己的密码');
     }
-    const { old_password, new_password } = changePasswordDTO(req.body);
-    const valid = await bcrypt.compare(old_password, admin.admin_password);
+    const valid = await password.verify(passwordChange.old_password, admin.admin_password);
     if (!valid) throw new AppError(400, '旧密码错误');
 
-    changedFields.admin_password = await bcrypt.hash(new_password, 12);
+    changedFields.admin_password = await password.hash(passwordChange.new_password);
   }
 
-  if (Object.keys(changedFields).length === 0) {
-    return res.json(adminProfile(admin));
+  if (Object.keys(changedFields).length > 0) {
+    await admin.update(changedFields);
   }
 
-  await admin.update(changedFields);
-
-  // 重新查询，排除密码
-  const updated = await Admin.findByPk(adminId, {
-    attributes: { exclude: ['admin_password'] }
-  });
-
-  res.json(adminProfile(updated));
+  // 统一写操作契约：{ id, message }（改前这里回完整 adminProfile，前端只在「改自己资料」时用过）
+  res.json({ id: adminId, message: '更新成功' });
 };
 
 // DELETE /api/admin/admins/:id
 exports.deleteAdmin = async (req, res) => {
-  const adminId = parseId(req.params, '管理员');
+  const adminId = adminIdDTO(req.params);
 
   const admin = await Admin.findByPk(adminId);
   if (!admin) throw new AppError(404, '管理员不存在');
@@ -120,5 +112,5 @@ exports.deleteAdmin = async (req, res) => {
 
   await admin.destroy();
 
-  res.json({ message: '删除成功' });
+  res.json({ id: adminId, message: '删除成功' });
 };

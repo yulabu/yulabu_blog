@@ -103,7 +103,7 @@ const deleteImage = async (req, res) => {
 
   await deleteImageFiles(image.storage_path, image.thumb_path)
   await image.destroy()
-  res.json({ message: '已删除' })
+  res.json({ id, message: '已删除' })
 }
 
 // 批量删除（任一被引用则整体拒绝）
@@ -124,7 +124,7 @@ const deleteImagesBatch = async (req, res) => {
     await deleteImageFiles(image.storage_path, image.thumb_path)
   }
   await Image.destroy({ where: { image_id: { [Op.in]: images.map(img => img.image_id) } } })
-  res.json({ message: `已删除 ${images.length} 张图片` })
+  res.json({ count: images.length, message: `已删除 ${images.length} 张图片` })
 }
 
 module.exports = { uploadBatch, getImages, getImageById, deleteImage, deleteImagesBatch }

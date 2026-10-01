@@ -28,7 +28,7 @@ exports.recordVisit = async (req, res) => {
     await Post.increment('view_count', { where: { post_id } });
   }
 
-  res.json({ message: 'ok' });
+  res.json({ message: '已记录' });
 };
 
 // ========== 管理后台：分页查询访问日志 ==========
@@ -92,5 +92,5 @@ exports.getVisitStats = async (req, res) => {
 exports.clearAllVisits = async (req, res) => {
   const count = await VisitLog.count();
   await VisitLog.destroy({ where: {} });
-  res.json({ message: `已清空 ${count} 条日志`, deletedCount: count });
+  res.json({ count, message: `已清空 ${count} 条日志` });
 };

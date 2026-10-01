@@ -140,7 +140,7 @@ HTTP 请求
 
 对接的三个契约：
 
-- **成功响应**：形状与命名以各 `vo/*` 为准（文章 / 图片 / 访问日志是驼峰，专栏 / 友链 / 日记沿用 snake_case），入参统一 snake_case 且只取白名单字段
+- **成功响应**：**写操作一律 `{ id?, message }`**——对具体资源操作时带 `id`；**批量 → `{ count, message }`**；读接口回 `vo/*` 组装的对象（命名以各 vo 为准：文章 / 图片 / 访问日志是驼峰，专栏 / 友链 / 日记沿用 snake_case）。例外只有四类：登录回 `{ token, admin }`、上传回 `{ images: […] }`、导出回二进制、`PUT /settings` 与友链 `preview` 回结果对象——它们都不是「可定位资源的写」。入参统一 snake_case 且只取白名单字段
 - **错误响应**：恒为 `{ "message": "人话" }`，HTTP 状态码表意；形状只在 `errors/contract.js` 定义
 - **分页**：文章 / 图片等用 `page` + `limit`（`limit` 上限 50），返回 `{ page, total, totalPages }`；日记用 `page` + `pageSize`（默认 20）
 
@@ -350,7 +350,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 | 命令 | 作用 |
 |---|---|
 | `node scripts/check-errors.js` | 错误层回归：23 条断言，守着翻译表与「5xx 必记日志」；**升级 body-parser / sequelize / multer 后必须重跑**（翻译表依赖它们内部的常量与错误类） |
-| `node scripts/check-layers.js` | 分层护栏 7 条断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 取本地零点只允许在 `utils/date.js` ⑥ 运行期日志必须经 `utils/log.js`（不许直接 `console` 写字符串） ⑦ `/uploads/` 前缀只允许在 `utils/uploadUrl.js` |
+| `node scripts/check-layers.js` | 分层护栏 9 条断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 取本地零点只允许在 `utils/date.js` ⑥ 运行期日志必须经 `utils/log.js`（不许直接 `console` 写字符串） ⑦ `/uploads/` 前缀只允许在 `utils/uploadUrl.js` ⑧ controller 的入参一律经 DTO（不许 `req.body.X` / `req.query.X`） ⑨ 口令哈希只允许在 `services/auth/password.js` |
 
 需要连库 / 改数据的脚本（幂等，可重复执行）：
 

@@ -90,9 +90,20 @@ function listPostsDTO(query) {
   return { page, limit, offset, category_id, q };
 }
 
+// ========== 后台列表分页 ==========
+// 公开列表的规则 + status 三态白名单（非白名单值一律不过滤，与改前控制器行为一致）
+const ADMIN_POST_STATUSES = ['published', 'trash', 'draft'];
+
+function listAdminPostsDTO(query) {
+  const { page, limit, offset } = paginate(query);
+  const q = (query.q || '').trim().slice(0, 32) || null;
+  const status = ADMIN_POST_STATUSES.includes(query.status) ? query.status : null;
+  return { page, limit, offset, q, status };
+}
+
 // ========== 文章ID ==========
 function postIdDTO(params) {
   return parseId(params, '文章');
 }
 
-module.exports = { createPostDTO, updatePostDTO, listPostsDTO, postIdDTO };
+module.exports = { createPostDTO, updatePostDTO, listPostsDTO, listAdminPostsDTO, postIdDTO };

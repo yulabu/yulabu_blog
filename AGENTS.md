@@ -122,7 +122,8 @@ certbot renew --dry-run
 - 涉及图片结构变更的部署顺序：sync-schema.js → migrate-image-ref.js（均幂等，迁移以 URL 匹配为准、不盲信旧 reference_id）→ pm2 restart
 
 ### 5. 后端代码约定
-- 校验集中在 server/dto/*.dto.js（白名单过滤）；异常用 server/errors/AppError.js 抛 400/404
+- **校验集中在 server/dto/*.dto.js**（白名单过滤）；异常用 server/errors/AppError.js 抛 400/404。**controller 不许直读 `req.body.X` / `req.query.X`**（把整个对象交给 DTO；护栏断言⑧），id 校验只有 `dto/common.dto.js` 的 `parseId` 一套实现（可指定键名），分页只有 `paginate` / `paginateBySize` 两式
+- **口令哈希的唯一出口是 `services/auth/password.js`**（`hash` / `verify` + 轮数常量；护栏断言⑨）——bcrypt 不许在别处 import，DTO 只管密码格式（≥8 位）不管哈希
 - **错误出口唯一**：一律 `throw`（含 auth 中间件的 401），由 `middleware/errorHandler.js` 统一出响应，别在中间件/控制器里自己 `res.status(4xx).json()`；错误响应形状只在 `errors/contract.js`、日志行格式只在 `utils/log.js`（**运行期代码不许直接 console 写字符串，护栏断言⑥ 把守**；scripts/ 的 CLI 输出豁免）；哪些错误记日志、记到哪，见 server/README.md「错误处理与日志」（铁律：5xx 必记 stderr、4xx 不记、绝不记请求体与 Authorization）
 - 响应统一经 server/vo/*.vo.js 组装；**/uploads/ 前缀的唯一出处是 utils/uploadUrl.js**（toUploadUrl 拼、storagePathFromPathname 剥），别在控制器里手拼 URL（改前散在 vo + 两个控制器）
 - /api/admin/* 受 auth 中间件保护
@@ -132,7 +133,7 @@ certbot renew --dry-run
 - **config/ 的职责边界（2026-09 重构确立）**：只收「外部能定的值」——① 运维经 env 定的（`config/env.js` 是**后端唯一读 `process.env` 的文件**：默认值 + 类型转换 + 必填校验，缺 DB_NAME / DB_USER / JWT_SECRET 时启动即失败并写明缺哪个；`config/{database,image,backup,auth}.js` 只从它派生，自己不碰 env）② 管理员在后台定的（`config/settings.js`：setting 表键定义 + 文本↔强类型编解码，属「动态配置」）。判据：**外部能定吗？被两层以上共用吗？**都不满足就是内部实现常量，**一律不进 config/**——限流阈值留在 middleware/rateLimiter.js、GC 保留期留在 jobs/imageGc.js、访问日志保留留在 jobs/visitGc.js、任务间隔留在 jobs/index.js、抓图超时留在 services/ogImage.js、允许格式留在 services/image/store.js、图表窗口白名单留在 controllers/adminController.js
 - 时区（+08:00）的唯一事实是 config/timezone.js：config/database.js 的 Sequelize timezone 与 utils/date.js 的偏移量都从它派生（二者错开会让「图表日期 vs DB 分组」差一天，实修过）
 - `config/database.js` 具名导出 `{ sequelize, dbConfig }`：备份链（services/backup/run.js）必须用 dbConfig 取 dump 凭据与库名，**不要再自己读 env / 写默认值**——两套默认值会让「应用连的库」与「dump 备的库」分叉（缺 DB_NAME 时应用起不来、dump 却静默去备一个叫 blog 的库）
-- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（七条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼）
+- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（九条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口）
 
 ### 6. 前端代码约定
 - 复用既有组件，不引入新依赖/复杂度

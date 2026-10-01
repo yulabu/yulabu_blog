@@ -2,9 +2,7 @@ const { Op, fn, col } = require('sequelize');
 const { Post, Tag, DailyStat } = require('@models');
 const { postSummary } = require('@vo/post.vo');
 const { beijingDateStr, shiftDateStr, beijingDayStart } = require('@utils/date');
-
-// 图表窗口白名单（前端当前只用 7/30 天；90/365 留给后续前端接入，后端先具备能力）
-const CHART_RANGE_DAYS = { '7days': 7, '30days': 30, '90days': 90, '365days': 365 };
+const { chartRangeDTO } = require('@dto/dashboard.dto');
 
 // 工作台统计数据
 exports.getDashboard = async (req, res) => {
@@ -40,7 +38,7 @@ exports.getDashboard = async (req, res) => {
 
 // 工作台图表数据：发文趋势、访问趋势、标签分布
 exports.getDashboardCharts = async (req, res) => {
-  const range = CHART_RANGE_DAYS[req.query.range] || 7;
+  const { days: range } = chartRangeDTO(req.query);
   // 统一按北京自然日取窗口：进程时区可能是 UTC，不能用本地 setHours（否则与 DATE(created_at) 错开一天）
   const todayStr = beijingDateStr();
   const startDateStr = shiftDateStr(todayStr, -(range - 1));
