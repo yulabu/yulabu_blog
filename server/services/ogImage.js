@@ -113,9 +113,12 @@ async function fetchPage(startUrl, signal) {
   throw new Error(`重定向超过 ${MAX_REDIRECTS} 跳`);
 }
 
-// 失败时的空结果（与「页面确实没有图」同形，调用方不必分支）
-function emptyMeta() {
-  return { title: null, description: null, image: null };
+// 失败时的空结果。**带 ok/reason 是为了与「页面确实没有图」区分**（2026-10 登记）：
+//   ok=false → 抓取本身失败，reason 是人话短语（与 pm2 的 [warn] 日志同源），调用方据此提示
+//   ok=true, image=null → 页面真的没有 og:image（正常结果，不该显示成失败）
+// favicon 固定为 null，让结果形状与 extractMeta 一致（改前这个空结果少一个键）
+function emptyMeta(reason) {
+  return { ok: false, reason, title: null, description: null, image: null, favicon: null };
 }
 
 function normalizeImageUrl(imageUrl, pageUrl) {
@@ -198,18 +201,21 @@ function extractMeta(html, pageUrl) {
   };
 }
 
-// 抓取页面 OG 元信息（og:title / og:description / og:image，favicon 兜底）
+// 抓取页面 OG 元信息（og:title / og:description / og:image，favicon 兜底）。
+// 返回 { ok, reason, title, description, image, favicon }：ok/reason 的语义见 emptyMeta 的注释
 async function fetchOgMeta(targetUrl) {
   let startUrl;
   try {
     startUrl = new URL(targetUrl);
   } catch {
-    console.warn(warnTagLine('og-image', `目标不是合法 URL：${targetUrl}`));
-    return emptyMeta();
+    const reason = `目标不是合法 URL：${targetUrl}`;
+    console.warn(warnTagLine('og-image', reason));
+    return emptyMeta(reason);
   }
   if (startUrl.protocol !== 'http:' && startUrl.protocol !== 'https:') {
-    console.warn(warnTagLine('og-image', `只支持 http(s) 目标，收到 ${startUrl.protocol}`));
-    return emptyMeta();
+    const reason = `只支持 http(s) 目标，收到 ${startUrl.protocol}`;
+    console.warn(warnTagLine('og-image', reason));
+    return emptyMeta(reason);
   }
 
   const controller = new AbortController();
@@ -222,13 +228,13 @@ async function fetchOgMeta(targetUrl) {
       console.log(infoLine('og-image', `响应超过 ${Math.round(MAX_BODY_BYTES / 1024)}KB，已按已读部分解析：${finalUrl}`));
     }
     // base 用**最终跳**的 URL：初始 URL 经过 302 之后往往不是页面真实地址，相对 og:image 会解析错
-    return extractMeta(html, finalUrl);
+    return { ok: true, reason: null, ...extractMeta(html, finalUrl) };
   } catch (err) {
     // 抓图失败必须留痕：以前这里静默返回全空 meta，与「页面确实没有图」不可区分，
     // 后台点「抓图」没有任何反应时无处可查（AGENTS 写着抓图类错误看 pm2 --err，实际一条都没有）
     const reason = err.name === 'AbortError' ? `请求超时（${TIMEOUT_MS}ms）` : `${err.name || 'Error'}: ${err.message}`;
     console.warn(warnTagLine('og-image', `抓取失败 ${startUrl.href} :: ${reason}`));
-    return emptyMeta();
+    return emptyMeta(reason);
   } finally {
     clearTimeout(timer);
   }
