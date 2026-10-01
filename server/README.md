@@ -238,7 +238,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 ### 图片系统（引用归业务表，image 只存元数据）
 
-上传链路：`POST /api/images/upload` → multer 流式落到 `UPLOAD_DIR/.tmp` → sharp 转 webp（+ 400px 缩略图 `*.thumb.webp`）落到 `UPLOAD_DIR/YYYY/MM/` → 写 `image` 表（只存 `storage_path` / `thumb_path` / `file_size` / `orphan_since`）→ 每张返回 `{ image_id, url, thumb_url }`（形状唯一出处 `vo/image.vo.js` 的 `uploadedImageVO`，专栏封面上传共用同一形状）。
+上传链路：`POST /api/images/upload` → multer 流式落到 `UPLOAD_DIR/.tmp` → sharp 转 webp（+ 400px 缩略图 `*.thumb.webp`）落到 `UPLOAD_DIR/YYYY/MM/` → 写 `image` 表（只存 `storage_path` / `thumb_path` / `file_size` / `orphan_since`）→ 每张返回 `{ image_id, url, thumb_url }`（形状唯一出处 `vo/image.vo.js` 的 `uploadedImageVO`，专栏封面上传共用同一形状）。编排（单请求总量校验 / 顺序落库 / 临时文件收尾）与失败补偿都在 `services/image/upload.js`：**建行失败会回删刚落盘的原图与缩略图**——否则这对文件在 `image` 表里没有任何记录，GC 的三条路径都碰不到（会永久占盘且从库里看不出来）。批量上传保持「任一张失败即中断、已成功的留库由 GC 宽限回收」的语义（前端分片上传同样不回滚、不重试）。
 
 引用与回收：
 
@@ -259,6 +259,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 - `jobs/dailyStat.js` 每 10 分钟全量重算并 UPSERT（幂等自愈，启动即跑一次自动回填）；`jobs/visitGc.js` 每 24 小时清理过期明细，**必须先聚合成功才清理**（依赖声明在 `jobs/index.js`）
 - 工作台折线图与「总浏览量 / 总独立访客」读 `daily_stat`；「今日 PV / UV」实时读 `visit_log`
 - 口径取舍：总量是「各日去重 UV 之和」，长期访客会被逐日重复计入（偏大但永不缩水）；「清空访问日志」只删明细，不影响已归档总量
+- **文章被彻底删除 / 废弃草稿被 GC 清理时，`visit_log` 只断开归属、不删行**（`post_id` 置 NULL）：按日 PV 与文章归属无关，删行会让下一次全量重算把保留期内那天的 pv 改小（违反「历史只增不减」）。这段语义由 `services/post.js` 的 `forceRemove` 与 `jobs/imageGc.js` 的 `gcAbandonedDrafts` 显式保证——**不再依赖各环境不一致的 `visit_log` 外键**（改前：有外键的库靠 DB 静默 SET NULL、缺外键的库留悬挂 `post_id`，本机开发库 2026-10 就是这么攒出 3 行脏数据并挡住结构对账的）
 - 后端判定「今天」一律走 `utils/date.js` 的 `beijingDateStr` / `beijingDayStart` / `beijingYearMonth`：库里 DATETIME 按 +08:00 存墙钟，而生产 Node 进程时区可能是 UTC，用 `new Date().setHours(0,0,0,0)` 会错开 8 小时
 - 三处曾用进程本地口径、2026-09-30 已统一为北京自然日：后台访问日志筛选（`today` / `7days`（含今天共 7 天）/ `30days`）、工作台「今日新增」卡、文章归档的年月分组。规则由护栏断言⑤ 守着：取日期部件 / 本地格式化（`setHours` / `getFullYear` / `getMonth` / `getDate` / `toLocaleString` …）只允许出现在显式白名单里
 - **时间口径的有意例外（2026-10 登记）**：命名 / 展示类时间用**进程本地时间**，不参与北京日界——上传分片目录（`services/image/store.js` 的 `dateShardPath`，`UPLOAD_DIR/YYYY/MM`）、备份 dump 文件名（`services/backup/run.js` 的 `formatStamp`）、导出说明里的「生成时间」（`services/backup/export.js`）。白名单在 `scripts/check-layers.js` 的 `LOCAL_CALENDAR_ALLOWLIST`：新代码要用本地日历必须先去登记并写明理由，否则断言⑤ 会拦
@@ -276,7 +277,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 | 任务 | 间隔 | 启动即跑 | 做什么 |
 |---|---|---|---|
-| `image-gc` | 24h | 是 | 孤儿图片三态回收 + 废弃草稿清理 + `.tmp` 残留兜底 |
+| `image-gc` | 24h | 是 | 孤儿图片三态回收 + 废弃草稿清理（连带清 `post_image` / `column_post` 并断开 `visit_log` 归属）+ `.tmp` 残留兜底 |
 | `daily-stat` | 10min | 是 | `visit_log` → `daily_stat` 全量重算 |
 | `visit-gc` | 24h | 是 | 按北京自然日清理过期访问明细（依赖 `daily-stat` 成功） |
 
@@ -306,8 +307,8 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 | GET | `/api/posts/archive` | 归档（按年月分组计数） |
 | GET | `/api/posts/:id` | 文章详情（仅 `published`） |
 | GET | `/api/posts/:id/prev` · `/next` | 同专栏上一篇 / 下一篇 |
-| GET | `/api/tags` · `/api/tags/:id` | 分类列表（含文章数）/ 详情 |
-| GET | `/api/columns` · `/api/columns/:id` | 专栏列表 / 详情 |
+| GET | `/api/tags` · `/api/tags/:id` | 分类列表（含文章数）/ 详情（两处 count 同源、只算已发布） |
+| GET | `/api/columns` · `/api/columns/:id` | 专栏列表 / 详情（`post_count` 与详情的文章数同口径：**只算已发布**，草稿不计） |
 | GET | `/api/diaries` | 日记书架（`page` / `pageSize`） |
 | GET | `/api/friendlinks` | 友链列表（仅 `show`） |
 | GET | `/api/settings` | 公开站点设置（如 `comments_enabled`） |
