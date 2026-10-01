@@ -14,6 +14,7 @@ const { BACKUP_KEEP } = require('@config/backup');
 const { dbConfig } = require('@config/database');
 const { BACKUP_DIR, DB_BACKUP_DIR, UPLOADS_MIRROR_DIR, DUMP_FILE_RE } = require('@services/backup/layout');
 const { acquireLock, releaseLock } = require('@services/backup/lock');
+const { infoLine, warnTagLine, errTagLine } = require('@utils/log');
 
 function formatStamp(d) {
   const p = n => String(n).padStart(2, '0');
@@ -116,7 +117,7 @@ async function dumpDatabase() {
     // 否则凭据可能静默留在磁盘上而无人知道
     await fsp.unlink(cnfPath).catch((err) => {
       if (err.code !== 'ENOENT') {
-        console.error(`[backup] 临时凭据文件删除失败（内含 DB 凭据，请手工删除）: ${cnfPath} :: ${err.message}`);
+        console.error(errTagLine('backup', `临时凭据文件删除失败（内含 DB 凭据，请手工删除）: ${cnfPath} :: ${err.message}`));
       }
     });
   }
@@ -129,7 +130,7 @@ async function syncUploadsMirror() {
   try {
     await fsp.access(UPLOAD_DIR);
   } catch {
-    console.warn(`[backup] 上传目录不存在，跳过图片镜像: ${UPLOAD_DIR}`);
+    console.warn(warnTagLine('backup', `上传目录不存在，跳过图片镜像: ${UPLOAD_DIR}`));
     return;
   }
   // --exclude 掉 multer 临时目录，尾部斜杠表示同步目录内容；
@@ -145,7 +146,7 @@ async function pruneOldBackups() {
   const excess = files.length - BACKUP_KEEP;
   for (const f of files.slice(0, Math.max(excess, 0))) {
     await fsp.unlink(path.join(DB_BACKUP_DIR, f)).catch(() => {});
-    console.log(`[backup] 已清理过期备份: ${f}`);
+    console.log(infoLine('backup', `已清理过期备份: ${f}`));
   }
 }
 

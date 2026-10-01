@@ -1,3 +1,5 @@
+const { warnTagLine } = require('@utils/log');
+
 const TIMEOUT_MS = 8000;
 
 function normalizeImageUrl(imageUrl, pageUrl) {
@@ -118,7 +120,7 @@ async function fetchOgMeta(targetUrl) {
     // 抓图失败必须留痕：以前这里静默返回全空 meta，与「页面确实没有图」不可区分，
     // 后台点「抓图」没有任何反应时无处可查（AGENTS 写着抓图类错误看 pm2 --err，实际一条都没有）
     const reason = err.name === 'AbortError' ? `请求超时（${TIMEOUT_MS}ms）` : `${err.name || 'Error'}: ${err.message}`;
-    console.warn(`[og-image] 抓取失败 ${pageUrl.href} :: ${reason}`);
+    console.warn(warnTagLine('og-image', `抓取失败 ${pageUrl.href} :: ${reason}`));
     return { title: null, description: null, image: null };
   } finally {
     clearTimeout(timer);

@@ -14,6 +14,7 @@
 const { runImageGc } = require('@jobs/imageGc')
 const { runDailyStat } = require('@jobs/dailyStat')
 const { runVisitGc } = require('@jobs/visitGc')
+const { warnTagLine } = require('@utils/log')
 
 const GC_INTERVAL_MS = 24 * 60 * 60 * 1000
 // 每日统计聚合间隔：比 GC 频繁得多，让图表当天数据接近实时
@@ -36,7 +37,7 @@ const JOBS = [
     run: runVisitGc,
     // 清理前必须先聚合当日统计：聚合失败就跳过本次清理，宁可不清理也不能用半截数据覆盖历史行
     requires: 'daily-stat',
-    onDependencyFailed: () => console.error('[visit-gc] 聚合未成功，跳过本次清理')
+    onDependencyFailed: () => console.warn(warnTagLine('visit-gc', '聚合未成功，跳过本次清理'))
   }
 ]
 

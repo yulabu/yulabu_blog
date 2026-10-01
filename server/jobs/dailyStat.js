@@ -1,6 +1,7 @@
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('@config/database');
 const { DailyStat } = require('@models');
+const { infoLine, errTagLine } = require('@utils/log');
 
 // 从 visit_log 全量重算每日 PV/UV 并 UPSERT 到 daily_stat。
 //
@@ -38,10 +39,10 @@ async function aggregateDailyStats() {
 async function runDailyStat() {
   try {
     const days = await aggregateDailyStats();
-    if (days) console.log(`[daily-stat] 已聚合 ${days} 天`);
+    if (days) console.log(infoLine('daily-stat', `已聚合 ${days} 天`));
     return true;
   } catch (err) {
-    console.error('[daily-stat] 失败:', err);
+    console.error(`${errTagLine('daily-stat', '失败')}\n${err.stack || ''}`);
     return false;
   }
 }

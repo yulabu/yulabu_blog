@@ -1,6 +1,7 @@
 const { Op } = require('sequelize')
 const { sequelize, Image, PostImage } = require('@models')
 const { storagePathFromPathname } = require('@utils/uploadUrl')
+const { warnTagLine } = require('@utils/log')
 
 // URL → uploads 存储 key 归一化（所有引用派生的唯一入口；剥离用的前缀字面量在 utils/uploadUrl.js）
 // 兼容：相对路径 /uploads/...、本站任意绝对域名、协议相对 //host/...；
@@ -60,7 +61,7 @@ async function resolveImageIdsByKeys(keys, warnContext) {
   if (warnContext) {
     const missing = list.filter(key => !idByKey.has(key))
     if (missing.length > 0) {
-      console.warn(`[image-ref] [${warnContext}] ${missing.length} 个本站图片引用未命中 image 表（可能已被 GC 回收或 URL 有误）: ${missing.join(', ')}`)
+      console.warn(warnTagLine('image-ref', `[${warnContext}] ${missing.length} 个本站图片引用未命中 image 表（可能已被 GC 回收或 URL 有误）: ${missing.join(', ')}`))
     }
   }
 

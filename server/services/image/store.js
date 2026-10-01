@@ -3,6 +3,7 @@ const path = require('path')
 const sharp = require('sharp')
 const AppError = require('@errors/AppError')
 const { UPLOAD_DIR, THUMB_WIDTH, IMAGE_QUALITY } = require('@config/image')
+const { errTagLine } = require('@utils/log')
 
 const ALLOWED_FORMATS = ['jpeg', 'jpg', 'png', 'webp']
 
@@ -78,7 +79,7 @@ async function deleteImageFiles(storagePath, thumbPath) {
       await fs.unlink(path.join(UPLOAD_DIR, rel))
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        console.error(`删除图片文件失败: ${rel}`, err.message)
+        console.error(errTagLine('image-store', `删除图片文件失败: ${rel} :: ${err.message}`))
       }
     }
   }

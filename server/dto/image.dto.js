@@ -1,13 +1,14 @@
 const AppError = require('@errors/AppError');
+// 类型白名单的唯一出处是 utils/imageRefTypes.js（三个真实引用类型 + 伪类型 other）——
+// 改前这里手写了第二份，漏了 diary，导致只作日记封面的图任何筛选都查不到
+const { IMAGE_LIST_TYPES } = require('@utils/imageRefTypes');
 const { parseId, paginate } = require('./common.dto');
-
-const REFERENCE_TYPES = ['post_content', 'cover', 'other'];
 
 // ========== 图片列表查询参数 ==========
 function imageListDTO(query) {
   const { page, limit, offset } = paginate(query);
   const type = query.type || null;
-  if (type && !REFERENCE_TYPES.includes(type)) {
+  if (type && !IMAGE_LIST_TYPES.includes(type)) {
     throw new AppError(400, '无效的引用类型');
   }
   return { page, limit, offset, type };

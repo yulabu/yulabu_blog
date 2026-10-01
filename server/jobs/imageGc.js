@@ -9,6 +9,7 @@ const { deleteImageFiles } = require('@services/image/store')
 const { TMP_DIR } = require('@config/image')
 // 孤儿对账 SQL 的唯一出处在 services/image/refs.js（与后台图片库的引用判定同源）
 const { ORPHAN_RECONCILE_SQL } = require('@services/image/refs')
+const { infoLine, errTagLine } = require('@utils/log')
 
 // 孤儿图片宽限期：首次确认无引用后 24 小时才物理删除（反悔窗口）
 const ORPHAN_GRACE_MS = 24 * 60 * 60 * 1000
@@ -59,7 +60,7 @@ async function gcOrphanImages() {
   }
 
   if (deleted > 0) {
-    console.log(`孤儿图片清理完成，共删除 ${deleted} 张`)
+    console.log(infoLine('image-gc', `孤儿图片清理完成，共删除 ${deleted} 张`))
   }
   return deleted
 }
@@ -80,7 +81,7 @@ async function gcAbandonedDrafts() {
   }
 
   if (drafts.length > 0) {
-    console.log(`废弃草稿清理完成，共删除 ${drafts.length} 篇`)
+    console.log(infoLine('image-gc', `废弃草稿清理完成，共删除 ${drafts.length} 篇`))
   }
   return drafts.length
 }
@@ -92,10 +93,10 @@ async function cleanupOldTmpFiles() {
     files = await fs.readdir(TMP_DIR)
   } catch (err) {
     // ENOENT = 临时目录还不存在（只有过上传才有），属正常；其它错误必须留痕：
-    // 本函数返回 0，而调用方（app.js 的 runGCSafe）只在非 0 时才打日志，
+    // 本函数返回 0，而 runImageGc 只在三项有值时打日志，
     // 所以读取失败会表现为「临时文件清理长期静默失效」
     if (err.code !== 'ENOENT') {
-      console.error(`临时文件清理失败：无法读取 ${TMP_DIR}`, err.message)
+      console.error(errTagLine('image-gc', `临时文件清理失败：无法读取 ${TMP_DIR} :: ${err.message}`))
     }
     return 0
   }
@@ -117,7 +118,7 @@ async function cleanupOldTmpFiles() {
   }
 
   if (removed > 0) {
-    console.log(`临时文件清理完成，共删除 ${removed} 个`)
+    console.log(infoLine('image-gc', `临时文件清理完成，共删除 ${removed} 个`))
   }
   return removed
 }
@@ -136,11 +137,11 @@ async function runImageGc() {
   try {
     const { orphans, drafts, tmpFiles } = await runGC()
     if (orphans || drafts || tmpFiles) {
-      console.log(`GC 完成：孤儿图片 ${orphans} 张，废弃草稿 ${drafts} 篇，临时文件 ${tmpFiles} 个`)
+      console.log(infoLine('image-gc', `GC 完成：孤儿图片 ${orphans} 张，废弃草稿 ${drafts} 篇，临时文件 ${tmpFiles} 个`))
     }
     return true
   } catch (err) {
-    console.error('GC 失败:', err)
+    console.error(`${errTagLine('image-gc', 'GC 失败')}\n${err.stack || ''}`)
     return false
   }
 }

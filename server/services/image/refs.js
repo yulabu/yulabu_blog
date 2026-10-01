@@ -12,19 +12,25 @@
 //      它只影响列表里显示哪一个引用标签，不参与回收判定（漏了不会删错图）
 const { Op } = require('sequelize')
 const { sequelize, Post, Column, PostImage, Diary } = require('@models')
+// 类型名（post_content / cover / diary + 伪类型 other）的唯一出处在 utils/imageRefTypes.js
+const { REF_TYPE, ORPHAN_TYPE } = require('@utils/imageRefTypes')
 
 // 持图清单。字段含义：
 //   table / imageColumn   业务表里指向 image 的列（1:1 封面类）
 //   pkColumn              该表主键（SQL 里判「这一行存在」用）
-//   filterType            后台图片库按类型筛选时归入哪一类（'other' 取全部并集）
+//   filterType            该来源归入哪一类（取自 utils/imageRefTypes.js；筛 'other' 取全部并集）
 //   model / idAttr        ② 用的 Sequelize 模型与主键属性名
 // 顺序即 SQL 的 JOIN 顺序（保持与原 SQL 逐字一致的连接次序，便于对账）
 const REFERENCE_SOURCES = [
-  { table: 'post', imageColumn: 'cover_image_id', pkColumn: 'post_id', filterType: 'cover', model: Post, idAttr: 'post_id' },
-  { table: 'blog_column', imageColumn: 'cover_image_id', pkColumn: 'column_id', filterType: 'cover', model: Column, idAttr: 'column_id' },
-  { table: 'post_image', imageColumn: 'image_id', pkColumn: 'post_image_id', filterType: 'post_content', model: PostImage, idAttr: 'post_image_id' },
-  { table: 'diary', imageColumn: 'cover_image_id', pkColumn: 'diary_id', filterType: 'diary', model: Diary, idAttr: 'diary_id' }
+  { table: 'post', imageColumn: 'cover_image_id', pkColumn: 'post_id', filterType: REF_TYPE.COVER, model: Post, idAttr: 'post_id' },
+  { table: 'blog_column', imageColumn: 'cover_image_id', pkColumn: 'column_id', filterType: REF_TYPE.COVER, model: Column, idAttr: 'column_id' },
+  { table: 'post_image', imageColumn: 'image_id', pkColumn: 'post_image_id', filterType: REF_TYPE.POST_CONTENT, model: PostImage, idAttr: 'post_image_id' },
+  { table: 'diary', imageColumn: 'cover_image_id', pkColumn: 'diary_id', filterType: REF_TYPE.DIARY, model: Diary, idAttr: 'diary_id' }
 ]
+
+// 表 → 类型 的派生映射：attachReferences 的展示标签从这里取，不再手写第二份字面量
+// （改前 diary 分支写死 'cover'，与上方账本、HTTP 白名单三方互相矛盾）
+const FILTER_TYPE_BY_TABLE = Object.fromEntries(REFERENCE_SOURCES.map(s => [s.table, s.filterType]))
 
 // 孤儿对账 SQL：image 全表 + 各持图表的 LEFT JOIN，referenced = 任一来源命中
 // 注意：一个 image 被多处引用时会出多行（LEFT JOIN 放大），这是既有行为，调用方按幂等处理
@@ -45,10 +51,10 @@ const ORPHAN_RECONCILE_SQL = `
 ${_joins}
 `
 
-// 指定引用类型的图片 ID 集合；type='other' 返回全部被引用 ID（供差集筛孤儿）
+// 指定引用类型的图片 ID 集合；type=ORPHAN_TYPE（'other'）返回全部被引用 ID（供差集筛孤儿）
 // 归类比对：post_image → post_content，post/blog_column → cover，diary → diary
 async function findReferencedImageIds(type) {
-  const sources = type === 'other'
+  const sources = type === ORPHAN_TYPE
     ? REFERENCE_SOURCES
     : REFERENCE_SOURCES.filter(s => s.filterType === type)
   if (sources.length === 0) return []
@@ -107,19 +113,19 @@ async function attachReferences(images) {
 
   for (const img of images) {
     if (contentPostByImage.has(img.image_id)) {
-      img.reference_type = 'post_content'
+      img.reference_type = FILTER_TYPE_BY_TABLE.post_image
       img.reference_id = contentPostByImage.get(img.image_id)
       img.reference_title = titleById.get(img.reference_id) || null
     } else if (coverPostByImage.has(img.image_id)) {
-      img.reference_type = 'cover'
+      img.reference_type = FILTER_TYPE_BY_TABLE.post
       img.reference_id = coverPostByImage.get(img.image_id).post_id
       img.reference_title = coverPostByImage.get(img.image_id).post_title
     } else if (coverColumnByImage.has(img.image_id)) {
-      img.reference_type = 'cover'
+      img.reference_type = FILTER_TYPE_BY_TABLE.blog_column
       img.reference_id = coverColumnByImage.get(img.image_id)
       img.reference_title = null
     } else if (diaryByImage.has(img.image_id)) {
-      img.reference_type = 'cover'
+      img.reference_type = FILTER_TYPE_BY_TABLE.diary
       img.reference_id = diaryByImage.get(img.image_id)
       img.reference_title = null
     } else {

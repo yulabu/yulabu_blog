@@ -181,13 +181,15 @@ pm2 logs blog-server --err
 grep '^\[err\]' /root/.pm2/logs/blog-server-error.log | tail -50
 ```
 
-日志行格式（唯一出处 `server/utils/log.js`，时间戳带 +08:00 偏移以便与 nginx 对上）：
+日志行格式（唯一出处 `server/utils/log.js`，**每行都带** +08:00 偏移以便与 nginx 对上；level 后只有一个空格，改动格式要跑 `server/scripts/check-errors.js`）：
 
 ```
-[err]  2026-09-29T20:15:03.123+08:00 GET /api/admin/backups 500 ip=203.0.113.7 name=SequelizeConnectionRefusedError :: <message> + 堆栈
+[info] 2026-09-29T20:15:03.123+08:00 [daily-stat] 已聚合 12 天
+[err] 2026-09-29T20:15:03.123+08:00 GET /api/admin/backups 500 ip=203.0.113.7 name=SequelizeConnectionRefusedError :: <message> + 堆栈
 [warn] 2026-09-29T20:15:03.123+08:00 限流命中 login ip=203.0.113.7 POST /api/auth/login
 ```
 
+- 任务/备份/抓图失败也是 `[err]`/`[warn]` 行（带 `[tag]`），所以 `grep '^\[err\]'` 能一次抓到请求内外所有失败
 - `pm2 flush blog-server` 会清空日志文件（排查前先确认不需要保留现场）
 - 临时排查完记得 `start` 时用 `--time` 可给 PM2 自己的输出加时间戳；应用侧的日志行本来就有时间戳，不依赖它
 

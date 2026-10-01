@@ -1,6 +1,7 @@
 const { VisitLog } = require('@models');
 const { Op } = require('sequelize');
 const { beijingDateStr, shiftDateStr, beijingDayStart } = require('@utils/date');
+const { infoLine, errTagLine } = require('@utils/log');
 
 const RETENTION_DAYS = 90;
 
@@ -13,7 +14,7 @@ async function cleanupOldVisitLogs() {
     where: { created_at: { [Op.lt]: cutoff } }
   });
   if (deleted > 0) {
-    console.log(`[visit-gc] 清理 ${deleted} 条过期访问日志`);
+    console.log(infoLine('visit-gc', `清理 ${deleted} 条过期访问日志`));
   }
   return deleted;
 }
@@ -24,7 +25,7 @@ async function runVisitGc() {
     await cleanupOldVisitLogs();
     return true;
   } catch (err) {
-    console.error('[visit-gc] 失败:', err);
+    console.error(`${errTagLine('visit-gc', '失败')}\n${err.stack || ''}`);
     return false;
   }
 }

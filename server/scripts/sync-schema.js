@@ -1,6 +1,9 @@
 require('module-alias/register');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const { sequelize } = require('@config/database');
+// 本文件既被 app.js 在启动时调用（于是这些行会进 PM2 的 out 日志），也能单独当 CLI 跑，
+// 所以走统一的日志行格式（scripts/ 的其余 CLI 壳是人看的输出，不受此约束）
+const { infoLine, errTagLine } = require('@utils/log');
 
 // 一次性幂等结构同步：补齐 sync() 不做的 ALTER（新增列 + ENUM 追加）
 // 设计约束：
@@ -30,7 +33,7 @@ async function syncSchema() {
     await sequelize.query(
       `ALTER TABLE \`post\` ADD COLUMN \`post_cover\` VARCHAR(512) NULL COMMENT '封面图URL' AFTER \`post_category_id\``
     );
-    console.log('[sync-schema] post.post_cover 已添加');
+    console.log(infoLine('sync-schema', 'post.post_cover 已添加'));
   }
 
   // post.post_status -> ENUM('published','trash','draft')
@@ -40,7 +43,7 @@ async function syncSchema() {
       await sequelize.query(
         `ALTER TABLE \`post\` MODIFY COLUMN \`post_status\` ENUM('published','trash','draft') NOT NULL DEFAULT 'published' COMMENT '文章状态'`
       );
-      console.log('[sync-schema] post.post_status 已追加 draft');
+      console.log(infoLine('sync-schema', 'post.post_status 已追加 draft'));
     }
   }
 
@@ -49,7 +52,7 @@ async function syncSchema() {
     await sequelize.query(
       `ALTER TABLE \`post\` ADD COLUMN \`view_count\` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '浏览量(PV)'`
     );
-    console.log('[sync-schema] post.view_count 已添加');
+    console.log(infoLine('sync-schema', 'post.view_count 已添加'));
   }
 
   // friend_link.preview_image
@@ -57,7 +60,7 @@ async function syncSchema() {
     await sequelize.query(
       `ALTER TABLE \`friend_link\` ADD COLUMN \`preview_image\` VARCHAR(512) NULL COMMENT '预览图URL' AFTER \`description\``
     );
-    console.log('[sync-schema] friend_link.preview_image 已添加');
+    console.log(infoLine('sync-schema', 'friend_link.preview_image 已添加'));
   }
 
   // friend_link.status -> ENUM('show','hide','draft')
@@ -67,7 +70,7 @@ async function syncSchema() {
       await sequelize.query(
         `ALTER TABLE \`friend_link\` MODIFY COLUMN \`status\` ENUM('show','hide','draft') NOT NULL DEFAULT 'show' COMMENT '显示状态'`
       );
-      console.log('[sync-schema] friend_link.status 已追加 draft');
+      console.log(infoLine('sync-schema', 'friend_link.status 已追加 draft'));
     }
   }
 
@@ -84,7 +87,7 @@ async function syncSchema() {
         await sequelize.query(
           `ALTER TABLE \`${table}\` MODIFY COLUMN \`status\` ENUM('show','hide','draft') NOT NULL DEFAULT 'show' COMMENT '显示状态'`
         );
-        console.log(`[sync-schema] ${table}.status 已追加 draft`);
+        console.log(infoLine('sync-schema', `${table}.status 已追加 draft`));
       }
     } catch (e) {
       if (!e.message.includes("doesn't exist") && !e.message.includes('Unknown table')) throw e;
@@ -112,7 +115,7 @@ async function syncSchema() {
           PRIMARY KEY (\`stat_date\`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
-      console.log('[sync-schema] daily_stat 表已创建');
+      console.log(infoLine('sync-schema', 'daily_stat 表已创建'));
     }
   }
 
@@ -132,7 +135,7 @@ async function syncSchema() {
           \`updated_at\` DATETIME NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
-      console.log('[sync-schema] diary 表已创建');
+      console.log(infoLine('sync-schema', 'diary 表已创建'));
     }
   }
 
@@ -143,7 +146,7 @@ async function syncSchema() {
     await sequelize.query(
       `ALTER TABLE \`image\` ADD COLUMN \`orphan_since\` DATETIME NULL COMMENT '孤儿标记时间：GC 对账无引用时打标，超宽限期物理删除'`
     );
-    console.log('[sync-schema] image.orphan_since 已添加');
+    console.log(infoLine('sync-schema', 'image.orphan_since 已添加'));
   }
 
   // post.cover_image_id
@@ -151,7 +154,7 @@ async function syncSchema() {
     await sequelize.query(
       `ALTER TABLE \`post\` ADD COLUMN \`cover_image_id\` BIGINT UNSIGNED NULL COMMENT '封面图片ID（由 post_cover 派生）' AFTER \`post_cover\``
     );
-    console.log('[sync-schema] post.cover_image_id 已添加');
+    console.log(infoLine('sync-schema', 'post.cover_image_id 已添加'));
   }
 
   // blog_column.cover_image_id（表名大小写兼容同上）
@@ -162,7 +165,7 @@ async function syncSchema() {
         await sequelize.query(
           `ALTER TABLE \`${table}\` ADD COLUMN \`cover_image_id\` BIGINT UNSIGNED NULL COMMENT '封面图片ID（由 column_cover 派生）' AFTER \`column_cover\``
         );
-        console.log(`[sync-schema] ${table}.cover_image_id 已添加`);
+        console.log(infoLine('sync-schema', `${table}.cover_image_id 已添加`));
       }
     } catch (e) {
       if (!e.message.includes("doesn't exist") && !e.message.includes('Unknown table')) throw e;
@@ -174,7 +177,7 @@ async function syncSchema() {
     await sequelize.query(
       `ALTER TABLE \`friend_link\` ADD COLUMN \`preview_image_id\` BIGINT UNSIGNED NULL COMMENT '预览图图片ID（本地抓图时写入）' AFTER \`preview_image\``
     );
-    console.log('[sync-schema] friend_link.preview_image_id 已添加');
+    console.log(infoLine('sync-schema', 'friend_link.preview_image_id 已添加'));
   }
 
   // diary.cover_image_id（单列引用，与 post/column 对称）
@@ -182,7 +185,7 @@ async function syncSchema() {
     await sequelize.query(
       `ALTER TABLE \`diary\` ADD COLUMN \`cover_image_id\` BIGINT UNSIGNED NULL COMMENT '封面图片ID（由 images[0] 派生）' AFTER \`images\``
     );
-    console.log('[sync-schema] diary.cover_image_id 已添加');
+    console.log(infoLine('sync-schema', 'diary.cover_image_id 已添加'));
   }
 
   // post_image 关联表（文章正文图片，保存文章时全量同步）
@@ -202,11 +205,11 @@ async function syncSchema() {
           INDEX \`idx_image_id\` (\`image_id\`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
-      console.log('[sync-schema] post_image 表已创建');
+      console.log(infoLine('sync-schema', 'post_image 表已创建'));
     }
   }
 
-  console.log('[sync-schema] 结构同步完成');
+  console.log(infoLine('sync-schema', '结构同步完成'));
 }
 
 if (require.main === module) {
@@ -216,7 +219,7 @@ if (require.main === module) {
       await syncSchema();
       await sequelize.close();
     } catch (e) {
-      console.error('[sync-schema] 失败:', e.message);
+      console.error(errTagLine('sync-schema', `失败: ${e.message}`));
       process.exit(1);
     }
   })();

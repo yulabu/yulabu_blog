@@ -152,9 +152,9 @@ HTTP 请求
 |---|---|---|
 | `config/` | 外部输入边界（见下） | **不依赖任何项目模块**（共享内核） |
 | `errors/` | `AppError` + 错误翻译表 + 响应形状 | 仅额外允许 `@config` |
-| `utils/` | 纯函数：`date.js`（北京时间日界）、`log.js`（日志行格式）、`uploadUrl.js`（`/uploads/` 契约） | node 内置 + `@config` / `@errors` |
+| `utils/` | 纯函数 / 纯常量：`date.js`（北京时间日界）、`log.js`（日志行格式）、`uploadUrl.js`（`/uploads/` 契约）、`imageRefTypes.js`（图片引用类型名） | node 内置 + `@config` / `@errors` |
 | `models/` | 表定义与关联 | `@config` / `@errors` |
-| `dto/` `vo/` | 入参校验 / 出参格式化 | dto 只依赖 `@errors`；vo 另允许 `@utils`（utils 已保证是纯函数） |
+| `dto/` `vo/` | 入参校验 / 出参格式化 | 只依赖 `@errors`；二者另允许 `@utils`（utils 已保证是纯函数，vo 取 URL 前缀、dto 取图片类型白名单） |
 | `services/` | 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、**不认识 req/res** | `models` / `config` / `errors` / `utils` |
 | `jobs/` | 定时任务：进程内调度、批量、幂等自愈、**不认识 req/res** | `services` 及其以下 |
 | `middleware/` | 管道层：只被 `routes/*` 与 `app.js` 挂载，不放错误类型与业务逻辑 | `errors` / `config` / `utils` |
@@ -194,18 +194,37 @@ HTTP 请求
 |---|---|---|
 | 5xx（含 `AppError(5xx)` 与 DB 连接类 503） | stderr | 带请求上下文 + 堆栈 |
 | 限流命中（写明哪个桶） | stderr | 应用层唯一的节流 / 暴破信号 |
-| 启动、图片 GC、统计聚合、访问日志清理、备份进度 | stdout | 定时任务启动时先跑一次，再进周期 |
+| 启动、图片 GC、统计聚合、访问日志清理、备份进度 | stdout | 一律 `[info]` 行；定时任务启动时先跑一次，再进周期 |
+| 任务/备份/抓图失败 | stderr | `[err]` 或 `[warn]` 行（带 tag），与请求内的 5xx 同为 `^\[err\]` 可 grep |
 | 4xx 业务拒绝、`/uploads/*` 静态请求 | **不记** | nginx access log 已有状态码 / IP / UA |
 | 请求体、`Authorization` 头 | **绝不记** | 登录与改密接口的 body 是明文密码 |
 
-行格式唯一出处是 `utils/log.js`（时间戳带 `+08:00`，便于和 nginx 对齐）：
+行格式唯一出处是 `utils/log.js`（时间戳带 `+08:00`，便于和 nginx 对齐；**每行都带时间戳**）。五种行：
+`[info]`（常规，stdout）、`[warn] <ts> [tag]`（非致命异常）、`[err] <ts> [tag]`（非请求上下文失败）、`[err] <ts> <方法> <URL> …`（请求内 5xx，带上下文）、`[warn] <ts> 限流命中 …`。运行期代码不许直接 `console` 写字符串（护栏断言⑥），写 stdout/stderr 由调用点完成：
 
 ```
-[err]  2026-09-29T20:15:03.123+08:00 GET /api/admin/backups 500 ip=203.0.113.7 name=SequelizeConnectionRefusedError :: <message>
+[info] 2026-09-29T20:15:03.123+08:00 [daily-stat] 已聚合 12 天
+[err] 2026-09-29T20:15:03.123+08:00 GET /api/admin/backups 500 ip=203.0.113.7 name=SequelizeConnectionRefusedError :: <message>
+[warn] 2026-09-29T20:15:03.123+08:00 [backup] 上传目录不存在，跳过图片镜像: /var/www/yulabu_blog/uploads
 [warn] 2026-09-29T20:15:03.123+08:00 限流命中 login ip=203.0.113.7 POST /api/auth/login
 ```
 
-不自己写文件日志、不引日志库：轮转靠 PM2 的 `pm2-logrotate`（生产配置见 `deploy/astro.md` 第八节）。`AppError` 的 message 会**原样返回给客户端**（含 5xx），只写可执行的运维人话（例「未找到 mysqldump，请先安装 mariadb-client」），绝不塞堆栈、密钥、内部路径。
+dotenv 的启动提示行（`◇ injected env …`）已用 `config({ quiet: true })` 关掉，不混进 out 日志。
+
+**运维怎么看（生产）**：应用只写 stdout/stderr，PM2 分流成两个文件——stdout → `/root/.pm2/logs/blog-server-out.log`，stderr → `blog-server-error.log`；请求级信息（含 4xx）在 nginx access log。
+
+```bash
+pm2 logs blog-server                                                  # 实时看两个流
+pm2 logs blog-server --err                                            # 只看 warn / err
+grep '^\[err\]'  /root/.pm2/logs/blog-server-error.log | tail -50      # 请求内外所有失败
+grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # 某一类任务的历史
+```
+
+- tag 词表固定这几个：`server` / `sync-schema` / `image-gc` / `daily-stat` / `visit-gc` / `backup` / `image-ref` / `image-store` / `og-image` / `seed`
+- 轮转：`pm2 install pm2-logrotate` + `max_size 10M` / `retain 7`（**未安装的话 out 日志会无限增长**；生产安装步骤见 `deploy/astro.md` 第八节）
+- `pm2 flush blog-server` 会清空日志文件，排查前先确认不需要留现场
+
+不自己写文件日志、不引日志库。`AppError` 的 message 会**原样返回给客户端**（含 5xx），只写可执行的运维人话（例「未找到 mysqldump，请先安装 mariadb-client」），绝不塞堆栈、密钥、内部路径。
 
 ## 领域机制
 
@@ -219,6 +238,7 @@ HTTP 请求
 - **API 契约全是 URL，id 只是内部派生结果**：保存文章 / 专栏 / 日记时，用 `services/image/derive.js` 把业务表里的 URL 与正文解析成 `image_id`（正文图全量 replace，幂等）；URL 归一化（相对路径 / 本站绝对域名 / 协议相对 / markdown title 后缀）只此一处，派生失败会在保存时打 `[image-ref]` 告警——「图显示着却被 GC 删」类问题先查这里
 - **孤儿回收交给 `jobs/imageGc.js`**（启动即跑 + 每 24 小时）：按 `services/image/refs.js` 的账本 SQL 对账，三态处理——有引用清标记（复活）/ 无引用打标 / **标记超 24h 且文件创建超 72h** 才删文件与记录。所以删除文章、专栏、日记**不会即时删图**，后台图片库会短暂出现无主图，属正常
 - **图片引用账本的唯一出处是 `services/image/refs.js` 的 `REFERENCE_SOURCES`**：它同时派生孤儿对账 SQL、后台图片库按类型筛图、反查引用位置。**新增持图业务只改这一处**（详见「常见改动指引」）
+- **图片类型名（`post_content` / `cover` / `diary` + 伪类型 `other`）的唯一出处是 `utils/imageRefTypes.js`**：HTTP 白名单（`type=` 参数）与反查字段 `reference_type` 都从这里派生——改前三处各写一份且已漂移（账本叫 diary、白名单里没有、标签写成 cover），只作日记封面的图因此任何筛选都查不到
 - 缩略图的消费者都是**小尺寸展示位**：首页文章列表的小卡封面与日记书架的封面（VO 的 `coverThumb`）——大图卡、文章页与过渡卡片仍用原图
 - 友链图片**彻底外链化、完全退出图片系统**：`avatar` / `preview_image` 只收 `http(s)://` 或 `//`（拒绝 `/uploads/`——没有引用指针的本站路径会被 GC 当孤儿回收）；「抓图」= `services/ogImage.js` 抓 `og:image` 与 favicon，不下载不落盘
 
@@ -330,7 +350,7 @@ HTTP 请求
 | 命令 | 作用 |
 |---|---|
 | `node scripts/check-errors.js` | 错误层回归：23 条断言，守着翻译表与「5xx 必记日志」；**升级 body-parser / sequelize / multer 后必须重跑**（翻译表依赖它们内部的常量与错误类） |
-| `node scripts/check-layers.js` | 分层护栏 5 条断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 取本地零点只允许在 `utils/date.js`（`setHours` 不许出现在别处） |
+| `node scripts/check-layers.js` | 分层护栏 7 条断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 取本地零点只允许在 `utils/date.js` ⑥ 运行期日志必须经 `utils/log.js`（不许直接 `console` 写字符串） ⑦ `/uploads/` 前缀只允许在 `utils/uploadUrl.js` |
 
 需要连库 / 改数据的脚本（幂等，可重复执行）：
 
@@ -347,11 +367,12 @@ HTTP 请求
 
 **新增一个接口**：`routes/` 挂路径（写操作挂 `auth`）→ `controllers/` 编排 → 入参走 `dto/`（分页用 `dto/common.dto.js` 的 `paginate`）→ 出参走 `vo/` → 需要碰 DB / 磁盘的领域逻辑放 `services/`。错误一律 `throw new AppError(status, message)`，不要在控制器里写错误响应。
 
-**新增持图业务**（改这三处，缺一处会把在用的图当成孤儿删掉）：
+**新增持图业务**（缺一处会把在用的图当成孤儿删掉，或让它在筛选里消失）：
 
 1. 业务表加 `*_image_id` 列（1:1）或建关联表（1:N）
 2. 保存逻辑用 `services/image/derive.js` 从 URL 派生 `image_id`
 3. 在 `services/image/refs.js` 的 `REFERENCE_SOURCES` 加一条（孤儿对账、按类型筛图、反查引用位置都从它派生）
+4. 若是**新类型**，先在 `utils/imageRefTypes.js` 登记类型名（HTTP 白名单与展示标签都由它派生）
 
 **新增环境变量**：只改 `config/env.js`（默认值 + 类型转换 + 必填校验）与 `.env_example`；消费者从 `@config/<domain>` 取，不要直接读 `process.env`；改完跑 `check-layers.js`。
 

@@ -4,7 +4,7 @@
 // 就会在几次迭代后悄悄失效（utils/ 就是这么变成杂物抽屉的）。本脚本静态扫描 require 字符串，
 // **不 require 被测文件**——config/*.js 在 require 期会求值 env 并可能抛错，扫文本才是零副作用。
 //
-// 五条断言：
+// 七条断言：
 //  ① process.env 只允许出现在 config/env.js（全项目唯一 env 出口）
 //     —— 例外 scripts/check-errors.js：它必须在 require 业务模块之前注入占位值（见该文件注释）
 //  ② 依赖只能向下：每层禁止依赖上层的表见 LAYER_RULES（config 是共享内核，不依赖任何项目模块）
@@ -15,6 +15,10 @@
 //  ⑤ 本地零点不得冒充北京零点：取当天零点只允许出现在 utils/date.js。用进程本地零点取
 //     「今天」在生产（进程时区可能是 UTC）会与库里的 +08:00 墙钟错开 8 小时——访问日志
 //     筛选、工作台「今日新增」、归档分组三处都因此实修过
+//  ⑥ 运行期日志必须经 utils/log.js 的格式化函数：不许直接 console 写字符串（行格式只有一个出处，
+//     scripts/ 除外——那是人看的命令行输出，且 check-errors.js 靠猴补丁 console 做断言）
+//  ⑦ /uploads/ 前缀只允许出现在 utils/uploadUrl.js：拼 URL 用 toUploadUrl、剥 pathname 用
+//     storagePathFromPathname（改前散在 vo 与派生层里手拼，换前缀会漏改）
 //
 // 特性：零依赖、不连库、不占端口；退出码非 0 = 有违规。
 const fs = require('fs');
@@ -36,10 +40,11 @@ const LAYER_RULES = {
   // errors = 共享内核（唯一允许的例外是 @config：errors/translate/multer.js 用上传限额拼错误文案）
   errors: ['@utils', '@models', '@dto', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
   models: ['@utils', '@dto', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
-  // vo / dto = 出参与入参的纯转换。vo 例外允许 @utils：utils 已被断言④ 保证是纯函数，
-  // 而响应里的图片 URL 前缀（@utils/uploadUrl）正是 vo 要用的值（dto 目前不需要，需要时同样放行）
+  // vo / dto = 出参与入参的纯转换。二者例外允许 @utils：utils 已被断言④ 保证是纯函数，
+  // 而 vo 要用响应里的图片 URL 前缀（@utils/uploadUrl）、dto 要用图片类型白名单
+  // （@utils/imageRefTypes）——都是纯值，不构成对上层或 I/O 的依赖
   vo: ['@models', '@dto', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
-  dto: ['@utils', '@models', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
+  dto: ['@models', '@vo', '@middleware', '@controllers', '@routes', '@services', '@jobs'],
   // utils = 纯函数共享内核：只依赖 node 内置与 @config/@errors（纯度另由断言④ 把守）
   utils: ['@dto', '@vo', '@middleware', '@controllers', '@routes', '@models', '@services', '@jobs'],
   // services = 领域能力（碰 I/O/DB）：可依赖 models/config/errors/utils，不认识上层与 jobs
@@ -62,6 +67,24 @@ const UTILS_FORBIDDEN_REQUIRES = new Set([
 // 断言⑤：允许取本地零点的文件（北京日期只有 utils/date.js 一个实现，别处一律用它）
 const LOCAL_MIDNIGHT_ALLOWLIST = new Set(['utils/date.js']);
 const LOCAL_MIDNIGHT_RE = /\bsetHours\s*\(/;
+
+// 断言⑥：允许直接写 console 字符串的文件（运行期日志一律经 utils/log.js 的格式化函数；
+// scripts/ 整体豁免，见文件头说明）。命中形态：首参是字面量——
+//   ① 单/双引号：console.log('…') / console.error("…")
+//   ② 模板字面量且**不以 ${ 开头**：console.warn(`[backup] …: ${x}`)
+// 放过「以 ${ 开头」的模板：那是把格式化函数的结果与堆栈等拼接的组合行
+// （middleware/errorHandler.js 的「行 + 堆栈」就是这个形态）
+const LOG_WRITER_ALLOWLIST = new Set([]);
+const RAW_CONSOLE_RES = [
+  /console\.(?:log|warn|error)\(\s*['"]/g,
+  /console\.(?:log|warn|error)\(\s*`(?!\$\{)/g
+];
+
+// 断言⑦：/uploads/ 前缀的唯一出处。要求字面量紧跟在引号/反引号之后（即真的是 URL 前缀），
+// 这样 restore.sh 文案里的 /var/www/yulabu_blog/uploads/ 不会被误判；
+// 提示文案里刻意不带该字面量，免得扫自己时误报
+const UPLOADS_ALLOWLIST = new Set(['utils/uploadUrl.js']);
+const UPLOADS_LITERAL_RE = /(?:['"`])\/uploads\//;
 
 const REQUIRE_RE = /require\(\s*['"]([^'"]+)['"]\s*\)/g;
 
@@ -116,6 +139,20 @@ function main() {
       violations.push(`⑤ ${rel} 用进程本地零点取「今天」 —— 北京日期一律走 @utils/date（唯一入口）`);
     }
 
+    // 断言⑥：运行期日志必须经 utils/log.js 的格式化函数（scripts/ 是人看的命令行输出）
+    if (layer !== 'scripts' && !LOG_WRITER_ALLOWLIST.has(rel)) {
+      for (const re of RAW_CONSOLE_RES) {
+        for (const _ of code.matchAll(re)) {
+          violations.push(`⑥ ${rel} 直接 console 写字符串 —— 请用 @utils/log 的格式化函数拼行（行格式只有一个出处）`);
+        }
+      }
+    }
+
+    // 断言⑦：上传 URL 前缀不许手拼（见文件头说明）
+    if (UPLOADS_LITERAL_RE.test(code) && !UPLOADS_ALLOWLIST.has(rel)) {
+      violations.push(`⑦ ${rel} 手拼上传 URL 前缀 —— 拼用 toUploadUrl、剥用 storagePathFromPathname（@utils/uploadUrl）`);
+    }
+
     // 断言②③④：依赖方向与 utils 纯度
     for (const match of code.matchAll(REQUIRE_RE)) {
       const target = match[1];
@@ -146,7 +183,7 @@ function main() {
     for (const v of violations) console.error('  ✗ ' + v);
     process.exit(1);
   }
-  console.log(`分层护栏通过：${scanned} 个文件，断言 5 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js）`);
+  console.log(`分层护栏通过：${scanned} 个文件，断言 7 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼）`);
 }
 
 main();

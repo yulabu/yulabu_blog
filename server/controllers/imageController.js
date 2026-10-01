@@ -6,6 +6,8 @@ const { deleteImageFiles } = require('@services/image/store')
 const { createImageFromUpload } = require('@services/image/upload')
 // 引用判定（按类型筛图 / 反查引用位置）的唯一出处在 services/image/refs.js
 const { findReferencedImageIds, attachReferences } = require('@services/image/refs')
+// 伪类型 'other'（无引用/孤儿）的名字出处在 utils/imageRefTypes.js
+const { ORPHAN_TYPE } = require('@utils/imageRefTypes')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
 const { imageVO, uploadedImageVO } = require('@vo/image.vo')
 const { UPLOAD_MAX_TOTAL_SIZE } = require('@config/image')
@@ -49,14 +51,14 @@ const getImages = async (req, res) => {
   const { page, limit, offset, type } = imageListDTO(req.query)
 
   const where = {}
-  if (type && type !== 'other') {
+  if (type && type !== ORPHAN_TYPE) {
     const ids = await findReferencedImageIds(type)
     if (ids.length === 0) {
       return res.json({ images: [], total: 0, page, totalPages: 0 })
     }
     where.image_id = { [Op.in]: ids }
-  } else if (type === 'other') {
-    const ids = await findReferencedImageIds('other')
+  } else if (type === ORPHAN_TYPE) {
+    const ids = await findReferencedImageIds(ORPHAN_TYPE)
     if (ids.length > 0) {
       where.image_id = { [Op.notIn]: ids }
     }
@@ -94,7 +96,7 @@ const deleteImage = async (req, res) => {
   const image = await Image.findByPk(id)
   if (!image) throw new AppError(404, '图片不存在')
 
-  const referenced = await findReferencedImageIds('other')
+  const referenced = await findReferencedImageIds(ORPHAN_TYPE)
   if (referenced.includes(Number(id))) {
     throw new AppError(400, '该图片仍被引用，无法删除')
   }
@@ -112,7 +114,7 @@ const deleteImagesBatch = async (req, res) => {
     throw new AppError(404, '图片不存在')
   }
 
-  const referenced = await findReferencedImageIds('other')
+  const referenced = await findReferencedImageIds(ORPHAN_TYPE)
   const boundImages = images.filter(img => referenced.includes(Number(img.image_id)))
   if (boundImages.length > 0) {
     throw new AppError(400, `有 ${boundImages.length} 张图片仍被引用，无法删除`)

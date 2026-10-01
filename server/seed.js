@@ -1,8 +1,9 @@
 require('module-alias/register');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const bcrypt = require('bcrypt');
 const { Admin, sequelize } = require('@models');
 const { seed: seedAdmin } = require('@config/env');
+const { infoLine } = require('@utils/log');
 
 async function seed() {
   await sequelize.sync();
@@ -13,7 +14,7 @@ async function seed() {
     admin_password: hash,
     admin_avatar: null
   });
-  console.log(`管理员创建成功: ${name}`);
+  console.log(infoLine('seed', `管理员创建成功: ${name}`));
   process.exit(0);
 }
 

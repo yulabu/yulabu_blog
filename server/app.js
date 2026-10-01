@@ -1,11 +1,13 @@
 // 基础配置
 require('module-alias/register');
-require('dotenv').config();
+// quiet：关掉 dotenv 每次启动打的 `◇ injected env (N) from .env` 提示行——它会混进 PM2 的 out 日志
+require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');
 const env = require('@config/env');
 const { sequelize } = require('@config/database');
 const { publicLimiter, staticLimiter, adminLimiter } = require('@middleware/rateLimiter');
+const { infoLine, errTagLine } = require('@utils/log');
 
 const app = express();
 // 信任本机反向代理（Nginx），正确解析 X-Forwarded-For（express-rate-limit 8.x 校验要求）
@@ -75,19 +77,19 @@ const { Post, Tag, Admin, FriendLink, Column, ColumnPost, Image, VisitLog, Diary
 // 最终触发 ER_TOO_MANY_KEYS（max 64 keys allowed）。
 sequelize.sync()
   .then(async () => {
-    console.log('所有模型同步成功');
+    console.log(infoLine('server', '所有模型同步成功'));
     // 一次性幂等结构同步：补齐 sync() 不处理的 ALTER（新增列/ENUM 追加），重复执行安全
     try {
       const syncSchema = require('./scripts/sync-schema');
       await syncSchema();
     } catch (e) {
-      console.error('[sync-schema] 同步失败:', e.message);
+      console.error(errTagLine('sync-schema', `同步失败: ${e.message}`));
     }
     // 依赖数据库表，需在 sync 之后启动
     startJobs();
   })
   .catch(err => {
-    console.error('同步失败:', err);
+    console.error(`${errTagLine('server', '同步失败')}\n${err.stack || err}`);
   });
 
 
@@ -107,5 +109,5 @@ app.use(errorHandler);
 // 启动服务器
 const PORT = env.port;
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(infoLine('server', `Server is running on http://localhost:${PORT}`));
 });

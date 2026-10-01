@@ -115,7 +115,7 @@ certbot renew --dry-run
 - diary 为单图契约：DTO 拒绝 images 超过 1 张（400），images[0] ↔ cover_image_id 一一对应；存量多图由 migrate-image-ref.js 截断
 - GC（jobs/imageGc.js；对账 SQL 来自 services/image/refs.js 的 ORPHAN_RECONCILE_SQL）：LEFT JOIN 各业务表判定引用，三态处理——有引用清 orphan_since（复活）/ 无引用打标 / 标记超 24h（ORPHAN_GRACE_MS）**且文件创建超 72h（ORPHAN_MIN_AGE_MS）** 才删文件+记录。服务启动时 + 每 24h 跑
 - 删除文章/专栏/日记/友链**不再即时删图**：引用随行消失，物理文件由 GC 延迟回收；后台图片库会短暂出现无主图，属正常
-- 新增持图业务的标准步骤（2026-09 收口：改前③④是两处，漏一处就把在用图误判为孤儿）：① 业务表加 *_image_id 列（1:1）或建关联表（1:N）→ ② 保存逻辑派生 image_id（services/image/derive.js）→ ③ 在 services/image/refs.js 的 REFERENCE_SOURCES 加一条（孤儿对账 SQL、后台按类型筛图、反查引用位置都从它派生）
+- 新增持图业务的标准步骤（2026-09 收口：改前③④是两处，漏一处就把在用图误判为孤儿）：① 业务表加 *_image_id 列（1:1）或建关联表（1:N）→ ② 保存逻辑派生 image_id（services/image/derive.js）→ ③ 在 services/image/refs.js 的 REFERENCE_SOURCES 加一条（孤儿对账 SQL、后台按类型筛图、反查引用位置都从它派生）→ ④ 若是**新类型**，先在 utils/imageRefTypes.js 登记该类型名（类型名只有这一个出处；筛图的 HTTP 白名单由它派生）
 - 旧 image.reference_type / reference_id 列已废弃但保留库中未删（回滚保障），代码禁止再读写；稳定后可 DROP。勿再往 image 表加业务语义/枚举
 - 友链图片**彻底外链化、完全退出图片系统**（2026-09 v2）：avatar（头像）/ preview_image（背景图）双外链字段，DTO 共用白名单——只收 http(s):// 或 //（拒绝 /uploads/，无指针的本站路径会被 GC 误删）；「抓图」= services/ogImage.js 的 fetchOgMeta：og:image→背景图覆盖写、favicon（apple-touch-icon 优先）→头像仅空时填（手填不覆盖，清空后可重抓）；不下载不落盘无 image 记录。preview_image_id 已从模型移除（列留库待 DROP，代码禁止读写），GC 对账 SQL 与 imageController 的 friend_link 分支已删除——只被友链引用过的图会被 GC 正常回收。存量本地留存图由 migrate-image-ref.js 清空，部署后到后台逐条重新「抓图」恢复
 - 图片统一落 uploads/，services/image/store.js 的 saveImageFile 转 webp + thumb；frontend/home/public/ 静态资源（og-image.jpg 等）随 vite build 进 dist/；缩略图 *.thumb.webp 只被**首页文章列表的小卡封面**消费（列表接口的 `post.coverThumb`，见 server/models/index.js 的 `Post→Image` 关联 + server/vo/post.vo.js）——大图卡、文章页与过渡卡片仍用 `post_cover` 原图，勿把它当通用缩略图用（移动端实测：小卡显示 112–182px，400px 缩略图在 2x/3x 屏都够清晰）
@@ -123,7 +123,7 @@ certbot renew --dry-run
 
 ### 5. 后端代码约定
 - 校验集中在 server/dto/*.dto.js（白名单过滤）；异常用 server/errors/AppError.js 抛 400/404
-- **错误出口唯一**：一律 `throw`（含 auth 中间件的 401），由 `middleware/errorHandler.js` 统一出响应，别在中间件/控制器里自己 `res.status(4xx).json()`；错误响应形状只在 `errors/contract.js`、日志行格式只在 `utils/log.js`；哪些错误记日志、记到哪，见 server/README.md「错误处理与日志」（铁律：5xx 必记 stderr、4xx 不记、绝不记请求体与 Authorization）
+- **错误出口唯一**：一律 `throw`（含 auth 中间件的 401），由 `middleware/errorHandler.js` 统一出响应，别在中间件/控制器里自己 `res.status(4xx).json()`；错误响应形状只在 `errors/contract.js`、日志行格式只在 `utils/log.js`（**运行期代码不许直接 console 写字符串，护栏断言⑥ 把守**；scripts/ 的 CLI 输出豁免）；哪些错误记日志、记到哪，见 server/README.md「错误处理与日志」（铁律：5xx 必记 stderr、4xx 不记、绝不记请求体与 Authorization）
 - 响应统一经 server/vo/*.vo.js 组装；**/uploads/ 前缀的唯一出处是 utils/uploadUrl.js**（toUploadUrl 拼、storagePathFromPathname 剥），别在控制器里手拼 URL（改前散在 vo + 两个控制器）
 - /api/admin/* 受 auth 中间件保护
 - app.js 已设 trust proxy 'loopback'（express-rate-limit 8.x 必需，否则报 ERR_ERL_UNEXPECTED_X_FORWARDED_FOR）
@@ -132,7 +132,7 @@ certbot renew --dry-run
 - **config/ 的职责边界（2026-09 重构确立）**：只收「外部能定的值」——① 运维经 env 定的（`config/env.js` 是**后端唯一读 `process.env` 的文件**：默认值 + 类型转换 + 必填校验，缺 DB_NAME / DB_USER / JWT_SECRET 时启动即失败并写明缺哪个；`config/{database,image,backup,auth}.js` 只从它派生，自己不碰 env）② 管理员在后台定的（`config/settings.js`：setting 表键定义 + 文本↔强类型编解码，属「动态配置」）。判据：**外部能定吗？被两层以上共用吗？**都不满足就是内部实现常量，**一律不进 config/**——限流阈值留在 middleware/rateLimiter.js、GC 保留期留在 jobs/imageGc.js、访问日志保留留在 jobs/visitGc.js、任务间隔留在 jobs/index.js、抓图超时留在 services/ogImage.js、允许格式留在 services/image/store.js、图表窗口白名单留在 controllers/adminController.js
 - 时区（+08:00）的唯一事实是 config/timezone.js：config/database.js 的 Sequelize timezone 与 utils/date.js 的偏移量都从它派生（二者错开会让「图表日期 vs DB 分组」差一天，实修过）
 - `config/database.js` 具名导出 `{ sequelize, dbConfig }`：备份链（services/backup/run.js）必须用 dbConfig 取 dump 凭据与库名，**不要再自己读 env / 写默认值**——两套默认值会让「应用连的库」与「dump 备的库」分叉（缺 DB_NAME 时应用起不来、dump 却静默去备一个叫 blog 的库）
-- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（四条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度）
+- 新增 env 变量只改 config/env.js（+ .env_example）；新增配置文件或改 require 边后跑 `cd server && node scripts/check-layers.js`（七条断言：env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼）
 
 ### 6. 前端代码约定
 - 复用既有组件，不引入新依赖/复杂度
@@ -220,10 +220,10 @@ certbot renew --dry-run
 改前 `utils/` 一间屋住四种角色（纯函数 / 领域服务 / 定时任务 / 一个 409 行的备份功能模块），且图片引用账本有两个真相源（GC 的 SQL 与 imageController 的查询各写一遍表清单），漏改一处就把在用的图当孤儿删掉。现在按**纯度**三分，判据与护栏都固化下来：
 
 - **判据（新文件放哪儿）**：① **碰 I/O 吗**（磁盘/DB/网络/子进程）→ 不碰进 `utils/`，碰了问 ② ② **谁驱动它**：进程内定时器调度、批量改数据、幂等自愈 → `jobs/`；被请求或其它代码按需调用 → `services/`
-- `utils/`（纯函数共享内核，只剩 3 个文件）：`date.js`（北京时间日界）、`log.js`（日志行格式）、`uploadUrl.js`（`/uploads/` 契约：`toUploadUrl` 拼、`storagePathFromPathname` 剥）。**护栏断言④ 禁止** utils 里出现 `fs` / `child_process` / `express` / `multer` / `sharp` / `sequelize` / `mysql2` / `dotenv` / `module-alias` / `@models` / `@services` / `@jobs`
+- `utils/`（纯函数/纯常量共享内核，只有 4 个文件）：`date.js`（北京时间日界）、`log.js`（日志行格式：`infoLine` / `warnTagLine` / `errTagLine` / `errorLine` / `warnLine`）、`uploadUrl.js`（`/uploads/` 契约：`toUploadUrl` 拼、`storagePathFromPathname` 剥）、`imageRefTypes.js`（图片引用类型名：`REF_TYPE` + 伪类型 `ORPHAN_TYPE`）。**护栏断言④ 禁止** utils 里出现 `fs` / `child_process` / `express` / `multer` / `sharp` / `sequelize` / `mysql2` / `dotenv` / `module-alias` / `@models` / `@services` / `@jobs`
 - `services/`（领域能力，≥2 个调用方共用，**不认识 req/res**）：`image/refs.js` 图片引用账本、`image/derive.js` URL→image_id 派生、`image/store.js` 文件层、`image/upload.js` 上传落库、`ogImage.js` 抓图、`backup/{layout,lock,run,export,assets}.js` 备份链
 - `jobs/`（定时任务，**不认识 req/res**）：`imageGc.js`、`dailyStat.js`、`visitGc.js`，注册表 `jobs/index.js` 管「间隔 / 启动即跑 / 依赖谁成功」，`app.js` 只调 `startJobs()`。手工入口统一 `node scripts/<任务>.js`（CLI 壳负责 module-alias + dotenv + 退出码，任务模块本身不是程序）
-- **图片引用账本的唯一出处是 `services/image/refs.js`**：`REFERENCE_SOURCES` 一张清单同时派生孤儿对账 SQL、后台按类型筛图、反查引用位置；gc 任务、imageController、migrate-image-ref 三处都从它取。**新增持图业务只改这一处**（改前要在 gc 的 SQL 与 imageController 两处各加一遍）
+- **图片引用账本的唯一出处是 `services/image/refs.js`**：`REFERENCE_SOURCES` 一张清单同时派生孤儿对账 SQL、后台按类型筛图、反查引用位置；gc 任务、imageController、migrate-image-ref 三处都从它取。**新增持图业务只改这一处**（改前要在 gc 的 SQL 与 imageController 两处各加一遍）。**类型名（post_content / cover / diary + 伪类型 other）的唯一出处是 `utils/imageRefTypes.js`**——HTTP 白名单与 attachReferences 的展示标签都从它派生（改前三处各写一份，日记封面在账本叫 diary、白名单里没有、标签写成 cover，导致它任何筛选都查不到）
 - **上传响应形状的唯一出处是 `vo/image.vo.js` 的 `uploadedImageVO`**：批量上传与专栏封面上传共用，字段固定 `{ image_id, url, thumb_url }`（前端 `UploadedImage` 契约，别换成 `imageVO`）
 - 迁移前的老路径（`utils/image.js`、`utils/imageStorage.js`、`utils/ogImage.js`、`utils/backup.js`、`utils/gc.js`、`utils/dailyStat.js`、`utils/visitGc.js`）**已不存在**，引用它们会 require 失败；CLI 也从 `node utils/dailyStat.js` 改为 `node scripts/daily-stat.js`
 - 备份链的一条行为修正：导出时客户端断开现在会结束 tar 进程（改前只记 clientGone，Node 仍持有读端导致 tar 永久阻塞、`.lock` 一直不释放，中断一次导出后 30 分钟内备份都被 409）

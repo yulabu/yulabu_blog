@@ -1,5 +1,5 @@
 require('module-alias/register');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const { sequelize } = require('@config/database');
 const { runGC } = require('@jobs/imageGc');
 

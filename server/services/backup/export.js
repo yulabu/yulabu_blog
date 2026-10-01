@@ -10,6 +10,7 @@ const { BACKUP_DIR, DB_BACKUP_DIR, UPLOADS_MIRROR_DIR, DUMP_FILE_RE } = require(
 const { acquireLock, releaseLock } = require('@services/backup/lock')
 const { syncUploadsMirror, walkStats, freeDiskBytes } = require('@services/backup/run')
 const { RESTORE_SH, README_TXT } = require('@services/backup/assets')
+const { warnTagLine } = require('@utils/log')
 
 // 生成导出包附带的恢复脚本与说明（每次导出覆盖写入）
 async function writeExportAssets() {
@@ -41,7 +42,7 @@ async function openExportArchive(filename) {
     // df 失败被当成「磁盘无限大」会让下面那次余量检查静默失效（导出可能把盘写满）。
     // 留痕但仍放行：不因为测量失败就拒绝「导出备份」这个正常操作
     const free = await freeDiskBytes().catch((err) => {
-      console.warn(`[backup] 读取磁盘余量失败，本次跳过空间检查：${err.message}`);
+      console.warn(warnTagLine('backup', `读取磁盘余量失败，本次跳过空间检查：${err.message}`));
       return Number.POSITIVE_INFINITY;
     });
     const needBytes = totalSize + dumpSize + 128 * 1024 * 1024;
