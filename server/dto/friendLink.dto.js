@@ -11,14 +11,23 @@ function normalizeExternalUrl(value, label) {
   return url;
 }
 
+// 友链目标地址：必须能直接点开，所以只收绝对 http(s)。
+// 协议白名单以前只作用于 avatar/preview_image（url 只有非空+长度）——抓图会拿它去出站请求，
+// 一致性修正：在这里拦掉 file:/data: 之类，出站层的私网/重定向校验在 services/ogImage.js
+function normalizeLinkUrl(value) {
+  const url = value?.trim();
+  if (!url) throw new AppError(400, '链接地址不能为空');
+  if (url.length > 256) throw new AppError(400, '链接地址不能超过256个字符');
+  if (!/^https?:\/\//i.test(url)) throw new AppError(400, '链接地址必须是 http(s) 地址');
+  return url;
+}
+
 function createFriendLinkDTO(body) {
   const name = body.name?.trim();
-  const url = body.url?.trim();
+  const url = normalizeLinkUrl(body.url);
 
   if (!name) throw new AppError(400, '友链名称不能为空');
   if (name.length > 32) throw new AppError(400, '友链名称不能超过32个字符');
-  if (!url) throw new AppError(400, '链接地址不能为空');
-  if (url.length > 256) throw new AppError(400, '链接地址不能超过256个字符');
 
   const dto = { name, url };
 
@@ -56,10 +65,7 @@ function updateFriendLinkDTO(body) {
     dto.name = name;
   }
   if (body.url !== undefined) {
-    const url = body.url?.trim();
-    if (!url) throw new AppError(400, '链接地址不能为空');
-    if (url.length > 256) throw new AppError(400, '链接地址不能超过256个字符');
-    dto.url = url;
+    dto.url = normalizeLinkUrl(body.url);
   }
   if (body.avatar !== undefined) {
     dto.avatar = normalizeExternalUrl(body.avatar, '头像URL');
