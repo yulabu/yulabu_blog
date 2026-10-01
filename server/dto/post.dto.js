@@ -19,7 +19,7 @@ function createPostDTO(body) {
   return {
     post_title: title || '未命名草稿',
     post_content: content || '',
-    post_summary: (body.post_summary || '').trim().slice(0, 128) || null,
+    post_summary: normalizeSummary(body.post_summary),
     post_author: (body.post_author || '').trim() || '匿名',
     post_category_id: body.post_category_id ? Number(body.post_category_id) : null,
     post_cover: normalizeCover(body.post_cover),
@@ -33,6 +33,15 @@ function normalizeCover(value) {
   const cover = value.trim();
   if (cover.length > 512) throw new AppError(400, '封面图URL不能超过512个字符');
   return cover || null;
+}
+
+// 摘要：trim 后超 128 抛 400（与标题、作者同一口径），空串转 null。
+// 改前是静默 slice(0, 128)——后台摘要输入框没有 maxlength，写 200 字会保存成功、内容被砍掉且无提示；
+// 现在输入框已加 maxlength=128，这条 400 是 API 直调时的兜底（列宽 post_summary STRING(128) 同源）
+function normalizeSummary(value) {
+  const summary = (value || '').trim();
+  if (summary.length > 128) throw new AppError(400, '摘要不能超过128个字符');
+  return summary || null;
 }
 
 // ========== 更新文章 ==========
@@ -52,7 +61,7 @@ function updatePostDTO(body) {
   }
 
   if (body.post_summary !== undefined) {
-    dto.post_summary = (body.post_summary || '').trim().slice(0, 128) || null;
+    dto.post_summary = normalizeSummary(body.post_summary);
   }
 
   if (body.post_category_id !== undefined) {

@@ -37,7 +37,8 @@
         </AdminFormField>
 
         <AdminFormField label="摘要">
-          <AdminFormInput v-model="form.summary" placeholder="请输入摘要" :disabled="isTrash" />
+          <AdminFormInput v-model="form.summary" placeholder="请输入摘要" :maxlength="128" :disabled="isTrash" />
+          <div class="char-count">{{ form.summary.length }}/128</div>
         </AdminFormField>
 
         <AdminFormRow inline>
@@ -642,6 +643,14 @@ onMounted(() => {
 <style scoped>
 .post-edit-page {
   width: 100%;
+}
+
+/* 摘要字数提示（与 AdminDiaryEdit 的 .char-count 同款；后端超 128 会回 400，这里让用户不用撞墙） */
+.char-count {
+  font-size: 12px;
+  color: var(--color-muted);
+  text-align: right;
+  margin-top: 4px;
 }
 
 .btn-add {

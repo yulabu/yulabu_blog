@@ -1,17 +1,22 @@
 // 专栏域的服务层：计数聚合（判据①）与三处多表写（判据②，都带事务）。
 const { Op } = require('sequelize');
-const { sequelize, Column, ColumnPost } = require('@models');
+const { sequelize, Column, ColumnPost, Post } = require('@models');
 
 // 各专栏的文章数（GROUP BY 聚合）→ { column_id: count }。
-// 控制器按「一组专栏」批量取，避免每行一次查询
+// 控制器按「一组专栏」批量取，避免每行一次查询。
+//
+// 口径 = **在专栏里且已发布**（判据④：口径只能有一处）。改前只按 column_id 聚合、不看文章状态，
+// 草稿也计入：前台专栏列表显示「N 篇」、点进详情页显示「共 N-1 篇」——同一专栏两个数字（草稿转回
+// 发布才自动消失）。现在与详情页（只列 published）和分类计数（services/tag.js 同样只算 published）一致。
 async function countPostsByColumn(columns) {
   const ids = columns.map(c => c.column_id);
   if (!ids.length) return {};
 
   const rows = await ColumnPost.findAll({
     where: { column_id: { [Op.in]: ids } },
-    attributes: ['column_id', [sequelize.fn('COUNT', sequelize.col('post_id')), 'cnt']],
-    group: ['column_id'],
+    attributes: ['column_id', [sequelize.fn('COUNT', sequelize.col('post.post_id')), 'cnt']],
+    include: [{ model: Post, as: 'post', attributes: [], where: { post_status: 'published' }, required: true }],
+    group: ['ColumnPost.column_id'],
     raw: true
   });
 
