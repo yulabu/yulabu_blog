@@ -4,7 +4,7 @@
 // 就会在几次迭代后悄悄失效（utils/ 就是这么变成杂物抽屉的）。本脚本静态扫描 require 字符串，
 // **不 require 被测文件**——config/*.js 在 require 期会求值 env 并可能抛错，扫文本才是零副作用。
 //
-// 七条断言：
+// 十一条断言：
 //  ① process.env 只允许出现在 config/env.js（全项目唯一 env 出口）
 //     —— 例外 scripts/check-errors.js：它必须在 require 业务模块之前注入占位值（见该文件注释）
 //  ② 依赖只能向下：每层禁止依赖上层的表见 LAYER_RULES（config 是共享内核，不依赖任何项目模块）
@@ -12,15 +12,20 @@
 //  ④ utils/ 必须是纯函数：禁 I/O（fs / child_process）、禁第三方运行时（sharp / sequelize）、
 //     禁进程引导（dotenv / module-alias）、禁业务数据（@models / @services / @jobs）。
 //     判据：同一输入必得同一输出、不碰磁盘/数据库/网络/子进程 —— 碰了的属于 services 或 jobs
-//  ⑤ 本地零点不得冒充北京零点：取当天零点只允许出现在 utils/date.js。用进程本地零点取
-//     「今天」在生产（进程时区可能是 UTC）会与库里的 +08:00 墙钟错开 8 小时——访问日志
-//     筛选、工作台「今日新增」、归档分组三处都因此实修过
+//  ⑤ 时间口径白名单：北京日期只有 utils/date.js 一个实现；命名/展示类时间可以用进程本地日历，
+//     但必须显式登记（LOCAL_CALENDAR_ALLOWLIST，见 README「访问统计」末条）。用进程本地零点取
+//     「今天」在生产（进程时区可能是 UTC）会与库里的 +08:00 墙钟错开 8 小时——访问日志筛选、
+//     工作台「今日新增」、归档分组三处都因此实修过
 //  ⑥ 运行期日志必须经 utils/log.js 的格式化函数：不许直接 console 写字符串（行格式只有一个出处，
 //     scripts/ 除外——那是人看的命令行输出，且 check-errors.js 靠猴补丁 console 做断言）
 //  ⑦ /uploads/ 前缀只允许出现在 utils/uploadUrl.js：拼 URL 用 toUploadUrl、剥 pathname 用
 //     storagePathFromPathname（改前散在 vo 与派生层里手拼，换前缀会漏改）
 //  ⑧ controller 的入参一律经 DTO：不许 req.body.X / req.query.X 这种字段直读（整对象交 DTO 可以）
 //  ⑨ 口令哈希的唯一出口是 services/auth/password.js：bcrypt 不许在别处 import（轮数也只在那里）
+//  ⑩ dto/vo 的 @-依赖只允许共享内核 @errors / @utils / @config（改前文档与护栏各说一套：
+//     README 写「只依赖 @errors」，而 dto/setting.dto.js 与 vo/setting.vo.js 在用 @config/settings）
+//  ⑪ 别名表两处一致：package.json 的 _moduleAliases 与 jsconfig.json 的 paths 是同一张表
+//     （运行期认前者、编辑器认后者），加别名不许只改一处
 //
 // 特性：零依赖、不连库、不占端口；退出码非 0 = 有违规。
 const fs = require('fs');
@@ -66,9 +71,18 @@ const UTILS_FORBIDDEN_REQUIRES = new Set([
   '@models', '@services', '@jobs', '@middleware', '@controllers', '@routes'
 ]);
 
-// 断言⑤：允许取本地零点的文件（北京日期只有 utils/date.js 一个实现，别处一律用它）
-const LOCAL_MIDNIGHT_ALLOWLIST = new Set(['utils/date.js']);
-const LOCAL_MIDNIGHT_RE = /\bsetHours\s*\(/;
+// 断言⑩：dto/vo 的 @-依赖白名单（共享内核 = config / errors / utils，各层均可依赖）
+const DTO_VO_ALLOWED_ALIASES = new Set(['@errors', '@utils', '@config']);
+
+// 断言⑤：时间口径白名单（见文件头说明）。命中「取日期部件 / 本地格式化」的调用，
+// getTime() / getDataValue() 之类不在其列；新代码若确实需要进程本地日历，在此登记并写明理由
+const LOCAL_CALENDAR_ALLOWLIST = new Set([
+  'utils/date.js',               // 北京日期唯一实现（现用 UTC 算术，登记以备内部扩展）
+  'services/image/store.js',     // 上传分片目录 YYYY/MM：命名用进程本地日历（有意例外）
+  'services/backup/run.js',      // dump 文件名 blog-YYYYMMDD-HHmmss：命名用进程本地日历（有意例外）
+  'services/backup/export.js'    // 导出说明里的「生成时间」：展示文本（有意例外）
+]);
+const LOCAL_CALENDAR_RE = /\b(?:setHours|getFullYear|getMonth|getDate|getHours|getMinutes|getSeconds|toLocaleString)\s*\(/;
 
 // 断言⑥：允许直接写 console 字符串的文件（运行期日志一律经 utils/log.js 的格式化函数；
 // scripts/ 整体豁免，见文件头说明）。命中形态：首参是字面量——
@@ -130,6 +144,35 @@ function listFiles() {
   return files;
 }
 
+// 断言⑪：两张别名表必须同集合。运行期认 package.json 的 _moduleAliases，编辑器认
+// jsconfig.json 的 paths —— 只加一处会一边失明。jsconfig 的键写成 '@config/*'，比较前去掉 '/*'
+function aliasTableViolations() {
+  const out = [];
+  const readJson = (rel) => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+    } catch (err) {
+      out.push(`⑪ ${rel} 读取/解析失败：${err.message}`);
+      return null;
+    }
+  };
+  const pkg = readJson('package.json');
+  const jsconfig = readJson('jsconfig.json');
+  if (!pkg || !jsconfig) return out;
+
+  const normalize = (keys) => new Set([...keys].map((key) => key.replace(/\/\*$/, '')));
+  const pkgAliases = normalize(Object.keys(pkg._moduleAliases || {}));
+  const jsAliases = normalize(Object.keys(jsconfig.compilerOptions?.paths || {}));
+
+  for (const key of pkgAliases) {
+    if (!jsAliases.has(key)) out.push(`⑪ ${key} 只在 package.json 的 _moduleAliases 里 —— jsconfig.json 的 paths 也要加（运行期与编辑器必须同一张表）`);
+  }
+  for (const key of jsAliases) {
+    if (!pkgAliases.has(key)) out.push(`⑪ ${key} 只在 jsconfig.json 的 paths 里 —— package.json 的 _moduleAliases 也要加`);
+  }
+  return out;
+}
+
 function main() {
   const violations = [];
   const files = listFiles();
@@ -143,9 +186,9 @@ function main() {
       violations.push(`① ${rel} 读了环境变量 —— 只允许 config/env.js 读`);
     }
 
-    // 断言⑤：本地零点不得冒充北京零点（见文件头说明）
-    if (LOCAL_MIDNIGHT_RE.test(code) && !LOCAL_MIDNIGHT_ALLOWLIST.has(rel)) {
-      violations.push(`⑤ ${rel} 用进程本地零点取「今天」 —— 北京日期一律走 @utils/date（唯一入口）`);
+    // 断言⑤：时间口径白名单（见文件头说明）
+    if (LOCAL_CALENDAR_RE.test(code) && !LOCAL_CALENDAR_ALLOWLIST.has(rel)) {
+      violations.push(`⑤ ${rel} 用了进程本地日历（取日期部件 / 本地格式化） —— 业务日界一律走 @utils/date；命名/展示类确实需要就登记进 LOCAL_CALENDAR_ALLOWLIST`);
     }
 
     // 断言⑥：运行期日志必须经 utils/log.js 的格式化函数（scripts/ 是人看的命令行输出）
@@ -188,6 +231,15 @@ function main() {
         continue;
       }
 
+      // 断言⑩ 同样先判：dto/vo 只许依赖共享内核，违规不重复走 ②
+      if ((layer === 'dto' || layer === 'vo') && target.startsWith('@')) {
+        const alias = target.split('/')[0];
+        if (!DTO_VO_ALLOWED_ALIASES.has(alias)) {
+          violations.push(`⑩ ${rel} 依赖 ${target} —— dto/vo 只允许共享内核 @errors / @utils / @config`);
+          continue;
+        }
+      }
+
       if (!target.startsWith('@') || !layer) continue;
       const forbidden = LAYER_RULES[layer];
       if (!forbidden) continue;
@@ -198,13 +250,16 @@ function main() {
     }
   }
 
+  // 断言⑪：别名表（与文件内容无关，整体比对一次）
+  violations.push(...aliasTableViolations());
+
   const scanned = files.length;
   if (violations.length) {
     console.error(`分层护栏：${violations.length} 条违规（扫描 ${scanned} 个文件）`);
     for (const v of violations) console.error('  ✗ ' + v);
     process.exit(1);
   }
-  console.log(`分层护栏通过：${scanned} 个文件，断言 9 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 本地零点只在 utils/date.js / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口）`);
+  console.log(`分层护栏通过：${scanned} 个文件，断言 11 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 时间口径白名单 / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口 / dto-vo 依赖白名单 / 别名表一致）`);
 }
 
 main();
