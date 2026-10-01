@@ -1,7 +1,7 @@
 // 出站抓取的 SSRF 守卫（2026-10 加固）。
 // 抓取目标来自管理员填的友链 URL，但「管理员可控」不等于可以任打内网：本机跑着
 // Nginx/SSR/MariaDB，云上还有元数据地址——所以目标必须是公网，且**每一跳**都要重新校验。
-const { warnTagLine } = require('@utils/log');
+const { warnTagLine, infoLine } = require('@utils/log');
 const dns = require('node:dns').promises;
 const ipaddr = require('ipaddr.js');
 
@@ -46,22 +46,26 @@ async function assertPublicHost(url) {
   }
 }
 
-// 流式读 body 并限制体积（不把大文件整块读进内存）
+// 流式读 body 并限制体积（不把大文件整块读进内存）。
+// 达到上限就停止继续读、把已读部分交回（truncated=true）——meta 标签几乎都在 <head> 里，
+// 按已读内容解析即可；早期版本在这里直接抛错，实测会把 github.com 这类大首页整站误伤
 async function readBodyLimited(response, limit) {
   const reader = response.body.getReader();
   const chunks = [];
   let total = 0;
+  let truncated = false;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    total += value.length;
-    if (total > limit) {
-      await reader.cancel().catch(() => {});
-      throw new Error(`响应超过体积上限（${Math.round(limit / 1024)}KB）`);
-    }
     chunks.push(value);
+    total += value.length;
+    if (total >= limit) {
+      await reader.cancel().catch(() => {});
+      truncated = true;
+      break;
+    }
   }
-  return Buffer.concat(chunks).toString('utf8');
+  return { html: Buffer.concat(chunks).toString('utf8'), truncated };
 }
 
 // 逐跳抓取：redirect:'manual' 让每一跳都过一遍「协议 + 公网地址」校验；
@@ -103,8 +107,8 @@ async function fetchPage(startUrl, signal) {
       throw new Error(`响应不是 HTML（content-type: ${contentType || '未提供'}）`);
     }
 
-    const html = await readBodyLimited(response, MAX_BODY_BYTES);
-    return { html, finalUrl: current.href };
+    const { html, truncated } = await readBodyLimited(response, MAX_BODY_BYTES);
+    return { html, finalUrl: current.href, truncated };
   }
   throw new Error(`重定向超过 ${MAX_REDIRECTS} 跳`);
 }
@@ -212,7 +216,11 @@ async function fetchOgMeta(targetUrl) {
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const { html, finalUrl } = await fetchPage(startUrl, controller.signal);
+    const { html, finalUrl, truncated } = await fetchPage(startUrl, controller.signal);
+    if (truncated) {
+      // 只是提示：meta 都在 <head>，截断后照常解析（大首页不该因此抓不到图）
+      console.log(infoLine('og-image', `响应超过 ${Math.round(MAX_BODY_BYTES / 1024)}KB，已按已读部分解析：${finalUrl}`));
+    }
     // base 用**最终跳**的 URL：初始 URL 经过 302 之后往往不是页面真实地址，相对 og:image 会解析错
     return extractMeta(html, finalUrl);
   } catch (err) {
