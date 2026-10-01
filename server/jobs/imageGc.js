@@ -79,8 +79,12 @@ async function gcOrphanImages() {
         revived++
         continue
       }
-      await deleteImageFiles(row.storagePath, row.thumbPath)
+      // 先删记录行、再删文件——与 services/image/remove.js 同一顺序与理由：DB 那步失败只会留下
+      // 磁盘垃圾（GC 扫不到，但不会造成断链），反过来则会留下「记录在、文件没了」的 404 图。
+      // 2026-10 补上 post_image.image_id（NO ACTION）外键后，删行在竞态下会硬报 1451，
+      // 这个顺序就成了兜底：报错时文件还没删，下次 GC 仍能安全重试
       await Image.destroy({ where: { image_id: imageId } })
+      await deleteImageFiles(row.storagePath, row.thumbPath)
       deleted++
     }
   }
