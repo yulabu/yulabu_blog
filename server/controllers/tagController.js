@@ -1,9 +1,9 @@
 const AppError = require('@errors/AppError');
 const { createTagDTO, updateTagDTO, tagIdDTO } = require('@dto/tag.dto');
-const { Post, Tag } = require('@models');
+const { Tag } = require('@models');
 const { tagDetail, tagList } = require('@vo/tag.vo');
 // 聚合查询与删除守卫在 service（判据①①②）：控制器只做 取参 → 调 service → 组装 vo
-const { listTagsWithPostCounts, deleteTagWithGuard } = require('@services/tag');
+const { listTagsWithPostCounts, getTagWithCount, deleteTagWithGuard } = require('@services/tag');
 
 exports.getTagslist = async (req, res) => {
   res.json(tagList(await listTagsWithPostCounts()));
@@ -11,9 +11,11 @@ exports.getTagslist = async (req, res) => {
 
 exports.getTagById = async (req, res) => {
   const tagId = tagIdDTO(req.params);
-  const tag = await Tag.findByPk(tagId, {include: { model: Post, as: 'posts', attributes: ['post_id', 'post_title'] }});
-  if (!tag) throw new AppError(404, '分类不存在');
-  res.json(tagDetail(tag));
+  // 详情与列表共用同一份聚合与口径（services/tag.js）。改前这里用带 include 的 findByPk，
+  // 而 vo 读的 count 只有 raw 聚合行才有 → 该接口的 count 恒为 0
+  const row = await getTagWithCount(tagId);
+  if (!row) throw new AppError(404, '分类不存在');
+  res.json(tagDetail(row));
 }
 
 exports.createTag = async (req, res) => {

@@ -7,9 +7,11 @@ const AppError = require('@errors/AppError');
 const { sequelize, Post, Tag } = require('@models');
 
 // 分类列表（含已发布文章数）：LEFT JOIN + GROUP BY，raw 行交给 vo 组装。
-// 统计口径是「已发布」——草稿/回收站不计入分类的 count
-async function listTagsWithPostCounts() {
+// 统计口径是「已发布」——草稿/回收站不计入分类的 count。
+// 传 tagId 时只查这一条：详情接口复用同一份 SQL 与口径（这是 count 的唯一出处）
+async function listTagsWithPostCounts({ tagId } = {}) {
   return Tag.findAll({
+    where: tagId ? { tag_id: tagId } : undefined,
     attributes: [
       'tag_id',
       'tag_name',
@@ -25,6 +27,15 @@ async function listTagsWithPostCounts() {
     group: ['Tag.tag_id', 'Tag.tag_name'],
     raw: true
   });
+}
+
+// 单个分类（含已发布文章数）；不存在返回 null，404 由 controller 抛。
+// 改前详情接口走 Tag.findByPk + include 全部文章，而 vo 读的是 tag.count —— 模型实例没有该字段
+// （只有上面这种 raw 聚合行才有），所以公开接口 /api/tags/:id 的 count 恒为 0；那个 include
+// 还没带状态过滤（将来若被 vo 消费会泄露草稿标题）。现在两处 count 同源。
+async function getTagWithCount(tagId) {
+  const rows = await listTagsWithPostCounts({ tagId });
+  return rows[0] || null;
 }
 
 // 删除分类：存在性 → 文章数守卫 → 同一事务内删除（命中判据②的 check-then-act）。
@@ -43,4 +54,4 @@ async function deleteTagWithGuard(tagId) {
   });
 }
 
-module.exports = { listTagsWithPostCounts, deleteTagWithGuard };
+module.exports = { listTagsWithPostCounts, getTagWithCount, deleteTagWithGuard };

@@ -1,9 +1,8 @@
-const fs = require('fs').promises
 const { Op } = require('sequelize')
 const AppError = require('@errors/AppError')
 const { Image } = require('@models')
-// 上传落库 + 临时文件清理（清理的归属与三段式生命周期见该文件头注）
-const { createImageFromUpload, discardTempFiles } = require('@services/image/upload')
+// 上传落库 + 批量编排 + 临时文件清理的归属见该文件头注
+const { createImagesFromUpload } = require('@services/image/upload')
 // 引用判定（按类型筛图 / 反查引用位置）的唯一出处在 services/image/refs.js
 const { findReferencedImageIds, attachReferences } = require('@services/image/refs')
 // 删图（引用守卫 + 先事务删行再删文件）在 services/image/remove.js（判据②）
@@ -12,34 +11,17 @@ const { deleteUnreferencedImages } = require('@services/image/remove')
 const { ORPHAN_TYPE } = require('@utils/imageRefTypes')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
 const { imageVO, uploadedImageVO } = require('@vo/image.vo')
-const { UPLOAD_MAX_TOTAL_SIZE } = require('@config/image')
 
-// 批量上传图片：转码落盘 + 写入 image 记录（纯上传，不绑定业务；引用由业务表持有）
+// 批量上传图片：编排（总量校验 / 顺序落库 / 临时文件收尾 / 失败回删）都在 services/image/upload.js（判据②）。
+// 这里只做「有没有文件」的请求级检查 → 调 service → 用唯一形状出处 uploadedImageVO 组装响应
 const uploadBatch = async (req, res) => {
   const files = req.files
   if (!files || files.length === 0) {
     throw new AppError(400, '没有上传文件')
   }
 
-  try {
-    // 单请求总量限制
-    let totalSize = 0
-    for (const file of files) {
-      totalSize += (await fs.stat(file.path)).size
-    }
-    if (totalSize > UPLOAD_MAX_TOTAL_SIZE) {
-      throw new AppError(413, '单次上传总大小不能超过 ' + (UPLOAD_MAX_TOTAL_SIZE / (1024 * 1024)).toFixed(2) + 'MB')
-    }
-
-    const images = []
-    for (const file of files) {
-      images.push(uploadedImageVO(await createImageFromUpload(file.path)))
-    }
-
-    res.json({ images })
-  } finally {
-    await discardTempFiles(files)
-  }
+  const images = await createImagesFromUpload(files)
+  res.json({ images: images.map(uploadedImageVO) })
 }
 
 // 图片库列表：分页 + 引用类型筛选（other = 无引用孤儿）
