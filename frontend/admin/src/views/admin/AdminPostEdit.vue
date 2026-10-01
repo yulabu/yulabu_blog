@@ -350,11 +350,11 @@ async function handleUploadImages(files) {
     toast('回收站文章为只读，请先恢复为草稿', 'error')
     throw new Error('trash readonly')
   }
-  const postId = await ensureDraft()
+  // 先把草稿落库（图片要有可保存的归属对象），上传本身不需要 id
+  await ensureDraft()
   uploadProgress.value = { done: 0, total: files.length }
   return uploadImages({
     files,
-    postId,
     // 只在分了多片时触发（见 api/image.ts），逐片提示进度
     onProgress: (done, total) => {
       uploadProgress.value = { done, total }
@@ -363,14 +363,15 @@ async function handleUploadImages(files) {
   })
 }
 
-// 封面上传：绑定类型 cover，返回 URL（v-model 由 AdminImageUpload 写入 form.cover）
+// 封面上传：只需返回 URL（v-model 由 AdminImageUpload 写入 form.cover）。
+// 不上传「类型」——图片的引用类型由引用它的业务对象决定（后端按 URL 派生 image_id）
 async function uploadCoverImage(file) {
   if (isTrash.value) {
     toast('回收站文章为只读，请先恢复为草稿', 'error')
     throw new Error('trash readonly')
   }
-  const postId = await ensureDraft()
-  const result = await uploadImages({ files: [file], postId, type: 'cover' })
+  await ensureDraft()
+  const result = await uploadImages({ files: [file] })
   return result.images[0].url
 }
 

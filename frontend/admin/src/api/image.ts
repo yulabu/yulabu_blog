@@ -13,9 +13,6 @@ const UPLOAD_TIMEOUT_MS = 120000
 
 export interface UploadOptions {
   files: File[]
-  postId?: number
-  diaryId?: number
-  type?: string
   // 仅在需要分成多片时回调（单片上传不打扰）
   onProgress?: (uploaded: number, total: number) => void
 }
@@ -40,16 +37,12 @@ function chunkFiles(files: File[]): File[][] {
   return chunks
 }
 
-function buildFormData(files: File[], options: UploadOptions) {
+// 请求体只有文件本身：图片的归属与类型由「引用它的业务对象」决定（保存文章/专栏/日记时按 URL 派生
+// image_id），后端也不读 post_id / diary_id / type 之类的定位或类型参数——那些是旧「按文章目录存放」
+// 设计的残留，已随 2026-09 图片重构一并移除
+function buildFormData(files: File[]) {
   const formData = new FormData()
   files.forEach((file) => formData.append('images', file))
-  if (options.postId) {
-    formData.append('post_id', String(options.postId))
-  }
-  if (options.diaryId) {
-    formData.append('diary_id', String(options.diaryId))
-  }
-  formData.append('type', options.type || 'post_content')
   return formData
 }
 
@@ -64,7 +57,7 @@ export async function uploadImages(options: UploadOptions): Promise<UploadResult
   let uploaded = 0
 
   for (const chunk of chunks) {
-    const result = await http.post<UploadResult>('/images/upload', buildFormData(chunk, options), {
+    const result = await http.post<UploadResult>('/images/upload', buildFormData(chunk), {
       timeout: UPLOAD_TIMEOUT_MS
     })
     images.push(...result.images)

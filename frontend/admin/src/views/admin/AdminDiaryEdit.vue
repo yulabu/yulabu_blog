@@ -103,8 +103,8 @@ watch(
 )
 
 async function uploadCoverImage(file) {
-  const id = await ensureDraft()
-  const result = await uploadImages({ files: [file], diaryId: id, type: 'cover' })
+  await ensureDraft()
+  const result = await uploadImages({ files: [file] })
   return result.images[0]?.url || ''
 }
 
