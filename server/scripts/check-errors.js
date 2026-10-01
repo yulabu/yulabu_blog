@@ -5,9 +5,11 @@
 // 退化成通用 4xx/500 而不报错。这个脚本是那张表唯一的护栏，也守着两条容易写错的顺序约束：
 //   SequelizeUniqueConstraintError instanceof ValidationError（顺序错了 409 会变 400）
 //   SequelizeForeignKeyConstraintError extends DatabaseError（顺序错了 400 会变 500）
+// 2026-10 起还守着一组限流断言：SSR 回源（回环，无 XFF）必须免限流、访客（带 XFF）必须被
+// publicLimiter 分桶限流——这条止血只挂在 skip 上，没有断言的话挪一下挂载点就会静默复发。
 //
 // 特性：零依赖、不连数据库、不占端口（监听 127.0.0.1:0）、跑完自动清理。
-// 真链路：用真的 express.json 产生 body-parser 错误、真的 errorHandler、真的 notFound。
+// 真链路：用真的 express.json 产生 body-parser 错误、真的 errorHandler、真的 notFound、真的 publicLimiter。
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -32,6 +34,7 @@ function main() {
   const AppError = require('@errors/AppError');
   const errorHandler = require('@middleware/errorHandler');
   const notFound = require('@middleware/notFound');
+  const { publicLimiter } = require('@middleware/rateLimiter');
 
   // ---------- 日志捕获：断言「哪些必须记、哪些绝不能记」 ----------
   const errorLogs = [];
@@ -65,6 +68,10 @@ function main() {
   }
 
   const app = express();
+  // 与生产 app.js 同款：express-rate-limit 8.x 靠它解析 X-Forwarded-For 分桶。
+  // 这行是限流断言的前提——不设 'loopback'，带 XFF 的请求 req.ip 也是 127.0.0.1，
+  // 会被 publicLimiter 的 skip 一并放行，那组断言就「全绿但什么都没测到」
+  app.set('trust proxy', 'loopback');
   app.use(express.json({ limit: '2mb' }));
   app.post('/throw', (req, res) => {
     throw buildError(req.body.kind);
@@ -74,6 +81,8 @@ function main() {
     res.json({ ok: true });
     throw new Error('响应之后才抛');
   });
+  // 限流断言用：公开桶的挂载形态与生产 app.js 一致（publicLimiter + 普通处理器）
+  app.get('/__rate-limit-probe', publicLimiter, (req, res) => res.json({ ok: true, ip: req.ip }));
   app.use(notFound);
   app.use(errorHandler);
   const delegated = [];
@@ -171,6 +180,44 @@ function main() {
       name: '错误日志行格式（含请求上下文 + 堆栈）',
       detail: first.split('\n')[0].slice(0, 110) || '(无日志)',
       want: fmtOk ? '' : '期望 [err] <ISO+08:00> <METHOD> <URL> <status> ip=... name=... :: ... 且带堆栈',
+    });
+
+    // ---- 限流与 SSR 回环放行（2026-10 止血的行为锁）----
+    // 回环（SSR 回源，不带 XFF）连发 61 次必须 0×429；访客（同一 XFF）连发 61 次必须第 61 次命中。
+    // 断言放在这里（capturing 关闭之前）才能顺带检查「限流命中」的 warn 行是否记了桶名与真实 IP
+    const LOOPBACK_TRIES = 61;
+    let loopback429 = 0;
+    for (let i = 0; i < LOOPBACK_TRIES; i++) {
+      const r = await send('GET', '/__rate-limit-probe', {}, undefined);
+      if (r.status === 429) loopback429++;
+    }
+    const loopbackOk = loopback429 === 0;
+    if (!loopbackOk) failed++;
+    rows.push({
+      ok: loopbackOk,
+      name: '限流：回环免限流（SSR 回源）',
+      detail: `61 次请求 429×${loopback429}`,
+      want: loopbackOk ? '' : '期望回环请求一次都不被限流（publicLimiter 的 skip / isLoopbackIp 失效了？）',
+    });
+
+    const visitorIp = '203.0.113.7';
+    const warnBefore = warnLogs.length;
+    const visitorRuns = [];
+    for (let i = 0; i < LOOPBACK_TRIES; i++) {
+      visitorRuns.push(await send('GET', '/__rate-limit-probe', { 'X-Forwarded-For': visitorIp }, undefined));
+    }
+    const visitor429 = visitorRuns.filter((r) => r.status === 429);
+    const visitorOk =
+      visitor429.length === 1 &&
+      visitorRuns[LOOPBACK_TRIES - 1].status === 429 &&
+      visitor429[0].json?.message === '请求过于频繁，请稍后重试' &&
+      warnLogs.slice(warnBefore).some((line) => line.includes('限流命中 public') && line.includes(`ip=${visitorIp}`));
+    if (!visitorOk) failed++;
+    rows.push({
+      ok: visitorOk,
+      name: '限流：访客按 XFF 分桶命中 429 + 记 warn',
+      detail: `429×${visitor429.length}，末次=${visitorRuns[LOOPBACK_TRIES - 1].status}，报警=${warnLogs.length - warnBefore} 行`,
+      want: visitorOk ? '' : `期望前 60 次 200、第 61 次 429 + 「限流命中 public ip=${visitorIp}」warn 一行`,
     });
 
     capturing = false;
