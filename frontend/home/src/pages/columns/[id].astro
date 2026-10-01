@@ -10,16 +10,29 @@ const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:3000/api'
 const { id } = Astro.params
 
 let column = null
+let detailStatus = 404
+
+// 与文章页同一套止血策略（2026-10）：只有 404 走 404 页；429/5xx/网络错重试一次，
+// 仍失败就抛错（5xx）——改前一律 rewrite('/404')，后端不可用时会谎称专栏不存在
+async function fetchJson(path) {
+  const res = await fetch(`${API_BASE}${path}`)
+  return res.ok ? { ok: true, data: await res.json() } : { ok: false, status: res.status }
+}
+
 if (/^\d+$/.test(id ?? '')) {
-  try {
-    const res = await fetch(`${API_BASE}/columns/${id}`)
-    if (res.ok) column = await res.json()
-  } catch {
-    // 后端不可达时按 404 处理
+  const path = `/columns/${id}`
+  let attempt = await fetchJson(path).catch(() => ({ ok: false, status: 0 }))
+  if (!attempt.ok && attempt.status !== 404) {
+    attempt = await fetchJson(path).catch(() => ({ ok: false, status: 0 }))
   }
+  detailStatus = attempt.ok ? 200 : attempt.status
+  if (attempt.ok) column = attempt.data
 }
 
 if (!column) {
+  if (detailStatus !== 404) {
+    throw new Error(`专栏详情取数失败（HTTP ${detailStatus}），后端可能不可用或被限流`)
+  }
   return Astro.rewrite('/404')
 }
 

@@ -15,27 +15,42 @@ let prevPost = null
 let nextPost = null
 // 评论区总开关（后台「系统设置」）；读不到就按开启处理，与本站其它取数一样 fail-soft
 let commentsEnabled = true
+// 详情请求的最终状态：404 → 走 404 页；其它（429/5xx/网络错）→ 抛错让 Astro 返回 5xx
+let detailStatus = 404
+
+// 取数失败分两类处理（2026-10 止血）：改前一律 rewrite('/404')——一旦后端限流（SSR 回源与访客
+// 曾共用 60/min 的桶）或短暂故障，真实文章会对外谎称「不存在」，对读者与搜索引擎都是错的。
+// 现在只在拿到 404 时走 404 页；其余情况重试一次，仍失败就抛错（明确 5xx，可重试语义）。
+async function fetchJson(path) {
+  const res = await fetch(`${API_BASE}${path}`)
+  return res.ok ? { ok: true, data: await res.json() } : { ok: false, status: res.status }
+}
 
 if (/^\d+$/.test(id ?? '')) {
-  try {
-    const res = await fetch(`${API_BASE}/posts/${id}`)
-    if (res.ok) {
-      post = await res.json()
-      const [prev, next, settings] = await Promise.all([
-        fetch(`${API_BASE}/posts/${id}/prev`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch(`${API_BASE}/posts/${id}/next`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch(`${API_BASE}/settings`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      ])
-      prevPost = prev?.post ?? null
-      nextPost = next?.post ?? null
-      commentsEnabled = settings?.comments_enabled !== false
-    }
-  } catch {
-    // 后端不可达时按 404 处理
+  const path = `/posts/${id}`
+  let attempt = await fetchJson(path).catch(() => ({ ok: false, status: 0 }))
+  if (!attempt.ok && attempt.status !== 404) {
+    attempt = await fetchJson(path).catch(() => ({ ok: false, status: 0 }))   // 立即重试一次
+  }
+  detailStatus = attempt.ok ? 200 : attempt.status
+
+  if (attempt.ok) {
+    post = attempt.data
+    const [prev, next, settings] = await Promise.all([
+      fetch(`${API_BASE}/posts/${id}/prev`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${API_BASE}/posts/${id}/next`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${API_BASE}/settings`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ])
+    prevPost = prev?.post ?? null
+    nextPost = next?.post ?? null
+    commentsEnabled = settings?.comments_enabled !== false
   }
 }
 
 if (!post) {
+  if (detailStatus !== 404) {
+    throw new Error(`文章详情取数失败（HTTP ${detailStatus}），后端可能不可用或被限流`)
+  }
   return Astro.rewrite('/404')
 }
 

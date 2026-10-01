@@ -128,7 +128,9 @@ server/
 HTTP 请求
   └─ express（app.js 的挂载顺序即语义）
        cors → express.json({limit:'2mb'}) → 空 body 补丁（还原 Express 4 的 req.body 契约）
-       → 路由限流（登录 5/15min、公开 60/min、后台与图片 120/min、/uploads 静态 120/min）
+       → 路由限流（登录 5/15min、公开 60/min、后台与图片 120/min、/uploads 静态 120/min；
+         公开桶对 **127.0.0.1 / ::1** 放行——blog-web 的 SSR 回源自本机，一次文章页渲染要打 4 个
+         公开接口，不给它单独开口就会把访客的正常浏览挤成 429。访客经 nginx 带 XFF 按真实 IP 分桶，不受影响）
        → 路由匹配（未命中 → notFound：JSON 404）
        → auth（/api/admin/* 整前缀；文章与分类的写操作单挂）
        → multer（仅上传路由：流式落到 UPLOAD_DIR/.tmp）
