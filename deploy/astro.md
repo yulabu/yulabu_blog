@@ -162,14 +162,15 @@ cd frontend/home && npm install && npm run build
 | 请求级 | nginx access log | 状态码 / IP / UA / 耗时（4xx 只看这里，应用层刻意不记） |
 | 备份作业 | `/var/log/blog-backup.log`（cron 重定向） | 每日 04:00 备份 CLI |
 
-维护命令（**当前 pm2-logrotate 未安装、NODE_ENV 未设**，两者都建议补）：
+维护命令（**pm2-logrotate 已于 2026-10-01 装好**：`max_size 10M` / `retain 7` / `compress true`，并已 `pm2 save`；**`NODE_ENV` 仍未设**，见下面第 2 条）：
 
 ```bash
-# 1) 日志轮转（PM2 自身没有轮转，不装会无限增长）
+# 1) 日志轮转（已装，下面是当时的命令，供新环境/重装时照抄）
 pm2 install pm2-logrotate
 pm2 set pm2-logrotate:max_size 10M
 pm2 set pm2-logrotate:retain 7
 pm2 set pm2-logrotate:compress true
+pm2 save          # 模块与进程列表一起持久化，重启后仍生效
 
 # 2) 固定 NODE_ENV=production（Express 默认处理器在 production 下不把堆栈写进响应体；
 #    本项目自己的 errorHandler 从不外发堆栈，所以这条属补强而非必需）
