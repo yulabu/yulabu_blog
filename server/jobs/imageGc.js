@@ -4,11 +4,13 @@
 const fs = require('fs').promises
 const path = require('path')
 const { Op, QueryTypes } = require('sequelize')
-const { sequelize, Image, PostImage } = require('@models')
+const { sequelize, Post, Image, PostImage } = require('@models')
 const { deleteImageFiles } = require('@services/image/store')
 const { TMP_DIR } = require('@config/image')
-// 孤儿对账 SQL 的唯一出处在 services/image/refs.js（与后台图片库的引用判定同源）
-const { ORPHAN_RECONCILE_SQL } = require('@services/image/refs')
+// 孤儿对账 SQL 的唯一出处在 services/image/refs.js（与后台图片库的引用判定同源）；
+// 删除前的新鲜引用集合同样从它取（快照与删除之间可能有保存操作新建引用）
+const { ORPHAN_RECONCILE_SQL, findReferencedImageIds } = require('@services/image/refs')
+const { ORPHAN_TYPE } = require('@utils/imageRefTypes')
 const { infoLine, errTagLine } = require('@utils/log')
 
 // 孤儿图片宽限期：首次确认无引用后 24 小时才物理删除（反悔窗口）
@@ -23,13 +25,17 @@ const TMP_MAX_AGE_MS = 60 * 60 * 1000
 
 // 回收孤儿图片：对账三态处理
 // 有引用 → 清除孤儿标记；无引用未标记 → 打标；
-// 无引用且标记超宽限期、文件创建超年龄下限 → 物理删除（原图+缩略图）+ 清记录
+// 无引用且标记超宽限期、文件创建超年龄下限 → **写前重查引用**后物理删除（原图+缩略图）+ 清记录。
+//
+// 写前重查（2026-10 加）：对账是一次读快照，随后逐行写。快照与删除之间用户可能刚把某张图重新
+// 引用回去（保存文章/专栏/日记），改前会把它删掉——现在删除阶段先取一次新鲜引用集合，
+// 候选若已被引用就打回未标记并跳过删除。
 async function gcOrphanImages() {
   const rows = await sequelize.query(ORPHAN_RECONCILE_SQL, { type: QueryTypes.SELECT })
   const graceCutoff = new Date(Date.now() - ORPHAN_GRACE_MS)
   const ageCutoff = new Date(Date.now() - ORPHAN_MIN_AGE_MS)
 
-  let deleted = 0
+  const candidates = []
   for (const row of rows) {
     const imageId = Number(row.imageId)
 
@@ -53,12 +59,35 @@ async function gcOrphanImages() {
 
     // 双条件删除：打标超宽限期 且 文件创建超年龄下限，二者缺一不可
     if (new Date(row.orphanSince) < graceCutoff && new Date(row.createdAt) < ageCutoff) {
+      candidates.push(row)
+    }
+  }
+
+  let deleted = 0
+  let revived = 0
+  if (candidates.length > 0) {
+    // 新鲜引用集合（一次查询）：把「快照后被重新引用」的候选项救回来
+    const referencedNow = new Set(await findReferencedImageIds(ORPHAN_TYPE))
+
+    for (const row of candidates) {
+      const imageId = Number(row.imageId)
+      if (referencedNow.has(imageId)) {
+        await Image.update(
+          { orphan_since: null },
+          { where: { image_id: imageId, orphan_since: { [Op.ne]: null } } }
+        )
+        revived++
+        continue
+      }
       await deleteImageFiles(row.storagePath, row.thumbPath)
       await Image.destroy({ where: { image_id: imageId } })
       deleted++
     }
   }
 
+  if (revived > 0) {
+    console.log(infoLine('image-gc', `${revived} 张候选项在对账后被重新引用，已跳过删除并清除孤儿标记`))
+  }
   if (deleted > 0) {
     console.log(infoLine('image-gc', `孤儿图片清理完成，共删除 ${deleted} 张`))
   }
@@ -66,24 +95,37 @@ async function gcOrphanImages() {
 }
 
 // 回收废弃草稿：draft 状态超过保留期则删除
-// 仅清理草稿自身与正文图片关联行；图片引用随行消失，由 gcOrphanImages 对账回收
+// 仅清理草稿自身与正文图片关联行；图片引用随行消失，由 gcOrphanImages 对账回收。
+// 写前重查（2026-10 加）：快照之后草稿可能刚被恢复/编辑（用户救回来了）——逐篇重读一次再删
 async function gcAbandonedDrafts() {
   const cutoff = new Date(Date.now() - DRAFT_MAX_AGE_MS)
-  const drafts = await sequelize.models.Post.findAll({
+  const drafts = await Post.findAll({
     where: { post_status: 'draft', updated_at: { [Op.lt]: cutoff } }
   })
 
+  let deleted = 0
+  let skipped = 0
   for (const draft of drafts) {
+    const fresh = await Post.findByPk(draft.post_id)
+    if (!fresh || fresh.post_status !== 'draft' || new Date(fresh.updated_at) >= cutoff) {
+      skipped++
+      continue
+    }
+
     await sequelize.transaction(async (t) => {
-      await PostImage.destroy({ where: { post_id: draft.post_id }, transaction: t })
-      await draft.destroy({ transaction: t })
+      await PostImage.destroy({ where: { post_id: fresh.post_id }, transaction: t })
+      await fresh.destroy({ transaction: t })
     })
+    deleted++
   }
 
-  if (drafts.length > 0) {
-    console.log(infoLine('image-gc', `废弃草稿清理完成，共删除 ${drafts.length} 篇`))
+  if (skipped > 0) {
+    console.log(infoLine('image-gc', `${skipped} 篇候选草稿在对账后被改动，已跳过`))
   }
-  return drafts.length
+  if (deleted > 0) {
+    console.log(infoLine('image-gc', `废弃草稿清理完成，共删除 ${deleted} 篇`))
+  }
+  return deleted
 }
 
 // 清理过期上传临时文件：.tmp 下超过保留期的文件物理删除（单个失败忽略）

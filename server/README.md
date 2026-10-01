@@ -238,7 +238,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 - **引用由业务表持有**，`image` 表没有任何引用语义：1:1 封面类用 `post.cover_image_id` / `blog_column.cover_image_id` / `diary.cover_image_id`，1:N 正文图用 `post_image(post_id, image_id)`
 - **API 契约全是 URL，id 只是内部派生结果**：保存文章 / 专栏 / 日记时，用 `services/image/derive.js` 把业务表里的 URL 与正文解析成 `image_id`（正文图全量 replace，幂等）；URL 归一化（相对路径 / 本站绝对域名 / 协议相对 / markdown title 后缀）只此一处，派生失败会在保存时打 `[image-ref]` 告警——「图显示着却被 GC 删」类问题先查这里
-- **孤儿回收交给 `jobs/imageGc.js`**（启动即跑 + 每 24 小时）：按 `services/image/refs.js` 的账本 SQL 对账，三态处理——有引用清标记（复活）/ 无引用打标 / **标记超 24h 且文件创建超 72h** 才删文件与记录。所以删除文章、专栏、日记**不会即时删图**，后台图片库会短暂出现无主图，属正常
+- **孤儿回收交给 `jobs/imageGc.js`**（启动即跑 + 每 24 小时）：按 `services/image/refs.js` 的账本 SQL 对账，三态处理——有引用清标记（复活）/ 无引用打标 / **标记超 24h 且文件创建超 72h** 才删文件与记录（**删除前还会重取一次新鲜引用集合**：对账快照之后刚被重新引用的图会被救回）。所以删除文章、专栏、日记**不会即时删图**，后台图片库会短暂出现无主图，属正常
 - **图片引用账本的唯一出处是 `services/image/refs.js` 的 `REFERENCE_SOURCES`**：它同时派生孤儿对账 SQL、后台图片库按类型筛图、反查引用位置。**新增持图业务只改这一处**（详见「常见改动指引」）
 - **图片类型名（`post_content` / `cover` / `diary` + 伪类型 `other`）的唯一出处是 `utils/imageRefTypes.js`**：HTTP 白名单（`type=` 参数）与反查字段 `reference_type` 都从这里派生——改前三处各写一份且已漂移（账本叫 diary、白名单里没有、标签写成 cover），只作日记封面的图因此任何筛选都查不到
 - 缩略图的消费者都是**小尺寸展示位**：首页文章列表的小卡封面与日记书架的封面（VO 的 `coverThumb`）——大图卡、文章页与过渡卡片仍用原图
@@ -273,6 +273,15 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 | `visit-gc` | 24h | 是 | 按北京自然日清理过期访问明细（依赖 `daily-stat` 成功） |
 
 调度声明（间隔 / 启动即跑 / 依赖谁成功）集中在 `jobs/index.js`，`app.js` 只调 `startJobs()`；任务自带进度与失败日志、失败只记不抛（一个任务挂掉不影响 HTTP 服务与其它任务）。手工入口统一为 CLI 壳：`node scripts/gc.js` / `daily-stat.js` / `visit-gc.js`（壳负责 module-alias + dotenv + 退出码，任务模块本身不是程序）。
+
+**任务防护（2026-10 起，都在 `runGuarded` 里）**：
+
+- **重入守卫**：同一任务在途时，定时器再触发就跳过并打 `[warn] … 上一轮尚未结束，跳过本轮`；**被当作依赖调用则复用同一轮结果**（改前 visit-gc 的前置检查与 daily-stat 的首跑会各跑一次全量聚合——每次重启必双跑）
+- **连续失败计数**：连续失败 ≥2 次补一行 `[warn] … 已连续失败 N 次`，恢复时补 `[info] … 已恢复正常（此前连续失败 N 次）`（失败本身仍由任务自己记）
+- **耗时告警**：单轮超过任务声明的 `warnAfterMs`（daily-stat 2min / visit-gc 1min / image-gc 30min）补一行 warn；**不中断任务**——JS 里无法安全取消在途 I/O
+- **依赖名保护 / 异常兜底**：`requires` 指向不存在的任务记 `[err]` 跳过；任务万一抛异常也转成失败 + `[err]`，不会变成进程级未捕获异常
+- **写前重查（GC）**：删草稿前重读该行、删图前重取一次新鲜引用集合——对账是一次读快照，快照后刚被恢复的草稿、刚被重新引用的图不再被误删
+- **跨进程无互斥**：手工 CLI 与常驻任务同跑没有锁（PM2 是单实例 fork，进程内守卫已够）；手工跑之前先确认没有正在进行的同名任务
 
 `image-gc` 的三件事各有阈值（常量集中在 `jobs/imageGc.js` 顶部）：孤儿打标后宽限 24 小时、文件创建不足 72 小时不删、草稿超 30 天未更新即清理、`.tmp` 残留超 1 小时清理。
 
