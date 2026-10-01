@@ -4,27 +4,16 @@ export const prerender = false
 
 import Layout from '@/layouts/Layout.astro'
 import ColumnDetailView from '@/views/ColumnDetailView.vue'
+// 与文章页同一套止血策略（404 才走 404 页 / 其余重试一次再抛错），实现见 utils/ssrFetch
+import { fetchDetail } from '@/utils/ssrFetch'
 
-// SSR 服务端取数走本机后端（生产由 pm2 注入 API_BASE_URL）
-const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:3000/api'
 const { id } = Astro.params
 
 let column = null
 let detailStatus = 404
 
-// 与文章页同一套止血策略（2026-10）：只有 404 走 404 页；429/5xx/网络错重试一次，
-// 仍失败就抛错（5xx）——改前一律 rewrite('/404')，后端不可用时会谎称专栏不存在
-async function fetchJson(path) {
-  const res = await fetch(`${API_BASE}${path}`)
-  return res.ok ? { ok: true, data: await res.json() } : { ok: false, status: res.status }
-}
-
 if (/^\d+$/.test(id ?? '')) {
-  const path = `/columns/${id}`
-  let attempt = await fetchJson(path).catch(() => ({ ok: false, status: 0 }))
-  if (!attempt.ok && attempt.status !== 404) {
-    attempt = await fetchJson(path).catch(() => ({ ok: false, status: 0 }))
-  }
+  const attempt = await fetchDetail(`/columns/${id}`)
   detailStatus = attempt.ok ? 200 : attempt.status
   if (attempt.ok) column = attempt.data
 }
