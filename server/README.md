@@ -173,16 +173,16 @@ HTTP 请求
 
 边界补充：`migrate-*` / `sync-schema` / `seed` 这类**有终点、人触发、跑完即弃**的脚本属于 `scripts/`，不是 job；备份由系统 cron / 后台按钮触发（不是进程内调度），所以是「CLI 壳 + `services/backup`」而不是 job。
 
-**controller 里能留什么（2026-10 收口）**：controller 只做「取参(DTO) → 调 service / model → 组装(VO) → 响应」。命中任一条就必须进 `services/`：① 聚合 / 分组 SQL（`fn` / `col` / `group` / `raw`）② 一次请求写多张表（必须带事务）③ 被 ≥2 个调用方复用 ④ 领域派生逻辑（如 URL→image_id、按北京年月分组）。单模型单条查询 / 写入可以留在 controller。现状：controller 里 **0 事务、0 聚合**。
+**controller 里能留什么（2026-10 收口）**：controller 只做「取参(DTO) → 调 service / model → 组装(VO) → 响应」。命中任一条就必须进 `services/`：① 聚合 / 分组 SQL（`fn` / `col` / `group` / `raw`）② 一次请求写多张表（必须带事务）③ 被 ≥2 个调用方复用 ④ 领域派生逻辑（如 URL→image_id、按北京年月分组）。单模型单条查询 / 写入可以留在 controller。现状：controller 里 **0 事务、0 聚合**——0 事务由护栏断言⑫ 机械把守（`controllers/` 出现 `sequelize.transaction` 即违规）。
 
 ### 配置（config/）
 
 `config/` 只收「外部能定的值」，分两类：
 
 - **环境配置（运维在部署时定）**：`config/env.js` 是**后端唯一读 `process.env` 的文件**，负责默认值、类型转换与必填校验。`config/{database,image,backup,auth}.js` 只从它派生语义，自己不读 env；`config/timezone.js` 是北京时间偏移（+08:00）的唯一事实
-- **站点设置（管理员在后台定）**：`config/settings.js` 是 setting 表的键定义与「文本 ↔ 强类型」唯一转换入口。新增一个布尔设置项只需在这里登记一行（`dto/setting.dto.js` 直接读这份 schema），**不需要改表结构**（key/value 表，缺行即用默认值）；要加非布尔类型，另需扩 DTO 的类型分支
+- **站点设置（管理员在后台定）**：`config/settings.js` 是 setting 表的键定义、「文本 ↔ 强类型」编解码与**值类型校验**（`validateSettingValue`，返回 `{ ok, message }`——config 属共享内核，护栏② 禁止它依赖 `@errors`，所以抛 AppError 仍在 dto）三者的唯一入口。新增一个布尔设置项只需在这里登记一行（`dto/setting.dto.js` 直接读这份契约），**不需要改表结构**（key/value 表，缺行即用默认值）；要加非布尔类型，也只改这一处（改前 dto 自己硬写一份 `type !== 'boolean'`，加类型要动两处）
 
-**不进 config/ 的**：内部实现常量随代码走——限流阈值留在 `middleware/rateLimiter.js`、GC 保留期留在 `jobs/imageGc.js`、访问日志保留期留在 `jobs/visitGc.js`、任务间隔留在 `jobs/index.js`、抓图超时留在 `services/ogImage.js`、允许的图片格式留在 `services/image/store.js`、图表窗口白名单留在 `controllers/adminController.js`。判据：**这个值外部能定吗？被两层以上共用吗？**都不满足就留在自己的模块里。
+**不进 config/ 的**：内部实现常量随代码走——限流阈值留在 `middleware/rateLimiter.js`、GC 保留期留在 `jobs/imageGc.js`、访问日志保留期留在 `jobs/visitGc.js`、任务间隔留在 `jobs/index.js`、抓图超时留在 `services/ogImage.js`、允许的图片格式留在 `services/image/store.js`、图表窗口白名单留在 `dto/dashboard.dto.js`（它只约束「外面能传什么」，属 DTO；2026-10-02 修正，旧文写的是 controllers/adminController.js）。判据：**这个值外部能定吗？被两层以上共用吗？**都不满足就留在自己的模块里。
 
 两条配套不变量：
 
@@ -245,7 +245,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 - **引用由业务表持有**，`image` 表没有任何引用语义：1:1 封面类用 `post.cover_image_id` / `blog_column.cover_image_id` / `diary.cover_image_id`，1:N 正文图用 `post_image(post_id, image_id)`
 - **API 契约全是 URL，id 只是内部派生结果**：保存文章 / 专栏 / 日记时，用 `services/image/derive.js` 把业务表里的 URL 与正文解析成 `image_id`（正文图全量 replace，幂等）；URL 归一化（相对路径 / 本站绝对域名 / 协议相对 / markdown title 后缀）只此一处，派生失败会在保存时打 `[image-ref]` 告警——「图显示着却被 GC 删」类问题先查这里
 - **孤儿回收交给 `jobs/imageGc.js`**（启动即跑 + 每 24 小时）：按 `services/image/refs.js` 的账本 SQL 对账，三态处理——有引用清标记（复活）/ 无引用打标 / **标记超 24h 且文件创建超 72h** 才删文件与记录（**删除前还会重取一次新鲜引用集合**：对账快照之后刚被重新引用的图会被救回）。所以删除文章、专栏、日记**不会即时删图**，后台图片库会短暂出现无主图，属正常
-- **图片引用账本的唯一出处是 `services/image/refs.js` 的 `REFERENCE_SOURCES`**：它同时派生孤儿对账 SQL、后台图片库按类型筛图、反查引用位置。**新增持图业务只改这一处**（详见「常见改动指引」）
+- **图片引用账本的唯一出处是 `services/image/refs.js` 的 `REFERENCE_SOURCES`**：它同时派生孤儿对账 SQL、后台图片库按类型筛图、反查引用位置。**新增持图业务只改这一处**（详见「常见改动指引」）——但账本不是全部：模型关联（查询取缩略图那侧）与 `FK_TARGETS`（老库外键基准）是另外两份描述，三方一致性由 `node scripts/check-refs.js` 四向断言（2026-10-02 加），改完持图业务跑一次即知有没有漏改
 - **图片类型名（`post_content` / `cover` / `diary` + 伪类型 `other`）的唯一出处是 `utils/imageRefTypes.js`**：HTTP 白名单（`type=` 参数）与反查字段 `reference_type` 都从这里派生——改前三处各写一份且已漂移（账本叫 diary、白名单里没有、标签写成 cover），只作日记封面的图因此任何筛选都查不到
 - 缩略图的消费者都是**小尺寸展示位**：首页文章列表的小卡封面与日记书架的封面（VO 的 `coverThumb`）——大图卡、文章页与过渡卡片仍用原图
 - 友链图片**彻底外链化、完全退出图片系统**：`avatar` / `preview_image` 只收 `http(s)://` 或 `//`（拒绝 `/uploads/`——没有引用指针的本站路径会被 GC 当孤儿回收）；`url` 只收绝对 `http(s)://`。「抓图」= `services/ogImage.js` 抓 `og:image` 与 favicon，不下载不落盘
@@ -365,12 +365,13 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 ## 脚本与护栏
 
-零依赖、不连库、不占端口，随时可跑（动了错误层 / 依赖边 / 配置读法 / 任务分层就顺手跑一遍）：
+零依赖、不连库、不占端口，随时可跑（动了错误层 / 依赖边 / 配置读法 / 任务分层 / 持图业务就顺手跑一遍）：
 
 | 命令 | 作用 |
 |---|---|
 | `node scripts/check-errors.js` | 错误层回归 25 条断言：翻译表与「5xx 必记日志」+ 限流/回环放行（SSR 回源免限流、访客按 XFF 命中 429 并记 warn）；**升级 body-parser / sequelize / multer 后必须重跑**（翻译表依赖它们内部的常量与错误类） |
-| `node scripts/check-layers.js` | 分层护栏 11 类断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 时间口径白名单（取日期部件 / 本地格式化只允许出现在登记的例外文件） ⑥ 运行期日志必须经 `utils/log.js`（不许直接 `console` 写字符串） ⑦ `/uploads/` 前缀只允许在 `utils/uploadUrl.js` ⑧ controller 的入参一律经 DTO（不许 `req.body.X` / `req.query.X`） ⑨ 口令哈希只允许在 `services/auth/password.js` ⑩ dto/vo 的 `@` 依赖只允许共享内核（`@errors` / `@utils` / `@config`） ⑪ `package.json` 的 `_moduleAliases` 与 `jsconfig.json` 的 `paths` 别名表一致 |
+| `node scripts/check-layers.js` | 分层护栏 12 类断言：① `process.env` 只出现在 `config/env.js` ② 依赖只能向下 ③ `@config/env` 只有 config 内部与 app.js / seed.js 能引用 ④ `utils/` 必须是纯函数 ⑤ 时间口径白名单（取日期部件 / 本地格式化只允许出现在登记的例外文件） ⑥ 运行期日志必须经 `utils/log.js`（不许直接 `console` 写字符串） ⑦ `/uploads/` 前缀只允许在 `utils/uploadUrl.js` ⑧ controller 的入参一律经 DTO（不许 `req.body.X` / `req.query.X`） ⑨ 口令哈希只允许在 `services/auth/password.js` ⑩ dto/vo 的 `@` 依赖只允许共享内核（`@errors` / `@utils` / `@config`） ⑪ `package.json` 的 `_moduleAliases` 与 `jsconfig.json` 的 `paths` 别名表一致 ⑫ `controllers/` 不许自己开事务（多步写 / 无 DB 兜底的 check-then-act 一律下沉 services） |
+| `node scripts/check-refs.js` | 引用图四向一致：`REFERENCE_SOURCES`（账本，引用语义权威）↔ `models/index.js` 的关联（只服务查询）↔ `reconcile-schema.js` 的 `FK_TARGETS`（老库外键基准）两两对齐；有意分歧必须登记进该脚本的 `EXCEPTIONS` 并写明理由。**新增/改动持图业务后跑一次**——只改账本会漏掉另两份，这个脚本就是拦这种静默漂移的 |
 
 需要连库 / 改数据的脚本（幂等，可重复执行）：
 
@@ -387,11 +388,17 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 **新增一个接口**：`routes/` 挂路径（写操作挂 `auth`）→ `controllers/` 编排 → 入参走 `dto/`（分页用 `dto/common.dto.js` 的 `paginate`）→ 出参走 `vo/` → 需要碰 DB / 磁盘的领域逻辑放 `services/`。错误一律 `throw new AppError(status, message)`，不要在控制器里写错误响应。
 
-**三条归属判据（2026-10 第二轮收口，与「分层与依赖方向」的 controller 判据配套）**：
+**归属判据（2026-10-02 第四次收口，与「分层与依赖方向」的 controller 判据配套；此前「守卫一律在 services」的绝对表述已废——它盖住了三类性质不同的守卫，其中一类被复制到了没有兜底的场景）**：
 
-1. **删除守卫**（这个资源还有没有外部引用、能不能删）**一律在 `services/`**：查引用 → 有引用 `throw new AppError(4xx, …)`。样板：`services/image/remove.js`（删图前查引用）、`services/tag.js` 的 `deleteTagWithGuard`（分类下有文章则拒）。controller 只调它，不自己写守卫。
+1. **守卫按「依据」分派**：
+   - 依据**业务数据关系**（还有没有外部引用、有没有关联行）→ `services/`：查引用 → 有引用 `throw new AppError(4xx, …)`。样板：`services/image/remove.js`（删图前查引用）、`services/tag.js` 的 `deleteTagWithGuard`（分类下有文章则拒）。controller 只调它，不自己写守卫。
+   - 依据**请求身份**（只能改自己的密码、不能删自己）→ controller（services 不认识 `req`）。但**没有 DB 兜底的部分必须下沉 services 且同事务**：样板 `services/admin.js` 的 `deleteAdminWithGuard`——「至少保留一个管理员」没有唯一约束那样的兜底，计数还得是**锁读**（`FOR UPDATE`），只包事务挡不住并发（两个管理员同时删对方会双双读到 2）。
+   - **唯一性预检**可留 controller，**前提是 DB 有唯一约束兜底**（`Tag.tag_name` / `admin.admin_name` 都有）；没有兜底的一律按第一条处理。
 2. **名字唯一性**：预检命中也用 **409** 并给具体文案（如「分类名称已存在」）；DB 唯一约束是并发兜底，由翻译表统一回 **409**「数据已存在，请勿重复提交」。**两条路的状态码必须一致**——改前分类重名在预检路径回 400、并发路径回 409，同一个错误两种语义。
 3. **一次请求内的多步写**（写多张表、check-then-act、主行 + 关联行）**必须同事务且落在 `services/`**；单模型单条查询 / 写入可以留在 controller。样板：`services/post.js` 的 `createWithRefs` / `updateWithRefs` / `softRemove`（业务行 + 正文图片关联 + 专栏关联同一事务）。
+4. **级联删除只有一个实现**：文章关联清理（`post_image` / `column_post` / `visit_log` 断归属 / `post`）的唯一出处是 `services/post.js` 的 `removePostCascade(postId, transaction)`；`jobs/` 不自己写多表删除，只挑候选 + 事务内重读确认后委派（样板 `jobs/imageGc.js` 的 `gcAbandonedDrafts`）。以后加关联表只改这一处。
+5. **引用账本为唯一权威**：引用语义以 `services/image/refs.js` 的 `REFERENCE_SOURCES` 为准；`models/index.js` 的关联只服务查询取数；`reconcile-schema.js` 的 `FK_TARGETS` 是外键补齐基准（一次性快照）。三方一致性由 `node scripts/check-refs.js` 四向断言，有意分歧必须登记进它的 `EXCEPTIONS`。
+6. **可选值归属**：只约束入参形状（键名 / 长度 / 上限 / 枚举合法性）→ `dto/`；一个值要驱动行为（值→窗口、值→类型编解码）→ **值与行为同处一层，不许跨层分居**。改前两处踩过：访问日志的窗口白名单在 `dto/visit.dto.js`、值→偏移的映射在 `services/visit.js`（给白名单加个窗口就静默变成「不筛选」）；设置项的类型校验在 dto 硬写一份、schema 在 config（加类型要动两处），现在两者都已归位。
 
 **新增持图业务**（缺一处会把在用的图当成孤儿删掉，或让它在筛选里消失）：
 
@@ -399,12 +406,13 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 2. 保存逻辑用 `services/image/derive.js` 从 URL 派生 `image_id`
 3. 在 `services/image/refs.js` 的 `REFERENCE_SOURCES` 加一条（孤儿对账、按类型筛图、反查引用位置都从它派生）
 4. 若是**新类型**，先在 `utils/imageRefTypes.js` 登记类型名（HTTP 白名单与展示标签都由它派生）
+5. 跑 `node scripts/check-refs.js`：它会把「账本条 / 模型关联 / `FK_TARGETS`」三方对一遍并按提示指哪补哪（新库外键由 `sync()` 建表时内联生成，**老库要往 `FK_TARGETS` 加一行**；确属有意不建关联/外键的，登记进该脚本的 `EXCEPTIONS` 并写明理由）
 
 **新增环境变量**：只改 `config/env.js`（默认值 + 类型转换 + 必填校验）与 `.env_example`；消费者从 `@config/<domain>` 取，不要直接读 `process.env`；改完跑 `check-layers.js`。
 
 **改表结构**：新表不用管（`sync()` 自动建）；**索引与外键写进模型**——索引对已存在的表**重启即补**，但**外键只对「建表那一刻」生效**（老库的表不会被补上，靠 `scripts/reconcile-schema.js` 批量对齐，默认 dry-run）；新列 / ENUM 值写进 `scripts/sync-schema.js`，部署时执行；涉及图片引用的变更按「图片系统」一节的顺序跑迁移。结构出处的完整规则与实测基线见 [deploy/schema.md](../deploy/schema.md)。
 
-**新增定时任务**：写 `jobs/<name>.js`（导出 `run()`，自带进度与失败日志、失败返回 `false` 不抛）→ 在 `jobs/index.js` 登记间隔、是否启动即跑、依赖谁成功 → 需要手工入口就在 `scripts/` 加一个 CLI 壳（`module-alias` + `dotenv` + 退出码）。内部阈值留在任务文件里，不进 `config/`。
+**新增定时任务**：写 `jobs/<name>.js`（导出 `run()`，自带进度与失败日志、失败返回 `false` 不抛）→ 在 `jobs/index.js` 登记间隔、是否启动即跑、依赖谁成功 → 需要手工入口就在 `scripts/` 加一个 CLI 壳（`module-alias` + `dotenv` + 退出码）。内部阈值留在任务文件里，不进 `config/`。**任务里不写多表级联删除**：挑候选 + 事务内重读确认后委派给 `services/`（样板见判据 4）。
 
 ## 相关文档
 

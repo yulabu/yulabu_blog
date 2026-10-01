@@ -4,9 +4,10 @@
 // 就会在几次迭代后悄悄失效（utils/ 就是这么变成杂物抽屉的）。本脚本静态扫描 require 字符串，
 // **不 require 被测文件**——config/*.js 在 require 期会求值 env 并可能抛错，扫文本才是零副作用。
 //
-// 十一条断言：
+// 十二条断言：
 //  ① process.env 只允许出现在 config/env.js（全项目唯一 env 出口）
-//     —— 例外 scripts/check-errors.js：它必须在 require 业务模块之前注入占位值（见该文件注释）
+//     —— 例外 scripts/check-errors.js 与 scripts/check-refs.js：两条护栏都必须在 require
+//     业务模块之前注入占位值（config/env.js 的必填项在 require 期校验；见各自文件注释）
 //  ② 依赖只能向下：每层禁止依赖上层的表见 LAYER_RULES（config 是共享内核，不依赖任何项目模块）
 //  ③ @config/env 只允许 config/ 内部与 app.js / seed.js 引用：消费者一律走 @config/<domain>
 //  ④ utils/ 必须是纯函数：禁 I/O（fs / child_process）、禁第三方运行时（sharp / sequelize）、
@@ -26,6 +27,9 @@
 //     README 写「只依赖 @errors」，而 dto/setting.dto.js 与 vo/setting.vo.js 在用 @config/settings）
 //  ⑪ 别名表两处一致：package.json 的 _moduleAliases 与 jsconfig.json 的 paths 是同一张表
 //     （运行期认前者、编辑器认后者），加别名不许只改一处
+//  ⑫ controllers/ 不许出现 sequelize.transaction：多步写 / check-then-act（含没有 DB 兜底的守卫）
+//     一律下沉 services 且同事务（README 承诺的「controller 里 0 事务」由这条守着）。
+//     改前那道「至少保留一个管理员」的守卫就是漏在这里：计数与删除两条独立语句 + 无唯一约束兜底
 //
 // 特性：零依赖、不连库、不占端口；退出码非 0 = 有违规。
 const fs = require('fs');
@@ -38,7 +42,7 @@ const SCAN_DIRS = ['config', 'controllers', 'dto', 'errors', 'jobs', 'middleware
 const SCAN_FILES = ['app.js', 'seed.js', 'bootstrap.js'];
 
 // 断言①：允许出现 process.env 的文件（仓库相对路径）
-const ENV_ALLOWLIST = new Set(['config/env.js', 'scripts/check-errors.js']);
+const ENV_ALLOWLIST = new Set(['config/env.js', 'scripts/check-errors.js', 'scripts/check-refs.js']);
 
 // 断言②：每层禁止依赖的别名前缀。没列出的层（routes / controllers / scripts / 顶层入口）不设限
 const LAYER_RULES = {
@@ -104,6 +108,10 @@ const UPLOADS_LITERAL_RE = /(?:['"`])\/uploads\//;
 
 // 断言⑧：只对 controllers/ 生效——入参字段直读一律违规（整对象交 DTO 是合法形态）
 const CONTROLLER_FIELD_READ_RE = /req\.(?:body|query)(?:\.\w|\[)/g;
+
+// 断言⑫：只对 controllers/ 生效——sequelize.transaction(...) 一律违规（事务属 services/）。
+// 只匹配调用形态；「多步写但不带事务」静态扫不出来，那类靠判据与 code review
+const CONTROLLER_TRANSACTION_RE = /\.transaction\s*\(/;
 
 // 断言⑨：口令哈希的唯一出口（提示文案同样不带 require 字面量）
 const BCRYPT_ALLOWLIST = new Set(['services/auth/password.js']);
@@ -217,6 +225,11 @@ function main() {
       violations.push(`⑨ ${rel} 自己引入了口令哈希库 —— 只用 @services/auth/password 的 hash / verify`);
     }
 
+    // 断言⑫：controller 不许自己开事务（多步写 / 无兜底的 check-then-act 一律下沉 services）
+    if (layer === 'controllers' && CONTROLLER_TRANSACTION_RE.test(code)) {
+      violations.push(`⑫ ${rel} 自己开了事务 —— multi-step / 无兜底的 check-then-act 一律下沉 services/ 且同事务（controller 保持 0 事务）`);
+    }
+
     // 断言②③④：依赖方向与 utils 纯度
     for (const match of code.matchAll(REQUIRE_RE)) {
       const target = match[1];
@@ -259,7 +272,7 @@ function main() {
     for (const v of violations) console.error('  ✗ ' + v);
     process.exit(1);
   }
-  console.log(`分层护栏通过：${scanned} 个文件，断言 11 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 时间口径白名单 / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口 / dto-vo 依赖白名单 / 别名表一致）`);
+  console.log(`分层护栏通过：${scanned} 个文件，断言 12 类（env 唯一出口 / 依赖只能向下 / @config/env 白名单 / utils 纯度 / 时间口径白名单 / 日志经 utils/log / 上传前缀不手拼 / controller 入参经 DTO / 口令哈希唯一出口 / dto-vo 依赖白名单 / 别名表一致 / controller 不自己开事务）`);
 }
 
 main();

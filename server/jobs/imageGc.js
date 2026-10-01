@@ -4,9 +4,11 @@
 const fs = require('fs').promises
 const path = require('path')
 const { Op, QueryTypes } = require('sequelize')
-const { sequelize, Post, Image, PostImage, ColumnPost, VisitLog } = require('@models')
+const { sequelize, Post, Image } = require('@models')
 const { deleteImageFiles } = require('@services/image/store')
 const { TMP_DIR } = require('@config/image')
+// 级联删除的唯一实现（判据②）：本任务不自己写多表删除，只挑候选并委派
+const { removePostCascade } = require('@services/post')
 // 孤儿对账 SQL 的唯一出处在 services/image/refs.js（与后台图片库的引用判定同源）；
 // 删除前的新鲜引用集合同样从它取（快照与删除之间可能有保存操作新建引用）
 const { ORPHAN_RECONCILE_SQL, findReferencedImageIds } = require('@services/image/refs')
@@ -99,7 +101,9 @@ async function gcOrphanImages() {
 }
 
 // 回收废弃草稿：draft 状态超过保留期则删除
-// 清理草稿自身 + 正文图片关联行 + 专栏关联，并把访问明细的归属断开（post_id 置 NULL，行保留）；
+// 级联删除（草稿自身 + 正文图片关联 + 专栏关联 + 访问明细断归属）**只有一份实现**：
+// services/post.js 的 removePostCascade——本任务只负责「挑候选 + 事务内重读确认 + 委派」，
+// 不再自己写那四步（改前与 forceRemove 各持一份，加关联表时漏改一处就留悬挂行）。
 // 图片引用随行消失，由 gcOrphanImages 对账回收。
 // 写前重查（2026-10 加）：快照之后草稿可能刚被恢复/编辑（用户救回来了）——逐篇重读一次再删
 async function gcAbandonedDrafts() {
@@ -118,13 +122,7 @@ async function gcAbandonedDrafts() {
     }
 
     await sequelize.transaction(async (t) => {
-      await PostImage.destroy({ where: { post_id: fresh.post_id }, transaction: t })
-      // 专栏关联与访问明细也在同一事务里清/断：改前只删 post_image + post，
-      // column_post 行靠环境外键 CASCADE 兜、visit_log 更是没人管（同 services/post.js 的 forceRemove）。
-      // visit_log 只把 post_id 置 NULL、不删行——删行会让 dailyStat 的全量重算把那天已归档的 pv 改小
-      await ColumnPost.destroy({ where: { post_id: fresh.post_id }, transaction: t })
-      await VisitLog.update({ post_id: null }, { where: { post_id: fresh.post_id }, transaction: t })
-      await fresh.destroy({ transaction: t })
+      await removePostCascade(fresh.post_id, t)
     })
     deleted++
   }

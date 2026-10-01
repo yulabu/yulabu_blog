@@ -6,10 +6,6 @@ const { Op, fn, col } = require('sequelize');
 const { sequelize, VisitLog, Post, DailyStat } = require('@models');
 const { beijingDateStr, shiftDateStr, beijingDayStart } = require('@utils/date');
 
-// 后台日志筛选的时间窗：相对今天的北京自然日偏移（today=含今天 1 天，7days=含今天 7 天）。
-// 与「今日 PV/UV」卡、工作台图表、visitGc 的保留期同源（改前是本地零点 + now-N*24h 滚动窗口）
-const RANGE_START_OFFSET_DAYS = { today: 0, '7days': -6, '30days': -29 };
-
 // 记录一次访问：写明细 + 文章页 PV+1，同一事务
 async function record({ postId, ip, userAgent, referrer, pagePath }) {
   await sequelize.transaction(async (t) => {
@@ -27,12 +23,12 @@ async function record({ postId, ip, userAgent, referrer, pagePath }) {
   });
 }
 
-// 明细列表（分页 + 时间窗 + ip / 文章过滤）；dateRange 的取值已由 listVisitsDTO 归一
-async function list({ limit, offset, dateRange, ip, post_id }) {
+// 明细列表（分页 + 时间窗 + ip / 文章过滤）；startOffsetDays 由 listVisitsDTO 给出
+// （null / undefined = 不加时间条件，即 all）。值→偏移的映射与白名单同处 dto 一层（判据：值驱动行为）
+async function list({ limit, offset, startOffsetDays, ip, post_id }) {
   const where = {};
-  const startOffset = RANGE_START_OFFSET_DAYS[dateRange];
-  if (startOffset !== undefined) {
-    where.created_at = { [Op.gte]: beijingDayStart(shiftDateStr(beijingDateStr(), startOffset)) };
+  if (startOffsetDays !== null && startOffsetDays !== undefined) {
+    where.created_at = { [Op.gte]: beijingDayStart(shiftDateStr(beijingDateStr(), startOffsetDays)) };
   }
   if (ip) where.ip_address = { [Op.like]: `%${ip}%` };
   if (post_id) where.post_id = post_id;
@@ -76,4 +72,4 @@ async function clear() {
   return count;
 }
 
-module.exports = { record, list, stats, clear, RANGE_START_OFFSET_DAYS };
+module.exports = { record, list, stats, clear };

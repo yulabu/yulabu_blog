@@ -1,16 +1,18 @@
 const AppError = require('@errors/AppError');
-const { SETTINGS_SCHEMA } = require('@config/settings');
+const { validateSettingValue } = require('@config/settings');
 
 // 写入口径：只接受 SETTINGS_SCHEMA 里登记过的键（未知键直接 400，不让任意 key 落库），
-// 值按 schema.type 校验后以强类型返回，序列化交给 config/settings.js
+// 值以强类型返回，序列化交给 config/settings.js。
+//
+// 「键 → 类型 → 校验规则」全部由 config/settings.js 拥有（判据：值驱动行为，值与行为同处一层）——
+// 改前这里自己硬写一份 `schema.type !== 'boolean'`，加第二种类型要同时改两处。
+// dto 只负责把校验失败转成 AppError（config 属共享内核，不能依赖 @errors，只能返回结果）。
 function updateSettingsDTO(body) {
   const dto = {};
 
   for (const [key, value] of Object.entries(body || {})) {
-    const schema = SETTINGS_SCHEMA[key];
-    if (!schema) throw new AppError(400, `不支持的设置项：${key}`);
-    if (schema.type !== 'boolean') throw new AppError(400, `设置项 ${key} 的类型尚未实现`);
-    if (typeof value !== 'boolean') throw new AppError(400, `设置项 ${key} 必须是布尔值`);
+    const result = validateSettingValue(key, value);
+    if (!result.ok) throw new AppError(400, result.message);
     dto[key] = value;
   }
 

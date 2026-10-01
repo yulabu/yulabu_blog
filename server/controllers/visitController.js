@@ -21,9 +21,9 @@ exports.recordVisit = async (req, res) => {
 
 // ========== 管理后台：分页查询访问日志 ==========
 exports.getVisits = async (req, res) => {
-  const { page, limit, offset, dateRange, ip, post_id } = listVisitsDTO(req.query);
+  const { page, limit, offset, startOffsetDays, ip, post_id } = listVisitsDTO(req.query);
 
-  const { rows, total } = await visit.list({ limit, offset, dateRange, ip, post_id });
+  const { rows, total } = await visit.list({ limit, offset, startOffsetDays, ip, post_id });
 
   res.json({
     visits: visitLogsVO(rows),

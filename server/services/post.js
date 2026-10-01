@@ -69,21 +69,28 @@ async function softRemove(postId) {
   });
 }
 
-// 彻底删除：先清关联行（正文图片关联、专栏关联）再删主行，必须原子（判据②）。
-// 图片引用随行消失，物理文件由 GC 对账宽限后回收。
+// 文章级联删除的**唯一实现**（判据②：「彻底删除一篇文章要连带做什么」是一条领域规则，
+// 只有一个拥有者）。调用方必须传入事务——本函数不自己开：
+//   - 后台彻底删除（forceRemove）是「查了再删」，删除动作要与自己的检查同事务；
+//   - GC 清理废弃草稿是「事务内重读该行确认仍是废弃草稿，再删」，同理。
+// 改前这四步在 services/post.js 与 jobs/imageGc.js 各写一份、靠注释互相指认，
+// 加第五张关联表时漏改一处就留下悬挂行。以后加关联表只改这里。
 //
-// 访问明细（visit_log）在同一事务里**断开归属而不删行**：post_id 置 NULL，行保留。
+// 访问明细（visit_log）**断开归属而不删行**：post_id 置 NULL，行保留。
 // 与生产既有外键（visit_log.post_id ON DELETE SET NULL）同语义，两个环境从此一致；改前代码什么都不做，
 // 于是语义由环境决定——生产靠外键静默置 NULL，缺外键的库（本机开发库）会留下悬挂 post_id（2026-10 实修）。
 // 为什么不删行：jobs/dailyStat.js 是「从 visit_log 全量重算」，删掉保留期内的明细会让下一次聚合
 // （每 10 分钟）把那天已归档的 pv 改小，违反「历史只增不减」这条不变式（按日 PV 与文章归属无关）。
-async function forceRemove(postId) {
-  await sequelize.transaction(async (t) => {
-    await PostImage.destroy({ where: { post_id: postId }, transaction: t });
-    await ColumnPost.destroy({ where: { post_id: postId }, transaction: t });
-    await VisitLog.update({ post_id: null }, { where: { post_id: postId }, transaction: t });
-    await Post.destroy({ where: { post_id: postId }, transaction: t });
-  });
+async function removePostCascade(postId, transaction) {
+  await PostImage.destroy({ where: { post_id: postId }, transaction });
+  await ColumnPost.destroy({ where: { post_id: postId }, transaction });
+  await VisitLog.update({ post_id: null }, { where: { post_id: postId }, transaction });
+  await Post.destroy({ where: { post_id: postId }, transaction });
 }
 
-module.exports = { groupByBeijingMonth, createWithRefs, updateWithRefs, softRemove, forceRemove };
+// 彻底删除（后台入口）：自开事务调级联删除。图片引用随行消失，物理文件由 GC 对账宽限后回收
+async function forceRemove(postId) {
+  await sequelize.transaction((t) => removePostCascade(postId, t));
+}
+
+module.exports = { groupByBeijingMonth, createWithRefs, updateWithRefs, softRemove, removePostCascade, forceRemove };

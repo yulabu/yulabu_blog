@@ -31,4 +31,23 @@ function serializeSettingValue(key, value) {
   return String(value);
 }
 
-module.exports = { SETTINGS_SCHEMA, PUBLIC_KEYS, parseSettingValue, serializeSettingValue };
+// 「值 → 类型校验」也归这里：值（schema.type）驱动行为（校验规则），两者必须同处一层
+// （判据见 AGENTS.md「可选值归属」）。改前 dto/setting.dto.js 自己硬写一份 `type !== 'boolean'`，
+// 于是加第二种类型要改两处，而"支持哪些类型"没有拥有者。
+//
+// 只返回结果、不抛错：本模块属共享内核，护栏② 禁止 config/ 依赖 @errors（AppError 在 errors/），
+// 所以由 dto 把 { ok: false } 转成 400。message 即给管理员看的文案。
+function validateSettingValue(key, value) {
+  const schema = SETTINGS_SCHEMA[key];
+  if (!schema) return { ok: false, message: `不支持的设置项：${key}` };
+
+  if (schema.type === 'boolean') {
+    return typeof value === 'boolean'
+      ? { ok: true }
+      : { ok: false, message: `设置项 ${key} 必须是布尔值` };
+  }
+
+  return { ok: false, message: `设置项 ${key} 的类型尚未实现` };
+}
+
+module.exports = { SETTINGS_SCHEMA, PUBLIC_KEYS, parseSettingValue, serializeSettingValue, validateSettingValue };

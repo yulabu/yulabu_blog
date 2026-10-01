@@ -5,6 +5,8 @@ const { createAdminDTO, adminIdDTO, updateAdminDTO } = require('@dto/admin.dto')
 const { adminProfile } = require('@vo/admin.vo');
 // 口令哈希与验签的唯一出口（轮数也在那里）
 const password = require('@services/auth/password');
+// 删除守卫（不能删自己 / 至少保留一个）在 services/admin.js（判据①）
+const { deleteAdminWithGuard } = require('@services/admin');
 
 // GET /api/admin/admins
 exports.getAdminList = async (req, res) => {
@@ -95,22 +97,13 @@ exports.updateAdmin = async (req, res) => {
 };
 
 // DELETE /api/admin/admins/:id
+// 守卫（不能删自己 / 至少保留一个管理员）在 services/admin.js（判据①：没有 DB 兜底的
+// check-then-act 必须进 services 且同事务——这里的计数就是这种，只包事务挡不住并发，
+// 计数还得是锁读）；控制器只做「取参 → 调 service → 响应」，保持 0 事务
 exports.deleteAdmin = async (req, res) => {
   const adminId = adminIdDTO(req.params);
 
-  const admin = await Admin.findByPk(adminId);
-  if (!admin) throw new AppError(404, '管理员不存在');
-
-  if (adminId === req.admin.admin_id) {
-    throw new AppError(403, '不能删除自己');
-  }
-
-  const total = await Admin.count();
-  if (total <= 1) {
-    throw new AppError(403, '至少保留一个管理员账号');
-  }
-
-  await admin.destroy();
+  await deleteAdminWithGuard(adminId, req.admin.admin_id);
 
   res.json({ id: adminId, message: '删除成功' });
 };
