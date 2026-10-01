@@ -2,7 +2,8 @@ const fs = require('fs').promises
 const { Op } = require('sequelize')
 const AppError = require('@errors/AppError')
 const { Image } = require('@models')
-const { createImageFromUpload } = require('@services/image/upload')
+// 上传落库 + 临时文件清理（清理的归属与三段式生命周期见该文件头注）
+const { createImageFromUpload, discardTempFiles } = require('@services/image/upload')
 // 引用判定（按类型筛图 / 反查引用位置）的唯一出处在 services/image/refs.js
 const { findReferencedImageIds, attachReferences } = require('@services/image/refs')
 // 删图（引用守卫 + 先事务删行再删文件）在 services/image/remove.js（判据②）
@@ -37,13 +38,7 @@ const uploadBatch = async (req, res) => {
 
     res.json({ images })
   } finally {
-    for (const file of files) {
-      try {
-        await fs.unlink(file.path)
-      } catch (err) {
-        // 忽略单文件清理失败
-      }
-    }
+    await discardTempFiles(files)
   }
 }
 

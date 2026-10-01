@@ -10,8 +10,13 @@
 //   ② 按类型取引用图 id（后台图片库筛选）—— findReferencedImageIds 由清单派生
 //   ③ 反查引用位置（后台展示「用在哪」）—— attachReferences 的优先级链是显式代码：
 //      它只影响列表里显示哪一个引用标签，不参与回收判定（漏了不会删错图）
+//
+// 契约（2026-10 登记）：attachReferences 把展示字段（reference_type / reference_id /
+// reference_title）**直接挂在传入的模型实例上**，vo/image.vo.js 依赖它们——输出图片列表/详情的
+// 调用方必须先调它（漏调时 imageVO 按「无引用」防御取值，不再误报 bound=true）。
+// 这些字段名与 image 表里已废弃的同名列同名，但只活在内存实例上，与库里的列无关。
 const { Op } = require('sequelize')
-const { sequelize, Post, Column, PostImage, Diary } = require('@models')
+const { Post, Column, PostImage, Diary } = require('@models')
 // 类型名（post_content / cover / diary + 伪类型 other）的唯一出处在 utils/imageRefTypes.js
 const { REF_TYPE, ORPHAN_TYPE } = require('@utils/imageRefTypes')
 

@@ -5,6 +5,8 @@
 const { Op, fn, col } = require('sequelize');
 const { Post, Tag, DailyStat } = require('@models');
 const { beijingDateStr, shiftDateStr, beijingDayStart } = require('@utils/date');
+// 标签分布复用分类域的唯一一份聚合（改前这里抄了第二份 GROUP BY，口径要改两处）
+const { listTagsWithPostCounts } = require('@services/tag');
 
 // 卡片：文章总数 / 已发布 / 回收站 / 今日新增 / 最近 5 篇（原始模型行，vo 组装在控制器）
 async function getStats() {
@@ -74,22 +76,7 @@ async function getCharts(days) {
     return { date, pv: v.pv, uv: v.uv };
   });
 
-  const tagRows = await Tag.findAll({
-    attributes: [
-      'tag_id',
-      'tag_name',
-      [fn('COUNT', col('posts.post_id')), 'count']
-    ],
-    include: [{
-      model: Post,
-      as: 'posts',
-      where: { post_status: 'published' },
-      attributes: [],
-      required: false
-    }],
-    group: ['Tag.tag_id', 'Tag.tag_name'],
-    raw: true
-  });
+  const tagRows = await listTagsWithPostCounts();
   const tagsDistribution = tagRows
     .map(r => ({ name: r.tag_name, value: Number(r.count) || 0 }))
     .filter(r => r.value > 0)

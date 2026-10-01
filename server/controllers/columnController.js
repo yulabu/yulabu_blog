@@ -1,11 +1,10 @@
-const fs = require('fs').promises;
 const { Op } = require('sequelize');
 const AppError = require('@errors/AppError');
 const { Column, ColumnPost, Post, Tag } = require('@models');
 const { createColumnDTO, updateColumnDTO, columnIdDTO, addColumnPostDTO, columnPostParamsDTO, columnPostIdsDTO } = require('@dto/column.dto');
 const { columnDetail, columnList, columnPostItem } = require('@vo/column.vo');
 const { resolveImageIdByUrl } = require('@services/image/derive');
-const { createImageFromUpload } = require('@services/image/upload');
+const { createImageFromUpload, discardTempFiles } = require('@services/image/upload');
 // 计数聚合与三处多表写（事务）都在 service（判据①②）
 const { countPostsByColumn, deleteWithPosts, movePostToColumn, reorderPosts } = require('@services/column');
 const { uploadedImageVO } = require('@vo/image.vo');
@@ -47,7 +46,7 @@ exports.getColumnById = async (req, res) => {
 // ========== 管理接口 ==========
 
 // 专栏封面上传（单张）：转码落盘 + 写入 image 记录（纯上传，不绑定业务）
-// 一次只传一张；临时文件由本函数 finally 清理（GC 兜底过期清理）
+// 一次只传一张；临时文件清理走 services/image/upload 的 discardTempFiles（GC 兜底过期残留）
 exports.uploadColumnCover = async (req, res) => {
   const id = columnIdDTO(req.params);
   const column = await Column.findByPk(id);
@@ -61,11 +60,7 @@ exports.uploadColumnCover = async (req, res) => {
   try {
     res.json({ image: uploadedImageVO(await createImageFromUpload(file.path)) });
   } finally {
-    try {
-      await fs.unlink(file.path);
-    } catch (err) {
-      // 忽略清理失败
-    }
+    await discardTempFiles([file]);
   }
 };
 
