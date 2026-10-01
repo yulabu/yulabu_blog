@@ -4,7 +4,7 @@
 const fs = require('fs').promises
 const path = require('path')
 const { Op, QueryTypes } = require('sequelize')
-const { sequelize, Post, Image, PostImage } = require('@models')
+const { sequelize, Post, Image, PostImage, ColumnPost, VisitLog } = require('@models')
 const { deleteImageFiles } = require('@services/image/store')
 const { TMP_DIR } = require('@config/image')
 // 孤儿对账 SQL 的唯一出处在 services/image/refs.js（与后台图片库的引用判定同源）；
@@ -95,7 +95,8 @@ async function gcOrphanImages() {
 }
 
 // 回收废弃草稿：draft 状态超过保留期则删除
-// 仅清理草稿自身与正文图片关联行；图片引用随行消失，由 gcOrphanImages 对账回收。
+// 清理草稿自身 + 正文图片关联行 + 专栏关联，并把访问明细的归属断开（post_id 置 NULL，行保留）；
+// 图片引用随行消失，由 gcOrphanImages 对账回收。
 // 写前重查（2026-10 加）：快照之后草稿可能刚被恢复/编辑（用户救回来了）——逐篇重读一次再删
 async function gcAbandonedDrafts() {
   const cutoff = new Date(Date.now() - DRAFT_MAX_AGE_MS)
@@ -114,6 +115,11 @@ async function gcAbandonedDrafts() {
 
     await sequelize.transaction(async (t) => {
       await PostImage.destroy({ where: { post_id: fresh.post_id }, transaction: t })
+      // 专栏关联与访问明细也在同一事务里清/断：改前只删 post_image + post，
+      // column_post 行靠环境外键 CASCADE 兜、visit_log 更是没人管（同 services/post.js 的 forceRemove）。
+      // visit_log 只把 post_id 置 NULL、不删行——删行会让 dailyStat 的全量重算把那天已归档的 pv 改小
+      await ColumnPost.destroy({ where: { post_id: fresh.post_id }, transaction: t })
+      await VisitLog.update({ post_id: null }, { where: { post_id: fresh.post_id }, transaction: t })
       await fresh.destroy({ transaction: t })
     })
     deleted++

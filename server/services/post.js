@@ -3,7 +3,7 @@
 // 2026-10 第二轮收口：文章的「业务行 + 封面指针 + 正文图片关联」改成一件事——
 // 改前 createPost / updatePost 是 controller 里的两步写（Post.create 与 syncPostImages 各自开事务），
 // 第二步失败会留下「文章在、引用不在」：正文里的图没有指针 → GC 宽限后物理删除 → 文章图挂掉。
-const { sequelize, Post, Tag, ColumnPost, PostImage, Image } = require('@models');
+const { sequelize, Post, Tag, ColumnPost, PostImage, Image, VisitLog } = require('@models');
 const { beijingYearMonth } = require('@utils/date');
 const { resolveImageIdByUrl, syncPostImages } = require('@services/image/derive');
 
@@ -70,11 +70,18 @@ async function softRemove(postId) {
 }
 
 // 彻底删除：先清关联行（正文图片关联、专栏关联）再删主行，必须原子（判据②）。
-// 图片引用随行消失，物理文件由 GC 对账宽限后回收
+// 图片引用随行消失，物理文件由 GC 对账宽限后回收。
+//
+// 访问明细（visit_log）在同一事务里**断开归属而不删行**：post_id 置 NULL，行保留。
+// 与生产既有外键（visit_log.post_id ON DELETE SET NULL）同语义，两个环境从此一致；改前代码什么都不做，
+// 于是语义由环境决定——生产靠外键静默置 NULL，缺外键的库（本机开发库）会留下悬挂 post_id（2026-10 实修）。
+// 为什么不删行：jobs/dailyStat.js 是「从 visit_log 全量重算」，删掉保留期内的明细会让下一次聚合
+// （每 10 分钟）把那天已归档的 pv 改小，违反「历史只增不减」这条不变式（按日 PV 与文章归属无关）。
 async function forceRemove(postId) {
   await sequelize.transaction(async (t) => {
     await PostImage.destroy({ where: { post_id: postId }, transaction: t });
     await ColumnPost.destroy({ where: { post_id: postId }, transaction: t });
+    await VisitLog.update({ post_id: null }, { where: { post_id: postId }, transaction: t });
     await Post.destroy({ where: { post_id: postId }, transaction: t });
   });
 }
