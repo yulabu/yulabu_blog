@@ -1,27 +1,14 @@
 const fs = require('fs').promises;
 const { Op } = require('sequelize');
 const AppError = require('@errors/AppError');
-const { sequelize, Column, ColumnPost, Post, Tag } = require('@models');
+const { Column, ColumnPost, Post, Tag } = require('@models');
 const { createColumnDTO, updateColumnDTO, columnIdDTO, addColumnPostDTO, columnPostParamsDTO, columnPostIdsDTO } = require('@dto/column.dto');
 const { columnDetail, columnList, columnPostItem } = require('@vo/column.vo');
 const { resolveImageIdByUrl } = require('@services/image/derive');
 const { createImageFromUpload } = require('@services/image/upload');
+// 计数聚合与三处多表写（事务）都在 service（判据①②）
+const { countPostsByColumn, deleteWithPosts, movePostToColumn, reorderPosts } = require('@services/column');
 const { uploadedImageVO } = require('@vo/image.vo');
-
-// 统计每个专栏的文章数
-async function countPostsByColumn(columns) {
-  const ids = columns.map(c => c.column_id);
-  if (!ids.length) return {};
-  const counts = await ColumnPost.findAll({
-    where: { column_id: { [Op.in]: ids } },
-    attributes: ['column_id', [sequelize.fn('COUNT', sequelize.col('post_id')), 'cnt']],
-    group: ['column_id'],
-    raw: true
-  });
-  const countMap = {};
-  for (const row of counts) countMap[row.column_id] = Number(row.cnt);
-  return countMap;
-}
 
 // ========== 公开接口 ==========
 
@@ -118,10 +105,7 @@ exports.deleteColumn = async (req, res) => {
   const column = await Column.findByPk(id);
   if (!column) throw new AppError(404, '专栏不存在');
 
-  await sequelize.transaction(async (t) => {
-    await ColumnPost.destroy({ where: { column_id: id }, transaction: t });
-    await column.destroy({ transaction: t });
-  });
+  await deleteWithPosts(id);
 
   res.json({ id, message: '删除成功' });
 };
@@ -175,15 +159,7 @@ exports.addColumnPost = async (req, res) => {
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
-  await sequelize.transaction(async (t) => {
-    await ColumnPost.destroy({ where: { post_id: postId }, transaction: t });
-    const max = await ColumnPost.max('sort_order', { where: { column_id: columnId }, transaction: t });
-    await ColumnPost.create({
-      column_id: columnId,
-      post_id: postId,
-      sort_order: (max || 0) + 1
-    }, { transaction: t });
-  });
+  await movePostToColumn(columnId, postId);
 
   res.json({ id: columnId, message: '已添加到专栏' });
 };
@@ -201,19 +177,12 @@ exports.removeColumnPost = async (req, res) => {
   res.json({ id: columnId, message: '已移出专栏' });
 };
 
-// 拖拽提交顺序（按数组序重写 sort_order）
+// 拖拽提交顺序（按数组序重写 sort_order；整体一个事务，在 service 里）
 exports.updateColumnPostOrder = async (req, res) => {
   const columnId = columnIdDTO(req.params);
   const postIds = columnPostIdsDTO(req.body);
 
-  await sequelize.transaction(async (t) => {
-    for (let i = 0; i < postIds.length; i++) {
-      await ColumnPost.update(
-        { sort_order: i + 1 },
-        { where: { column_id: columnId, post_id: postIds[i] }, transaction: t }
-      );
-    }
-  });
+  await reorderPosts(columnId, postIds);
 
   res.json({ id: columnId, message: '排序已保存' });
 };

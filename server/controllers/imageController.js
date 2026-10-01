@@ -2,10 +2,11 @@ const fs = require('fs').promises
 const { Op } = require('sequelize')
 const AppError = require('@errors/AppError')
 const { Image } = require('@models')
-const { deleteImageFiles } = require('@services/image/store')
 const { createImageFromUpload } = require('@services/image/upload')
 // 引用判定（按类型筛图 / 反查引用位置）的唯一出处在 services/image/refs.js
 const { findReferencedImageIds, attachReferences } = require('@services/image/refs')
+// 删图（引用守卫 + 先事务删行再删文件）在 services/image/remove.js（判据②）
+const { deleteUnreferencedImages } = require('@services/image/remove')
 // 伪类型 'other'（无引用/孤儿）的名字出处在 utils/imageRefTypes.js
 const { ORPHAN_TYPE } = require('@utils/imageRefTypes')
 const { imageListDTO, imageIdDTO, imageIdsDTO } = require('@dto/image.dto')
@@ -90,41 +91,18 @@ const getImageById = async (req, res) => {
   res.json(imageVO(image))
 }
 
-// 删除单张图片（仅无引用可删，被引用拒绝）
+// 删除单张图片（仅无引用可删，被引用拒绝）——守卫与「先删行后删文件」在 service
 const deleteImage = async (req, res) => {
   const id = imageIdDTO(req.params)
-  const image = await Image.findByPk(id)
-  if (!image) throw new AppError(404, '图片不存在')
-
-  const referenced = await findReferencedImageIds(ORPHAN_TYPE)
-  if (referenced.includes(Number(id))) {
-    throw new AppError(400, '该图片仍被引用，无法删除')
-  }
-
-  await deleteImageFiles(image.storage_path, image.thumb_path)
-  await image.destroy()
+  await deleteUnreferencedImages([id])
   res.json({ id, message: '已删除' })
 }
 
 // 批量删除（任一被引用则整体拒绝）
 const deleteImagesBatch = async (req, res) => {
   const ids = imageIdsDTO(req.body)
-  const images = await Image.findAll({ where: { image_id: { [Op.in]: ids } } })
-  if (images.length === 0) {
-    throw new AppError(404, '图片不存在')
-  }
-
-  const referenced = await findReferencedImageIds(ORPHAN_TYPE)
-  const boundImages = images.filter(img => referenced.includes(Number(img.image_id)))
-  if (boundImages.length > 0) {
-    throw new AppError(400, `有 ${boundImages.length} 张图片仍被引用，无法删除`)
-  }
-
-  for (const image of images) {
-    await deleteImageFiles(image.storage_path, image.thumb_path)
-  }
-  await Image.destroy({ where: { image_id: { [Op.in]: images.map(img => img.image_id) } } })
-  res.json({ count: images.length, message: `已删除 ${images.length} 张图片` })
+  const count = await deleteUnreferencedImages(ids)
+  res.json({ count, message: `已删除 ${count} 张图片` })
 }
 
 module.exports = { uploadBatch, getImages, getImageById, deleteImage, deleteImagesBatch }

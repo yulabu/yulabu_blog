@@ -1,27 +1,12 @@
 const AppError = require('@errors/AppError');
-const { Sequelize } = require('sequelize');
 const { createTagDTO, updateTagDTO, tagIdDTO } = require('@dto/tag.dto');
 const { Post, Tag } = require('@models');
 const { tagDetail, tagList } = require('@vo/tag.vo');
+// 聚合查询在 service（判据①）：控制器只做 取参 → 调 service → 组装 vo
+const { listTagsWithPostCounts } = require('@services/tag');
 
 exports.getTagslist = async (req, res) => {
-  const tags = await Tag.findAll({
-    attributes: [
-      'tag_id',
-      'tag_name',
-      [Sequelize.fn('COUNT', Sequelize.col('posts.post_id')), 'count']
-    ],
-    include: [{
-      model: Post,
-      as: 'posts',
-      where: { post_status: 'published' },
-      attributes: [],
-      required: false
-    }],
-    group: ['Tag.tag_id', 'Tag.tag_name'],
-    raw: true
-  });
-  res.json(tagList(tags));
+  res.json(tagList(await listTagsWithPostCounts()));
 };
 
 exports.getTagById = async (req, res) => {

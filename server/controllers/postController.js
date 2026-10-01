@@ -1,11 +1,12 @@
 const AppError = require('@errors/AppError');
 const { createPostDTO, updatePostDTO, listPostsDTO, listAdminPostsDTO, postIdDTO } = require('@dto/post.dto');
-const { sequelize, Post, Tag, ColumnPost, Column, PostImage, Image } = require('@models');
+const { Post, Tag, ColumnPost, Column, Image } = require('@models');
 const { Op } = require('sequelize');
 const { postDetail, postSummary } = require('@vo/post.vo');
 const { prevNextVO } = require('@vo/column.vo');
 const { syncPostImages, resolveImageIdByUrl } = require('@services/image/derive');
-const { beijingYearMonth } = require('@utils/date');
+// 归档分组（领域派生）与彻底删除（多表事务）都在 service（判据②④）
+const { groupByBeijingMonth, forceRemove } = require('@services/post');
 
 // 获取文章列表（带分类 + 关键词 + 分页）
 exports.getPosts = async (req, res) => {
@@ -88,30 +89,9 @@ exports.getNextPost = async (req, res) => {
   res.json(prevNextVO(next ? next.post : null));
 };
 
-// 获取文章归档：按年份和月份分组
+// 获取文章归档：分组在 service（判据④领域派生），这里只把分组结果装成响应形状
 exports.getArchive = async (req, res) => {
-  const posts = await Post.findAll({
-    where: { post_status: 'published' },
-    include: [
-      { model: Tag, as: 'category', attributes: ['tag_id', 'tag_name'] },
-      // 与列表接口保持一致：archive 的列表项也要带 coverThumb（归档页本身不显示封面，
-      // 但接口契约统一，避免前端拿到字段缺失的两种形状）
-      { model: Image, as: 'coverImage', attributes: ['thumb_path'] },
-    ],
-    order: [['created_at', 'DESC']],
-  });
-
-  const grouped = {};
-  for (const post of posts) {
-    // 按北京自然月分组：createdAt 是绝对时刻，年月必须由 utils/date 派生——直接用
-    // getFullYear()/getMonth() 取的是进程本地时区，UTC 进程下北京时间月初 00:00–08:00
-    // 发的文章会归到上个月（实改过）。响应形状与字段名不变
-    const { year, month } = beijingYearMonth(post.createdAt);
-
-    if (!grouped[year]) grouped[year] = {};
-    if (!grouped[year][month]) grouped[year][month] = [];
-    grouped[year][month].push(postSummary(post));
-  }
+  const grouped = await groupByBeijingMonth();
 
   const archives = Object.entries(grouped)
     .sort(([yearA], [yearB]) => Number(yearB) - Number(yearA))
@@ -125,7 +105,7 @@ exports.getArchive = async (req, res) => {
           .map(([month, monthPosts]) => ({
             month: Number(month),
             count: monthPosts.length,
-            posts: monthPosts,
+            posts: monthPosts.map(postSummary),
           })),
       };
     });
@@ -241,19 +221,14 @@ exports.restorePost = async (req, res) => {
   res.json({ id: postId, message: '已恢复至草稿' });
 };
 
-// 彻底删除文章：仅清理文章自身与关联行
-// 图片引用（正文关联行、封面外键）随行消失，物理文件由 GC 对账宽限后回收
+// 彻底删除文章：关联行与主行同一事务（在 service 里），图片文件由 GC 回收
 exports.forceDeletePost = async (req, res) => {
   const postId = postIdDTO(req.params);
 
   const post = await Post.findByPk(postId);
   if (!post) throw new AppError(404, '文章不存在');
 
-  await sequelize.transaction(async (t) => {
-    await PostImage.destroy({ where: { post_id: postId }, transaction: t });
-    await ColumnPost.destroy({ where: { post_id: postId }, transaction: t });
-    await post.destroy({ transaction: t });
-  });
+  await forceRemove(postId);
 
   res.json({ id: postId, message: '已彻底删除' });
 };

@@ -158,7 +158,7 @@ HTTP 请求
 | `services/` | 领域能力：碰 I/O/DB、被 ≥2 个调用方共用、**不认识 req/res** | `models` / `config` / `errors` / `utils` |
 | `jobs/` | 定时任务：进程内调度、批量、幂等自愈、**不认识 req/res** | `services` 及其以下 |
 | `middleware/` | 管道层：只被 `routes/*` 与 `app.js` 挂载，不放错误类型与业务逻辑 | `errors` / `config` / `utils` |
-| `controllers/` `routes/` | HTTP 边界（只有这层认 req/res） | 不设限（路径：route → controller → service → model） |
+| `controllers/` `routes/` | HTTP 边界（只有这层认 req/res）：**只做「取参(DTO) → 调 service/model → 组装(VO) → 响应」** | 不设限（路径：route → controller → service → model） |
 
 **新文件放哪儿（2026-09 三分判据）**：只看两件事——
 
@@ -166,6 +166,8 @@ HTTP 请求
 2. **由时间驱动还是由调用方驱动？** 进程内定时器调度、批量改数据、幂等自愈 → `jobs/`；被请求或其它代码按需调用 → `services/`
 
 边界补充：`migrate-*` / `sync-schema` / `seed` 这类**有终点、人触发、跑完即弃**的脚本属于 `scripts/`，不是 job；备份由系统 cron / 后台按钮触发（不是进程内调度），所以是「CLI 壳 + `services/backup`」而不是 job。
+
+**controller 里能留什么（2026-10 收口）**：controller 只做「取参(DTO) → 调 service / model → 组装(VO) → 响应」。命中任一条就必须进 `services/`：① 聚合 / 分组 SQL（`fn` / `col` / `group` / `raw`）② 一次请求写多张表（必须带事务）③ 被 ≥2 个调用方复用 ④ 领域派生逻辑（如 URL→image_id、按北京年月分组）。单模型单条查询 / 写入可以留在 controller。现状：controller 里 **0 事务、0 聚合**。
 
 ### 配置（config/）
 
