@@ -21,6 +21,10 @@
 「全新库」= 空库上跑 `sequelize.sync()` 建出的结构，即**代码当前声明的基准**；
 老库（本机开发库 / 生产）按它对齐。三者的差异就是「结构随建表时刻漂移」的证据。
 
+> 对齐进度：**本机开发库 2026-10-01 已补齐**（3 行 `visit_log` 孤儿置 NULL → `--apply` 补 5 项）、
+> **生产 2026-10-02 已补齐**（备份 → dry-run → `--apply` 补 4 项，复核 8/8，见下节）。
+> 下表是首次实测（2026-10-01）时的对照快照，保留以说明漂移是怎么发生的。
+
 | 项 | 全新库（基准） | 本机开发库 | 生产 |
 |---|---|---|---|
 | 表清单 | 12 张（`Tag` `admin` `blog_column` `column_post` `daily_stat` `diary` `friend_link` `image` `post` `post_image` `setting` `visit_log`） | 15 张 = 12 + `post_comment`(3 行) + `notice`(0) + `status`(0) | 13 张 = 12 + `moment`(0 行，无任何代码引用) |
@@ -28,6 +32,7 @@
 | 相对基准缺哪些外键 | — | 5 个：`post.cover_image_id`、`diary.cover_image_id`、`post_image.post_id`、`post_image.image_id`、`visit_log.post_id` | 4 个：`post.cover_image_id`、`diary.cover_image_id`、`post_image.post_id`、`post_image.image_id` |
 | 待补项的脏数据（孤儿引用） | — | `visit_log.post_id` 有 **3 行**孤儿（指向已不存在的文章）→ 该项会被脚本挡住 | 4 项**全部 0 孤儿**（2026-10-01 校验）→ 可安全补齐 |
 | 重复索引 | 无 | `post_image` 两对（下详） | `post_image` 两对（同左） |
+| **现状（填平后）** | 8 个外键 | **8 个**（+ 遗留表 `post_comment.post_id` 一条 CASCADE）；dry-run 0 待补 | **8 个**；dry-run 0 待补 |
 
 全新库的 8 个外键（`reconcile-schema.js` 的 `FK_TARGETS` 逐字对应）：
 
@@ -84,8 +89,19 @@
 - `post_image` 的重复索引与全新库/本机一致（见上表）；生产另有 `moment` 这张无引用的遗留表
 - 生产已有 `visit_log.post_id` 外键（SET NULL）——说明它的 `visit_log` 建表时关联已声明；本机缺这个外键且有 3 行孤儿数据
 
-**尚未执行**：生产的结构补齐（`--apply`）等用户另行确认后按「备份 → dry-run → apply → 复核」执行；
-回滚为逐个 `ALTER TABLE <表> DROP FOREIGN KEY <脚本报告的约束名>;`（脚本会把实际约束名打进报告）。
+**已执行（2026-10-02，部署版本 `3e0446d`）**：按「备份 → dry-run → apply → 复核」补齐了这 4 个外键——
+
+- 备份：`node scripts/backup.js` → `blog-20261002-001046.sql.gz`（51.2 KB，`gzip -t` 通过）
+- dry-run：已存在 4、待补 4、挡住 0、跳过 0；`--apply` 一次成功（exit 0）
+- 实际约束名（回滚用）：`fk_diary_cover_image_id`（`diary`）、`fk_post_cover_image_id`（`post`）、
+  `fk_post_image_post_id`（`post_image`）、`fk_post_image_image_id`（`post_image`）；
+  回滚 = 逐个 `ALTER TABLE <表> DROP FOREIGN KEY <名>;`
+- 复核：dry-run 复跑 → 已存在 8、待补 0；information_schema 逐条与上表基准一致（含 `post_image.image_id` 的
+  NO ACTION）；MariaDB 为 `post.cover_image_id` / `diary.cover_image_id` 自动建了同名索引（这两列此前无索引）；
+  四项孤儿仍为 0；数据量不变（post 13 / image 98 / post_image 77 / diary 4 / blog_column 2）；重启后 err 日志 0 条
+- **之后的行为变化（登记）**：删 image 行的两条路径（`services/image/remove.js` 的单删批删、`jobs/imageGc.js` 的 GC）
+  正常路径不变（都有应用层引用守卫 + 写前重查），但竞态下若图仍被 `post_image` 引用会**硬报 1451**（此前是静默悬挂）；
+  同期 `imageGc` 的删除顺序已改为「先删行、再删文件」（提交 `b303289`），避免这种失败留下「记录在、文件没了」
 
 ## reconcile-schema.js 用法（先读再跑）
 
@@ -102,5 +118,6 @@ node scripts/reconcile-schema.js --apply    # 执行补齐（先校验孤儿引�
 - 幂等：存在性判定用 `(表, 列, 被引用表)` 而非约束名，重复执行第二次报告 0 变更
 - 执行前建议先 `node scripts/backup.js`；回滚 = 对脚本报告的每个约束名执行
   `ALTER TABLE <表> DROP FOREIGN KEY <约束名>;`
-- **本机 dry-run 现状（2026-10-01）**：4 项待补、1 项被挡住（`visit_log.post_id` 有 3 行孤儿，指向已不存在的文章）——
-  挡住项需先人工确认那 3 行（删掉或改 NULL）再重跑；生产无挡住项
+- **两库现状（填平后）**：本机（2026-10-01）与生产（2026-10-02）dry-run 均为「已存在 8、待补 0、挡住 0」。
+  历史情况保留在上述基线表：本机曾 4 项待补 + 1 项被 `visit_log.post_id` 的 3 行孤儿挡住（那 3 行的 post_id 后来置 NULL），
+  生产曾缺 4 项、0 被挡。将来再出现「模型加了关联、老库没跟上」时，照本节的顺序重跑即可
