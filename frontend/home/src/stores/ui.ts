@@ -1,5 +1,4 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { ref, reactive } from 'vue'
 
 const THEME_KEY = 'theme'
 const HOME_HERO_COLLAPSED_KEY = 'homeHeroCollapsed'
@@ -16,46 +15,54 @@ function getBooleanFromSession(key: string, defaultValue: boolean): boolean {
 }
 
 /**
- * 主题是**跨岛共享状态**，所以 ref 放在模块作用域而非 store 内部。
+ * 跨岛共享状态：**全部放模块作用域**（改前 theme 在模块级、homeHeroCollapsed 在 pinia 里，
+ * 两种机制混在一个文件里）。各岛是独立 Vue app 实例、pinia 各注一份，而模块级 ref 是同一份
+ * ESM 模块图的单例 —— 同页所有岛 import 到的是同一个 —— 与 stores/tagFilter.ts 同一套做法。
  *
- * 各岛是独立 Vue app 实例、pinia 各注一份（见 AGENTS.md「跨岛状态」），主题按钮挂在
- * Navbar、消费方却在别的岛（PostDetailView 的 mdTheme 决定 md-editor 的 dark 类），
- * 若把 ref 关在 store 里，切主题只改 Navbar 那一份，文章页正文样式永不跟随（实踩：
- * 切主题后正文不跟随、强刷才恢复）。模块级 ref 是同一份 ESM 模块图的单例，同页所有岛
- * import 到的是同一个 ref —— 与 stores/tagFilter.ts 同一套做法。
+ * 三分法（与 utils/、composables/ 的边界）：
+ *   stores/      跨岛共享的**状态**（模块级单例，全页唯一）
+ *   composables/ 组件/脚本级的**行为**（副作用与生命周期，无共享状态）：动画光标、昼夜属性
+ *   utils/       纯函数（无副作用）
  *
- * SSR 安全：服务端只初始化成 'light' 且从不调用 setTheme（只由点击触发），各岛 SSR
- * 首帧也不读它，不会跨请求串状态。
+ * 三条纪律（护栏脚本把守）：
+ *   ① 只在客户端写：setTheme / setHomeHeroCollapsed 只由点击触发，SSR 期从不调用
+ *   ② 模块顶层不许直接触碰 window/localStorage（这里是 typeof 守卫 + 函数内读取）
+ *   ③ SSR 首帧不读：首帧主题由 Layout.astro 的内联脚本写在 html[data-theme] 上
  */
+
+/** 主题按钮挂在 Navbar，消费方在别的岛（文章页 mdTheme 决定 md-editor 的暗色类） */
 const theme = ref<Theme>(hasWindow ? ((localStorage.getItem(THEME_KEY) as Theme) || 'light') : 'light')
 
-export const useUiStore = defineStore('ui', () => {
-  const homeHeroCollapsed = ref(getBooleanFromSession(HOME_HERO_COLLAPSED_KEY, false))
+const homeHeroCollapsed = ref(getBooleanFromSession(HOME_HERO_COLLAPSED_KEY, false))
 
-  function setHomeHeroCollapsed(value: boolean) {
-    homeHeroCollapsed.value = value
-    if (!hasWindow) return
-    sessionStorage.setItem(HOME_HERO_COLLAPSED_KEY, String(value))
-    // 跨岛通信：Navbar 与 HomeHero 是不同 island、不共享 pinia，靠 DOM 事件同步折叠态
-    window.dispatchEvent(new CustomEvent('yulabu:hero-collapsed', { detail: value }))
-  }
+function setHomeHeroCollapsed(value: boolean) {
+  homeHeroCollapsed.value = value
+  if (!hasWindow) return
+  sessionStorage.setItem(HOME_HERO_COLLAPSED_KEY, String(value))
+  // 跨岛通信：Navbar 与 HomeHero 是不同 island，靠 DOM 事件同步折叠态
+  window.dispatchEvent(new CustomEvent('yulabu:hero-collapsed', { detail: value }))
+}
 
-  function setTheme(value: Theme) {
-    theme.value = value
-    if (!hasWindow) return
-    localStorage.setItem(THEME_KEY, value)
-    document.documentElement.setAttribute('data-theme', value)
-  }
+function setTheme(value: Theme) {
+  theme.value = value
+  if (!hasWindow) return
+  localStorage.setItem(THEME_KEY, value)
+  document.documentElement.setAttribute('data-theme', value)
+}
 
-  function toggleTheme() {
-    setTheme(theme.value === 'light' ? 'dark' : 'light')
-  }
+function toggleTheme() {
+  setTheme(theme.value === 'light' ? 'dark' : 'light')
+}
 
-  return {
-    homeHeroCollapsed,
-    setHomeHeroCollapsed,
-    theme,
-    setTheme,
-    toggleTheme
-  }
+// reactive 包装：模板里写 uiStore.theme 不需要 .value（与改前 pinia 的用法一致）
+const uiStore = reactive({
+  theme,
+  homeHeroCollapsed,
+  setTheme,
+  toggleTheme,
+  setHomeHeroCollapsed,
 })
+
+export function useUiStore() {
+  return uiStore
+}

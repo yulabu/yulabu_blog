@@ -65,6 +65,13 @@ export function formatWeekday(date: string): string {
   return WEEKDAYS[s.getUTCDay()]
 }
 
+/** 归档日期徽章的两段文本：{ day: '05', month: 9 }（北京时间；无效日期返回占位） */
+export function formatDayMonth(date: string): { day: string; month: number | null } {
+  const s = beijingParts(date)
+  if (!s) return { day: '--', month: null }
+  return { day: pad(s.getUTCDate()), month: s.getUTCMonth() + 1 }
+}
+
 // 相对时间（刚刚 / N 天前）只允许在纯客户端场景使用：它的文本随时间变化，放进
 // 预渲染页会在构建期就烘焙成一句到访客打开时早已过期的话，而且服务端与客户端必然
 // 算出不同文本 → 水合不一致。日记书架与本子一律用上面的绝对日期。

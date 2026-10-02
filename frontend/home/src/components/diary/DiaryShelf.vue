@@ -45,7 +45,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import DiaryBook from '@/components/diary/DiaryBook.vue'
 
 // 一层架子几本书：常量而不是按视口算——书架在构建期预渲染，切分方式必须与客户端

@@ -1,13 +1,17 @@
 ---
 import Layout from '@/layouts/Layout.astro'
-import FriendsView from '@/views/FriendsView.vue'
-import { fetchFriendLinks } from '@/utils/serverData'
+import PageFrame from '@/components/astro/PageFrame.astro'
+import FriendsView from '@/islands/FriendsView.vue'
+import { getFriendLinks } from '@/api/friend'
+import { apiSoft } from '@/api/client'
 
 // 构建期取数：预渲染产物 HTML 里直接带友链卡片（后端不可达时传空数组，
 // 岛内会退化为客户端取数）
-const links = await fetchFriendLinks()
+const links = await apiSoft(getFriendLinks())
 ---
 
 <Layout title="友链">
-  <FriendsView client:load initialLinks={links ?? []} />
+  <PageFrame variant="friends" withRail={false}>
+    <FriendsView client:load initialLinks={links ?? []} />
+  </PageFrame>
 </Layout>

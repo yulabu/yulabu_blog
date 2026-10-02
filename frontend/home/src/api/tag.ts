@@ -1,5 +1,11 @@
-import http from '@/utils/http'
-import type { Tag } from '@/types/api'
+import { apiGet } from './client'
+
+/** 分类（后端 tag 表；count 是分类下已发布文章数） */
+export interface Tag {
+  id: number
+  name: string
+  count: number
+}
 
 // 同一页存在两个 TagBox 实例：PageFrame 的左栏一个、HomeView 里给移动端的一个
 // （后者只靠 CSS display:none 隐藏，组件照样挂载并触发自己的同步），各调一次
@@ -12,7 +18,7 @@ export function getTags(): Promise<Tag[]> {
   const now = Date.now()
   if (cached && now - cached.at < TAGS_TTL_MS) return cached.promise
 
-  const promise = http.get<Tag[]>('/tags').catch((err) => {
+  const promise = apiGet<Tag[]>('/tags').catch((err) => {
     if (cached?.promise === promise) cached = null
     throw err
   })

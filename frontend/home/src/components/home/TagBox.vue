@@ -15,8 +15,15 @@
       <button v-if="activeTagId" class="clear-tag" @click="onSelect(null)">全部</button>
     </div>
     <div class="body">
-      <ContentState v-if="loading" kind="loading" size="compact">
-        加载中...
+      <Skeleton v-if="loading" variant="line" :count="4" :height="12" />
+      <ContentState
+        v-else-if="error"
+        kind="error"
+        size="compact"
+        retry-text="重新加载"
+        @retry="fetchTags"
+      >
+        {{ error }}
       </ContentState>
       <ContentState
         v-else-if="!tags.length"
@@ -44,13 +51,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import { getTags } from '@/api/tag'
-import { useMessageBox } from '@/composables/useMessageBox'
 import { activeTagId, toggleActiveTag } from '@/stores/tagFilter'
 import { createSilentSync } from '@/utils/liveData'
-import ContentState from '@/components/common/ContentState.vue'
-import GlassPanel from '@/components/common/GlassPanel.vue'
+import Skeleton from '@/components/ui/Skeleton.vue'
+import ContentState from '@/components/ui/ContentState.vue'
+import GlassPanel from '@/components/ui/GlassPanel.vue'
 
 const props = defineProps({
   // 构建期烘焙的标签：左栏实例由 index.astro 直接注入，中栏移动端实例由 HomeView 透传。
@@ -80,7 +87,7 @@ function fingerprintOf(list) {
 // 有烘焙数据就直接渲染 → 预渲染 HTML 里就有标签，首屏不闪「加载中」
 const tags = ref(normalizeTags(props.initialTags || []))
 const loading = ref(!tags.value.length)
-const { toast } = useMessageBox()
+const error = ref('')
 
 const silentSync = createSilentSync({
   baked: fingerprintOf(props.initialTags || []),
@@ -92,11 +99,11 @@ const silentSync = createSilentSync({
 })
 
 async function fetchTags() {
+  error.value = ''
   try {
     tags.value = normalizeTags(await getTags())
   } catch (err) {
-    toast('获取标签失败', 'error')
-    tags.value = []
+    error.value = '标签加载失败，请稍后重试'
   } finally {
     loading.value = false
     emit('loaded')

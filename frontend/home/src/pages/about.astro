@@ -1,8 +1,13 @@
 ---
 import Layout from '@/layouts/Layout.astro'
-import AboutView from '@/views/AboutView.vue'
+import PageFrame from '@/components/astro/PageFrame.astro'
+import AboutView from '@/islands/AboutView.vue'
 ---
 
 <Layout title="关于">
-  <AboutView client:load />
+  <!-- 单列页：骨架只提供外壳与刊头（withRail=false），刊头因此是与视图平级的
+       client:visible 岛，不再绑在视图岛上 -->
+  <PageFrame variant="about" withRail={false}>
+    <AboutView client:load />
+  </PageFrame>
 </Layout>

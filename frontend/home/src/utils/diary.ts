@@ -1,4 +1,4 @@
-import type { Diary } from '@/types/api'
+import type { Diary } from '@/api/diary'
 
 // 日记的展示派生。后端 diary 表只有 content / images / created_at 三个业务字段，
 // 标题是正文首行（沿用旧日记页的约定），没有 title / summary 列。

@@ -91,7 +91,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import { useMusicStore } from '@/stores/music'
 import nahidaDecoMeta from '@/assets/img/nahida_music.webp'
 

@@ -3,9 +3,10 @@
 export const prerender = false
 
 import Layout from '@/layouts/Layout.astro'
-import ColumnDetailView from '@/views/ColumnDetailView.vue'
-// 与文章页同一套止血策略（404 才走 404 页 / 其余重试一次再抛错），实现见 utils/ssrFetch
-import { fetchDetail } from '@/utils/ssrFetch'
+import PageFrame from '@/components/astro/PageFrame.astro'
+import ColumnDetailView from '@/islands/ColumnDetailView.vue'
+// 与文章页同一套止血策略（404 才走 404 页 / 其余重试一次再抛错），策略实现在 api/client.ts
+import { tryGetColumnDetail } from '@/api/column'
 
 const { id } = Astro.params
 
@@ -13,7 +14,7 @@ let column = null
 let detailStatus = 404
 
 if (/^\d+$/.test(id ?? '')) {
-  const attempt = await fetchDetail(`/columns/${id}`)
+  const attempt = await tryGetColumnDetail(Number(id))
   detailStatus = attempt.ok ? 200 : attempt.status
   if (attempt.ok) column = attempt.data
 }
@@ -30,5 +31,7 @@ const ogImage = column.cover || '/og-image.jpg'
 ---
 
 <Layout title={column.name} description={description} ogImage={ogImage}>
-  <ColumnDetailView client:load initialColumn={column} />
+  <PageFrame variant="column-detail" withRail={false}>
+    <ColumnDetailView client:load initialColumn={column} columnId={column.id} />
+  </PageFrame>
 </Layout>

@@ -1,16 +1,20 @@
 ---
 /**
- * 页面骨架（纯 Astro）。
+ * 页面骨架（纯 Astro，**全站唯一**）。
  *
- * 为什么这层必须在 Astro 而不是 Vue：`transition:persist` 只在 .astro 模板里生效
- * —— Astro 编译期会把它改写成 `data-astro-transition-persist`，ClientRouter 才认；
- * 写在 Vue SFC 里只是原样透传一个属性，等于没写。而「首页 ↔ 归档」要常驻的个人
- * 卡片原先在 HomeView（Vue 岛）内部，归档页那个空左栏在 ArchiveView 内部，
- * 所以必须把骨架提到 Astro 层才能让卡片跨页搬运。
+ * 为什么这层必须在 Astro 而不是 Vue：
+ *   · `transition:persist` 只在 .astro 模板里生效 —— Astro 编译期会把它改写成
+ *     data-astro-transition-persist，ClientRouter 才认；写在 Vue SFC 里只是原样
+ *     透传一个属性，等于没写。而「首页 ↔ 归档 ↔ 日记」要常驻的个人卡片原先在
+ *     HomeView（Vue 岛）内部，必须把骨架提到 Astro 层才能让卡片跨页搬运。
+ *   · 刊头（WelcomeBanner 的打字机）与主内容分成两个平级岛，拓扑全站一致；
+ *     改前另一套 SitePageFrame.vue 把刊头包在视图岛内部，刊头的定时器因此绑在
+ *     整页岛上、窄屏也照样水合。
  *
  * 结构：全宽刊头（slot banner）→ 两列网格（左栏 rail + 主内容 main）。
- * 左栏第一格是常驻卡片；页面还可以通过 slot="rail" 在卡片下方追加自己的内容
- * （首页用它放标签筛选）。
+ * withRail=false 的单列页（关于/友链/专栏/文章）只借用外壳与刊头，容器与内边距
+ * 由各页自己给 —— 两个包装元素用 display:contents 完全不产生盒子，与改前
+ * SitePageFrame「直接渲染内容」在布局上等价。
  *
  * persist 挂在普通 div 上而不是 astro-island 上：遵守项目既有纪律，
  * 直接挂岛会在 swap 时触发 moveBefore 边界问题（实踩）。
@@ -21,9 +25,11 @@ import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
 interface Props {
   /** 刊头文案组 key（见 src/utils/bannerTexts.ts），缺省落到首页那组 */
   variant?: string
+  /** 是否用「左栏 + 主内容」两列骨架（首页/归档/日记用；其余页面单列） */
+  withRail?: boolean
 }
 
-const { variant = '' } = Astro.props
+const { variant = '', withRail = true } = Astro.props
 ---
 
 <div class="page-frame">
@@ -36,19 +42,23 @@ const { variant = '' } = Astro.props
     </slot>
   </header>
 
-  <div class="page-frame__grid">
-    <aside class="page-frame__rail">
-      <!-- 跨页常驻：首页与归档用同一个 persist key，ClientRouter 会把旧节点
-           整块搬进新文档，卡片 DOM 与状态都不重建。
-           不加 client:* 指令：该组件没有任何事件、生命周期或 pinia 状态
-           （交互全是 CSS :hover），由 Astro 直接渲染成静态 HTML、零客户端 JS -->
-      <div transition:persist="personal-card">
-        <PersonalCard />
-      </div>
-      <slot name="rail" />
-    </aside>
+  <div class:list={['page-frame__grid', !withRail && 'page-frame__grid--plain']}>
+    {
+      withRail && (
+        <aside class="page-frame__rail">
+          {/* 跨页常驻：首页/归档/日记用同一个 persist key，ClientRouter 会把旧节点
+              整块搬进新文档，卡片 DOM 与状态都不重建。
+              不加 client:* 指令：该组件没有任何事件、生命周期或 pinia 状态
+              （交互全是 CSS :hover），由 Astro 直接渲染成静态 HTML、零客户端 JS */}
+          <div transition:persist="personal-card">
+            <PersonalCard />
+          </div>
+          <slot name="rail" />
+        </aside>
+      )
+    }
 
-    <div class="page-frame__main">
+    <div class:list={['page-frame__main', !withRail && 'page-frame__main--plain']}>
       <slot />
     </div>
   </div>
@@ -77,6 +87,12 @@ const { variant = '' } = Astro.props
     padding: 28px var(--page-padding) 64px;
   }
 
+  /* 单列页：不参与网格/内边距/层叠，包装元素等于不存在（见文件头注释） */
+  .page-frame__grid--plain,
+  .page-frame__main--plain {
+    display: contents;
+  }
+
   /* 左栏：粘性跟随，与首页原左栏一致（top 96px 让开固定 Navbar） */
   .page-frame__rail {
     display: flex;
@@ -95,11 +111,11 @@ const { variant = '' } = Astro.props
   }
 
   /* 响应式降级沿用原首页约定：
-   * @md 1024px  隐藏左栏（常驻卡片随之隐藏），主内容占满
-   * @sm 768px   刊头隐藏（看板页原本也如此）
+   * lg 1024px  隐藏左栏（常驻卡片随之隐藏），主内容占满
+   * md 768px   刊头隐藏（看板页原本也如此）
    */
   @media (max-width: 1024px) {
-    .page-frame__grid {
+    .page-frame__grid:not(.page-frame__grid--plain) {
       grid-template-columns: minmax(0, 1fr);
     }
 
@@ -115,7 +131,7 @@ const { variant = '' } = Astro.props
   }
 
   @media (max-width: 480px) {
-    .page-frame__grid {
+    .page-frame__grid:not(.page-frame__grid--plain) {
       padding-top: 20px;
       padding-bottom: 40px;
     }

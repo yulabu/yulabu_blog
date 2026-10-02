@@ -1,0 +1,45 @@
+/* ============================================================
+ * 全局样式入口（Layout.astro 唯一引入）。
+ *
+ * 只做两件事：Tailwind 接线 + base 归零。
+ *   · 设计令牌与暗色覆盖全在 ./tokens.css（唯一出处）
+ *   · **不引 preflight**：本项目的 reset 语义（下方 @layer base 的 `*` 与 body）
+ *     是 33 个存量组件正在依赖的，preflight 会额外重置 img/svg(display:block)、
+ *     button、h1-h6、ul/ol，属于全局观感冲击。这里只引 theme + utilities，
+ *     reset 由我们自己显式声明——语义与迁移前逐字一致（只删了从未加载的幽灵
+ *     字体 'Poppins'）。
+ *   · 工具类在 utilities 层，天然压过 base 层的 reset，所以工具类能正常覆盖。
+ *     注意：存量组件的 <style scoped> 是**无 layer** 的，无 layer 永远压过有 layer
+ *     —— 因此「一个组件要么全用工具类、要么全用手写 CSS，不许混用同一属性」。
+ * ============================================================ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import './tokens.css';
+@import './components.css';
+
+/* 暗色变体跟随既有 html[data-theme] 机制（不引入 .dark class，
+   不改 Layout 首帧内联脚本与 stores/ui.ts）。颜色本身走令牌自动翻转，
+   这个变体只用于令牌没覆盖的结构性差异。 */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: sans-serif;
+  }
+
+  body {
+    /* body 也要有底色：页面主底色虽由 .page-frame / .site-page-frame 提供，但页脚
+       在它们之外，且 .site-footer 是 margin-top 进入的 —— 外边距区域没有任何不透明
+       容器覆盖，body 透明就会透出浏览器画布（实测：footer 上方一条 48px 的浅色/黑色
+       横带）。给 body 上底色后这一整类「透出画布」问题都消失，移动端下拉回弹的底色
+       也一并正确（暗色模式随 --bg-page 自动跟随）。 */
+    background-color: var(--bg-page);
+    background-size: cover;
+    overflow-x: hidden;
+  }
+}

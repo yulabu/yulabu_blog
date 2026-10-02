@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'astro/config'
 import vue from '@astrojs/vue'
 import node from '@astrojs/node'
+import tailwindcss from '@tailwindcss/vite'
 
 // astro.config 不会自动加载 .env，这里手动读取（dev 代理仅本地开发使用）
 function loadDevEnv() {
@@ -29,7 +30,7 @@ export default defineConfig({
   // 默认静态预渲染；文章页/专栏详情页通过 export const prerender = false 走 SSR
   output: 'static',
   adapter: node({ mode: 'standalone' }),
-  integrations: [vue({ appEntrypoint: '/src/pages/_app' })],
+  integrations: [vue({ appEntrypoint: '/src/islands/_app' })],
   build: {
     // 字体 CSS 已单独拆出（见 Layout.astro），每页剩下的样式只有约 11 KB，
     // 内联进 HTML 后首屏不再有任何渲染阻塞样式表请求
@@ -44,18 +45,16 @@ export default defineConfig({
     port: 5174,
   },
   vite: {
+    // Tailwind v4 的官方接法是 Vite 插件（@astrojs/tailwind 是 v3 时代的集成）。
+    // 样式入口 src/styles/global.css：只引 theme + utilities，不引 preflight，
+    // reset 由我们自己声明（理由见该文件顶部注释）。
+    plugins: [tailwindcss()],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
-    ssr: {
-      // pinia 需打进 SSR 包，否则 __VUE_PROD_DEVTOOLS__ 等特性开关未定义会抛 ReferenceError
-      noExternal: ['pinia'],
-    },
     optimizeDeps: {
-      // 排除死代码归档目录，避免依赖扫描追不存在的旧路径
-      entries: ['src/**/*.vue', 'src/**/*.ts', 'src/**/*.astro', '!src/_archive/**'],
       // 固化文章岛重依赖的预包，减少 dev 重启/配置变更后的 504 (Outdated Optimize Dep)
       include: ['md-editor-v3'],
     },

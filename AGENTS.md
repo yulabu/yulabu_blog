@@ -147,7 +147,7 @@ certbot renew --dry-run
 - 列表/编辑页三态状态机：文章 draft / published / trash；编辑页按 currentStatus 分流按钮，trash 只读
 - 列表返回保留 tab：列表 activeTab ↔ route.query.status 双向同步
 - 加载体验：admin 登录页预加载遮罩；home 的加载体验见第 10 节（文章过渡卡片）
-- API 调用统一走 src/api/*，异步动作包 useAsyncAction
+- API 调用统一走 src/api/*（唯一传输在 src/api/client.ts）；异步动作包 useAsyncAction
 
 ### 7. 本地环境坑
 - PowerShell/bash 中 $Code 须反引号转义：E:\`$Code\...，否则路径展开为空
@@ -159,7 +159,7 @@ certbot renew --dry-run
 ### 8. 验证方式
 - 后端 DTO 可直接：node -e "require('module-alias/register'); require('dotenv').config(); const {...}=require('@dto/...')" 验证
 - 后端三条常驻护栏（零依赖、不连库、不占端口）：`node scripts/check-errors.js`（错误翻译表 25 条断言：原 23 条 + 2026-10 新增「回环免限流 / 访客按 XFF 命中 429 并记 warn」2 条）、`node scripts/check-layers.js`（12 类：env 唯一出口 + 依赖只能向下 + @config/env 白名单 + utils 纯度 + 时间口径白名单 + 日志经 utils/log + 上传前缀 + controller 入参经 DTO + 口令哈希 + dto/vo 依赖白名单 + 别名表一致 + controller 不自己开事务）、`node scripts/check-refs.js`（引用图四向一致：账本 ↔ 模型关联 ↔ FK_TARGETS，有意分歧须登记在 EXCEPTIONS）；动了错误层/依赖边/配置读法/任务分层/限流桶挂载/持图业务就该跑
-- home 以 npm run build 通过 + npm run check（astro check）0 error 为门槛；admin 仍以 npm run build（含 vue-tsc）为门槛
+- home 以 npm run build 通过 + npm run check（astro check）0 error + `npm run check:layers`（8 条分层断言，零依赖）通过为门槛；admin 仍以 npm run build（含 vue-tsc）为门槛
 - SSR 链路验证：本地起 server（npm run dev）后 `curl -s localhost:4321/post/<id> | grep -E 'og:title|og:image'`
 - 业务改动建议生产实跑：curl -I https://blog.yulabu.cn/og-image.jpg、pm2 logs --err
 
@@ -173,16 +173,16 @@ certbot renew --dry-run
 
 ### 10. 前台 Astro 群岛架构（2026-09 重构，home 由 Vue SPA 迁移）
 - 渲染分工：6 个列表页（/ /archive /about /friends /columns /diary）构建时静态预渲染；/post/[id]、/columns/[id]、/404 走 SSR（页面内 `export const prerender = false`）。发新文章无需构建，文章页实时 SSR 出完整 HTML（正文 + per-post og 标签）
-- 结构：src/pages/*.astro 即路由（无 vue-router）；src/layouts/Layout.astro 承接全局 head（OG/字体/主题内联脚本/ClientRouter）与常驻岛（Navbar / MessageBox / MusicPlayer）；Vue 组件在 src/views、src/components 原样复用，以 client:* 指令挂岛
-- 数据流不变：axios（src/utils/http.ts，baseURL /api）客户端取数；SSR 页由页面 frontmatter 用 process.env.API_BASE_URL（默认 127.0.0.1:3000/api）服务端取数后经 props 注入岛，岛内 `if (!props.initialXxx)` 才回退自行拉取
+- 结构：src/pages/*.astro 即路由（无 vue-router）；src/layouts/Layout.astro 承接全局 head（OG/字体/主题内联脚本/ClientRouter）与常驻岛（Navbar / ToastHost / MusicPlayer / PostSplash）；**页面级 Vue 岛在 src/islands/**、可复用 UI 在 src/components（2026-10 分层重构，见第 14 节）
+- 数据流：**只有一套取数实现** src/api/*（同构 fetch，见第 14 节）——页面 frontmatter 用 `apiSoft(...)` 在构建期/SSR 取数并经 props 注入岛，岛内 `if (!props.initialXxx)` 才回退自行拉取；预渲染页水合后用 createSilentSync 对账
 - **SSR 回源的限流与失败降级（2026-10 止血）**：SSR 回源固定来自本机（不带 XFF），后端 `publicLimiter` 因此对 **127.0.0.1 / ::1** 放行（`middleware/rateLimiter.js` 的 `isLoopbackIp`）——它一次文章页渲染要打 4 个公开接口（详情 + prev + next + settings），共用访客的 60/min 桶时全站约 15 次/分钟就饱和；**访客经 nginx 带 XFF 按真实 IP 分桶，防护不受影响**。前端侧（`post/[id].astro`、`columns/[id].astro`）取数失败**区分 404 与其它**：404 才 `rewrite('/404')`，429/5xx/网络错先重试一次、仍失败则抛错（Astro 返回 5xx）——改前一律降级成 404，限流时真实文章对外谎称不存在（读者与搜索引擎都会当真）
-- 跨岛状态：pinia 经 @astrojs/vue 的 appEntrypoint（src/pages/_app.ts）注入每个岛，但**各岛是独立 app 实例、store 互不同步**——主题靠 CSS 变量（setTheme 写 documentElement）天然全局生效；首页 Hero 折叠态经自定义事件 yulabu:hero-collapsed 同步给 Navbar；音乐播放器靠 transition:persist 跨页存活（persist 挂在普通 div 包装上，勿直接挂 astro-island，会触发 swap 的 moveBefore 边界 bug，实踩）
+- 跨岛状态：**pinia 已删除**（2026-10）——各岛是独立 Vue app 实例、pinia 各注一份互不同步，跨岛共享一律用 stores/ 的模块级单例；主题靠 CSS 变量（setTheme 写 documentElement）天然全局生效；首页 Hero 折叠态经自定义事件 yulabu:hero-collapsed 同步给 Navbar；音乐播放器靠 transition:persist 跨页存活（persist 挂在普通 div 包装上，勿直接挂 astro-island，会触发 swap 的 moveBefore 边界 bug，实踩）
 - 图标全部离线：AppIcon.vue（同步渲染 getIcon body，SSR/客户端输出一致、零 pop-in）替代 @iconify/vue 的 Icon 组件（其 Icon 走异步 watcher，SSR 首帧只有占位 svg，且运行时拉 api.iconify.design 会触发 Edge Tracking Prevention 刷屏）。图标子集由 scripts/build-icons.mjs 生成 src/assets/icons.json（@iconify-json/material-symbols + @iconify-json/mdi 抽取，新增图标先在脚本 ICONS 清单登记再 npm run icons）；勿在模板直接用 @iconify/vue 的 Icon
 - 水合稳态纪律：岛内任何「客户端专属状态」（URL query、sessionStorage、主题、matchMedia）一律不给 SSR 期首帧用——setup 期初值与 SSR 保持一致，onMounted 里再同步真实值（Navbar 的 searchInput/heroCollapsed/themeIcon、HomeView 的 searchQuery、PostDetail 的 mdTheme 皆如此，实踩 Navbar 根级 v-if mismatch）；根级 v-if 的岛组件是 mismatch 高危形态，新增岛时避免；日期统一按北京时间取部件（utils/date.ts 的 beijingShifted，消除服务器 UTC 与访客本地时区的文本差）
 - 文章过渡卡片（点列表/上下篇进文章时弹封面+标题+摘要，2 秒后淡出）：信号走 window.__yulabuSplashId（utils/postSplash.ts 的 markPostSplash 写入；勿改用 sessionStorage——ClientRouter 重建脚本场景下读取不可靠，实踩）；卡片是 post/[id].astro 里 SSR 预印的隐藏模板（默认 opacity 0 + pointer-events none，无 JS/直接访问/爬虫完全无感），内联脚本 data-astro-rerun 消费信号后显示，SPLASH_DWELL_MS=2000 可调；脚本必须幂等（重复执行不得移除已展示卡片，实踩）
-- Astro 7 实踩坑：astro.config.mjs 必须静态对象导出——.mjs 配置加载器不求值函数式 defineConfig，adapter/integrations 会整个丢失；pinia 需 src/pages/_vue-flags.ts 先于 pinia 导入挂 __VUE_PROD_DEVTOOLS__ 等全局（external 加载时未 define 会 ReferenceError）；MessageBox 根节点是 Teleport to body，必须 client:only（SSR 水合会在 body 触发 mismatch 清理误删相邻岛，实踩删过 Navbar）；凡依赖 window/localStorage/Audio 的代码在岛内要守卫（stores/ui.ts 用 typeof window 判定，MusicPlayer 整岛 client:only）；ClientRouter 软导航后内联脚本需 data-astro-rerun 才重跑，全局监听挂 astro:page-load / astro:after-swap
+- Astro 7 实踩坑：astro.config.mjs 必须静态对象导出——.mjs 配置加载器不求值函数式 defineConfig，adapter/integrations 会整个丢失；ToastHost 根节点是 Teleport to body，必须 client:only（SSR 水合会在 body 触发 mismatch 清理误删相邻岛，实踩删过 Navbar）；凡依赖 window/localStorage/Audio 的代码在岛内要守卫（stores/ui.ts 用 typeof window 判定，MusicPlayer 整岛 client:only）；ClientRouter 软导航后内联脚本需 data-astro-rerun 才重跑，全局监听挂 astro:page-load / astro:after-swap
 - 首页全屏 Hero 的折叠态防弹跳：老访客（sessionStorage homeHeroCollapsed=true）进入首页必须首帧即折叠布局——Layout 内联脚本首帧前给 html 打 data-hero-collapsed（与 data-theme 同一 applyClientState 脚本、after-swap 重挂），HomeHero 用 `:global(html[data-hero-collapsed] .home-hero …)` 全量镜像折叠样式（height/content padding/标题字号/波浪/scroll-hint）。**Vue scoped 对「:global() + 后代 + :deep()」混用会丢弃后代部分**（实测规则塌缩成只匹配 html），必须把整个选择器包进一个 :global()（实踩）
-- **SSR 岛内禁止裸 `<Teleport to="body">`**：弹层关闭态 SSR 仍输出 teleport 注释标记，与 Astro 向岛内注入的水合脚本错位 → 每次进入必报 hydrateTeleport mismatch（实踩 DiaryView 灯箱、AboutNode 弹出层）。修法：Teleport 加 `v-if="isMounted"` 守卫（挂载后才挂，弹层本就只在交互后出现）；MessageBox/PostSplash 这类纯弹层走整岛 client:only。现有 Teleport 均已守卫，新增弹层时沿用此纪律
+- **SSR 岛内禁止裸 `<Teleport to="body">`**：弹层关闭态 SSR 仍输出 teleport 注释标记，与 Astro 向岛内注入的水合脚本错位 → 每次进入必报 hydrateTeleport mismatch（实踩 DiaryView 灯箱、AboutNode 弹出层）。修法：Teleport 加 `v-if="isMounted"` 守卫（挂载后才挂，弹层本就只在交互后出现）；ToastHost/PostSplash 这类纯弹层走整岛 client:only。现有 Teleport 均已守卫，新增弹层时沿用此纪律
 - 文章过渡卡片：**常驻遮罩岛 PostSplash.vue**（client:only + 外包 div transition:persist，与 MusicPlayer 同模式）——点击文章瞬间在当前页弹出（数据取自被点击条目：markPostSplash(post) 挂 window.__yulabuSplash + 广播 yulabu:post-splash 事件，四个调用点：列表/归档/专栏目录/上下篇），文章 SSR 在卡片背后加载；astro:after-swap 时 URL 匹配才从点击起算满 2s（SPLASH_DWELL_MS）淡出，SSR 慢则显示到加载完（SPLASH_MAX_MS=6s 兜底），中途改点其他页立即隐藏。post/[id].astro 不再烘焙卡片（无 JS/直接访问/爬虫/分享链接无事件，卡片永不出现）。勿用 sessionStorage 传卡信号（ClientRouter 重建脚本场景不可靠，实踩）；persist 勿直接挂 astro-island（moveBefore 边界 bug，实踩）
 - md-editor-v3 扩展全本地化（utils/mdEditorSetup.ts，_app.ts 与 Layout 双侧引入）：config() 注入本地 highlight.js/lib/common 实例 + 本地主题 css（highlight.js/styles/*.css?url），MdPreview 加 no-katex/no-mermaid/no-echarts——**根除 unpkg.com 运行时外链**（该域被 Edge 列入跟踪器名单，每次整页加载文章注入 7 个外链触发 Tracking Prevention 刷屏）；服务端与客户端同一实例保证 SSR 代码块高亮与水合一致；vite.optimizeDeps.include: ['md-editor-v3'] 固化预包（dev 重启后旧 hash 504 Outdated Optimize Dep 的减发措施，dev 专属现象）
 - **LXGW 文楷字体自托管，桌面与移动统一**：npm 依赖 lxgw-wenkai-webfont（1.7.0），**只引 regular + bold 两档**（`lxgwwenkai-regular.css` / `lxgwwenkai-bold.css`）—— 这是唯一"用不上"的部分：Mono 三档与 Light 一档经全站 grep 确认零引用（582 条 @font-face → 194 条，字体 CSS 565 KB → 183 KB）。以 `?url` 导入后由 `Layout.astro` 用 `<link rel="stylesheet" media="print" onload="…">` 非阻塞引入；**不能写回 main.css 的 `@import`**：那样会与全局样式合并成一个渲染阻塞样式表（实测 565 KB / gzip 217 KB，占首屏阻塞资源 223 KiB 中的 212 KiB）。woff2 子集 194 个 / 约 9.2 MB 随构建进 `dist/_astro`，浏览器按 unicode-range 按需加载。**不要再按视口砍字体**：曾试过移动端不加载，实测首页可省 590 KB、archive 可省 1,007 KB，但桌面/移动观感会不一致，已被否决
@@ -195,12 +195,12 @@ certbot renew --dry-run
 - **跨页常驻岛：个人卡片（2026-09）**——**首页 / 归档 / 日记**三页左栏是同一个 DOM 节点，三页之间来回切换零重建、位置不动（实测 absTop 388 / left 84 / 300×330 全程一致，且节点上的 JS 属性仍在）。
   - **`transition:persist` 只在 `.astro` 模板里生效**：Astro 编译期把它改写成 `data-astro-transition-persist`，ClientRouter 才认；写在 Vue SFC 里只是原样透传一个属性。所以卡片必须由 Astro 渲染 → 新增 `src/components/astro/PageFrame.astro` 作为页面骨架（全宽刊头槽 + 左栏 rail + 主内容 main），首页与归档页都用它，两页的 persist key 必须同名（`personal-card`）。persist 挂在普通 div 上，不要直接挂 astro-island（moveBefore 边界 bug）
   - 骨架左栏 ≤1024px 隐藏（沿用原首页左栏约定）；归档页与日记页左栏除卡片不放别的（rail 槽留空），首页 rail 槽放 TagBox
-  - `HomeView.vue` / `ArchiveView.vue` / `DiaryView.vue` 已退化为纯内容（HomeView 只留中心列 + 右栏；DiaryView 只留 720px 正文）；其余 5 个视图（About / Columns / ColumnDetail / Friends / PostDetail）仍用 `SitePageFrame.vue`，未迁移
+  - `HomeView.vue` / `ArchiveView.vue` / `DiaryView.vue` 已退化为纯内容（DiaryView 只留 720px 正文）；2026-10 起另外 5 个视图（About / Columns / ColumnDetail / Friends / PostDetail）也走 `PageFrame.astro` 的 `withRail={false}` 单列模式，`SitePageFrame.vue` 已删除 —— **骨架全站唯一**，刊头（WelcomeBanner）因此成为与视图平级的 client:visible 岛
   - 音乐播放器（MusicPlayer）的**完全展开白名单**是 `EXPAND_PATHS = ['/', '/diary']`：桌面端在这两页展开成完整面板，其余页面是迷你条；移动端 ≤768px 一律迷你条。它靠 `transition:persist` 跨页存活，所以这里只改「在哪几页展开」，播放状态不受影响
   - **slot 属性不能直接挂在 Vue 岛组件上**：Astro 传给框架组件的 slot 会作为 fallthrough 属性进入 Vue，而服务端渲染时 Astro 不输出该属性 → 水合属性不匹配告警（实测首页 banner/rail 两处）。要包一层普通元素：`<div slot="rail"><TagBox client:load /></div>`
-- **标签筛选的跨岛共享状态（stores/tagFilter.ts）**：TagBox 现在挂在骨架左栏、PostList 在中栏，二者分属不同岛，Astro 传给岛的 props 又是静态的，所以用**模块级 ref**（同一份 ESM 模块图，同页所有岛共享同一实例）。**不要用 pinia**——每个岛是独立 app 实例、store 各注一份互不同步；也不要绕 DOM 事件，模块单例更简单。新增跨岛共享状态时沿用这个模式
-- **预渲染页在构建期烘焙真实内容**：5 个列表页 frontmatter 顶层 await `src/utils/serverData.ts` 取数并经 props 注入岛，产物 HTML 里就是真实文章/标签/专栏/日记/友链（首屏不再先闪「加载中」空壳，爬虫/分享可读）
-  - **必须 fail-soft**：取数失败一律返回空值、绝不拦构建（实测死后端仍构建成功，各页打印 `[serverData]` 告警并退化为客户端取数）。代价：**构建时需后端可达**才能烘焙出内容
+- **标签筛选的跨岛共享状态（stores/tagFilter.ts）**：TagBox 现在挂在骨架左栏、PostList 在中栏，二者分属不同岛，Astro 传给岛的 props 又是静态的，所以用**模块级 ref**（同一份 ESM 模块图，同页所有岛共享同一实例）。**不要用 pinia**（已删除）——每个岛是独立 app 实例、store 各注一份互不同步；也不要绕 DOM 事件，模块单例更简单。新增跨岛共享状态时沿用这个模式
+- **预渲染页在构建期烘焙真实内容**：5 个列表页 frontmatter 顶层 await `src/api/*`（包一层 `apiSoft` 做 fail-soft）取数并经 props 注入岛，产物 HTML 里就是真实文章/标签/专栏/日记/友链（首屏不再先闪「加载中」空壳，爬虫/分享可读）
+  - **必须 fail-soft**：取数失败一律返回空值、绝不拦构建（实测死后端仍构建成功，各页打印 `[api] GET /xxx 取数失败…该页已降级` 告警并退化为客户端取数）。代价：**构建时需后端可达**才能烘焙出内容
   - **烘焙切片必须与客户端对账切片一致**（/posts 用 `limit`、/diaries 用 `pageSize`；PostList 的 PAGE_SIZE 与 index.astro 的 fetchPosts 必须同值），否则指纹永不相等 → 每次访问无谓重绘
   - 岛内用 `src/utils/liveData.ts` 的 `createSilentSync`：指纹一致则**完全不动 DOM（零闪烁）**，不一致才替换，取数失败静默吞掉 → 保住「发新文章无需构建」
   - **Astro 对 JS Vue SFC 的 props 推断很粗**：`type: Array/Object` 被当成必填 `unknown[]`/`Record<string,any>`，且**函数式 default（`default: () => []`）会让 .vue 类型生成整个失败**（报 `Module has no default export`）。所以烘焙型 props 一律不写 default、由页面必定传入、组件内 `props.x || []` 兜底；也不要传 `null`（类型不接受），失败就传空数组/空对象
@@ -236,3 +236,46 @@ certbot renew --dry-run
 - **上传响应形状的唯一出处是 `vo/image.vo.js` 的 `uploadedImageVO`**：批量上传与专栏封面上传共用，字段固定 `{ image_id, url, thumb_url }`（前端 `UploadedImage` 契约，别换成 `imageVO`）
 - 迁移前的老路径（`utils/image.js`、`utils/imageStorage.js`、`utils/ogImage.js`、`utils/backup.js`、`utils/gc.js`、`utils/dailyStat.js`、`utils/visitGc.js`）**已不存在**，引用它们会 require 失败；CLI 也从 `node utils/dailyStat.js` 改为 `node scripts/daily-stat.js`
 - 备份链的一条行为修正：导出时客户端断开现在会结束 tar 进程（改前只记 clientGone，Node 仍持有读端导致 tar 永久阻塞、`.lock` 一直不释放，中断一次导出后 30 分钟内备份都被 409）
+
+### 14. 前台分层与 UI 规范（2026-10 重构，配套护栏 scripts/check-frontend-layers.mjs）
+
+改前的病：取数有 3 条并行链路（axios/http、serverData、ssrFetch）各自一份 API_BASE 与错误策略；
+页面级 Vue 岛同时干「取数 + 状态 + 布局 + 交互」；两套页面骨架（PageFrame.astro / SitePageFrame.vue）
+让刊头在部分页被包进视图岛；分类 chip 4 份、封面首字兜底 5 份、卡片网格 2 份逐字相同；
+跨岛状态 4 种机制并存（pinia / 模块 ref / 模块 reactive / DOM 事件）。现在按下面的规矩收口：
+
+- **分层与依赖方向**（只能向下，由 `npm run check:layers` 的 8 条断言把守）：
+  `pages/`（路由 + 取数 + 组装）→ `layouts/` `components/` `islands/`（页面级岛）→ `stores/` `api/` `utils/`。
+  `api/`、`utils/` 不许 import 组件与 store；`components/ui/` 不许 import 业务模块；`islands/`、`components/`
+  不许 import pages/layouts。`components/astro/` 里 import 的 `.vue` 必须显式带 `client:*`，
+  有意零 JS 的（PersonalCard、页脚 AppIcon）登记进脚本的 `STATIC_VUE_ALLOW`。
+- **数据层只有一个传输**：`api/client.ts` 是唯一认识 URL 前缀 / 超时 / 错误形状的地方（同构：构建期、SSR、
+  浏览器同一实现，浏览器走相对 `/api`、服务端走 `API_BASE_URL`；服务端超时 4s 是 fail-soft 的前提）。
+  四个出入口：`apiGet`/`apiPost`（抛 ApiError）、`apiTry`/`apiTryDetail`（判别联合；详情页 404 分流 +
+  非 404 重试一次的唯一实现）、`apiSoft`（失败返回 null + 一行 `[api] …已降级` 告警，给预渲染/SSR 列表）。
+  **端点、参数与返回类型同处一个资源模块**（`api/post.ts` 等，类型以 `server/vo/*.js` 为基准）。
+  构建期烘焙与客户端对账**必须调同一个函数**（如 `getPosts(1, POSTS_PAGE_SIZE)`）——参数切片不一致会让
+  指纹永不相等、每次访问无谓重绘；`fetch(` 只允许出现在 client.ts（护栏断言④，静态资源按需加载登记例外）。
+- **UI 层**：设计令牌唯一出处是 `styles/tokens.css`（颜色写在 `@theme` 里 → 生成 `bg-page`/`text-heading`/
+  `border-line` 等工具类；暗色只改同名变量的值，**颜色因此不需要 dark: 变体**）。
+  **不引 preflight**（`global.css` 只 import theme + utilities）：存量组件依赖自己的 reset 语义，
+  preflight 会额外重置 `img/svg`（AppIcon 行内用法首当其冲）、`button`、`h1-h6`、`ul/ol`。
+  reset 写在 `@layer base`，工具类在 utilities 层天然压过它。
+  **禁止混用**：一个组件要么全用工具类、要么全用手写 scoped CSS —— 无 layer 的 scoped 样式永远压过
+  有 layer 的工具类，混用同一属性会得到「类加了没反应」。跨页逐字重复的布局类放 `styles/components.css`
+  （`.card-grid` / `.page-container` / `.card-body`·`.card-title`·`.card-text`）。
+  原语在 `components/ui/`：AppIcon（离线同步渲染）、GlassPanel（玻璃卡）、ContentState（空/加载/失败 + 重试）、
+  Pagination、CategoryChip（soft/solid × sm/md）、CoverFallback、SectionHeader、Skeleton。
+- **状态层三分法**：`stores/` = 跨岛共享**状态**（模块级单例，全页唯一；pinia 已删除）；`composables/` =
+  组件级**行为**（副作用与生命周期，无共享状态）；`utils/` = **纯函数**。写 stores 要守三条纪律：
+  只在客户端写、模块顶层不碰 window/localStorage、SSR 首帧不读（主题由 Layout 内联脚本写 html 属性）。
+- **页面状态三态齐全**：加载用 `Skeleton`（不再写「加载中...」）；失败用
+  `ContentState kind="error" retry-text="重新加载" @retry="..."`（页面上留可重试出口，不只弹 toast）；空用
+  `ContentState kind="empty"`。
+- **骨架全站唯一**：`components/astro/PageFrame.astro`（`withRail` 决定两列还是单列；单列用 `display: contents`
+  的包装保证不留内边距与层叠上下文）。刊头 WelcomeBanner 是与视图平级的 client:visible 岛。
+  注意：`withRail` 两列模式下，`HomeView` 的 `.home-layout` **第二条轨道是预留空列**，删掉它会让内容列
+  从 604px 变 640px（实测页面高度 +19px）——那是视觉变化，不是清理。
+- **改了前台怎么验**：`npm run build` + `npm run check` + `npm run check:layers` 三条全绿是底线；
+  涉及视觉/布局的改动，用「改造前产物 + 计算样式签名逐元素对照」验证（见 deploy/astro.md 的说明），
+  别只凭肉眼。

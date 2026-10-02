@@ -1,0 +1,189 @@
+/* ============================================================
+ * 设计令牌 —— 全站唯一出处。
+ *
+ * 一个设计属性只有一处定义：
+ *   · 颜色（--color-*）：定义在下方 @theme 里，Tailwind 由此生成工具类
+ *     （bg-page / text-heading / border-line …）。暗色只改同一批变量的值。
+ *   · 非色板令牌（材质/阴影/间距/木纹等）：定义在 :root，暗色在
+ *     [data-theme="dark"] 里覆盖同名变量。
+ *   · 组件里要么用 var(--token)，要么用由它生成的工具类，**不许再写第二份字面量**。
+ *
+ * 暗色机制沿用既有约定：html[data-theme="dark"]（见 Layout.astro 首帧内联脚本
+ * 与 stores/ui.ts）。因此颜色不需要 dark: 变体——变量自己会翻；
+ * dark: 变体只用于令牌没覆盖的结构性差异。
+ *
+ * 响应式断点约定（全站统一，新增页面禁止私自定义其他断点）：
+ *   xs 480px（原 @xs）/ md 768px（原 @sm）/ lg 1024px（原 @md）
+ * Tailwind 是移动优先的 min-width：原来写 max-width:1024px 的地方 → lg: 的逆用法
+ * （见下方 breakpoints 注释）。
+ * ============================================================ */
+@theme {
+  /* 清空 Tailwind 的默认色板（oklch 三档共 200+ 个变量，约 9 KB）：本项目只有
+     下面这套令牌，`bg-red-500` 这类默认色不该存在——留着既是死重量又是误用入口。
+     注意：这条必须排在下面的颜色声明之前 */
+  --color-*: initial;
+
+  /* 断点：与既有三档一一对应（480/768/1024），写法从 max-width 桌面优先
+     改为 Tailwind 的移动优先 min-width */
+  --breakpoint-xs: 30rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+
+  /* 字体：文楷用于标题/正文（自托管，Layout 非阻塞加载），正文 UI 用系统中文栈 */
+  --font-kai: 'LXGW WenKai', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+
+  /* ---- 色板（亮色）---- */
+  --color-primary: rgb(99, 149, 86);
+  --color-primary-hover: rgb(79, 129, 66);
+  --color-heading: rgb(45, 90, 65);
+  --color-text: rgb(65, 110, 105);
+  --color-muted: rgb(120, 140, 125);
+  --color-accent: rgb(80, 140, 134);
+  --color-danger: rgb(200, 80, 80);
+  --color-danger-hover: rgb(220, 90, 90);
+
+  /* 樱花花瓣（文章过渡卡片 PostSplash 的装饰层用）。
+     比"标准樱花粉"更深：遮罩层本身是薄荷绿(202,242,203)，低不透明度花瓣叠上去会
+     被中和成淡绿白絮，配色调深才能让混合结果保住 R≥G、真的读作粉色 */
+  --color-sakura-light: rgb(255, 226, 235);
+  --color-sakura-deep: rgb(232, 138, 170);
+}
+
+/* 面/线类令牌：原始名（--bg-*、--border-*）保留给既有组件，
+   同时投影成 Tailwind 色板（--color-page 等）供新组件用工具类。
+   用 inline 让工具类直接产出 var(--bg-page)，不产生中间变量 */
+@theme inline {
+  --color-page: var(--bg-page);
+  --color-card: var(--bg-card);
+  --color-card-strong: var(--bg-card-strong);
+  --color-glass-start: var(--bg-glass-start);
+  --color-glass-mid: var(--bg-glass-mid);
+  --color-glass-end: var(--bg-glass-end);
+  --color-personal-top: var(--bg-personal-top);
+  --color-line: var(--border-divider);
+  --color-line-light: var(--border-light);
+  --color-navbar: var(--navbar-bg);
+  --color-navbar-line: var(--navbar-border);
+  --color-overlay: var(--overlay-bg);
+  --color-image-line: var(--image-border);
+  /* 玻璃卡片的通用投影（首页/归档/专栏/友链的同一种阴影） */
+  --shadow-soft: 0 8px 32px var(--shadow-color);
+}
+
+:root {
+  --page-padding: 24px;
+
+  --color-primary-rgb: 99, 149, 86;
+  --color-accent-rgb: 80, 140, 134;
+  --color-danger-rgb: 200, 80, 80;
+
+  --bg-page: rgb(202, 242, 203);
+  --bg-card: rgba(255, 255, 255, 0.5);
+  --bg-card-strong: rgba(255, 255, 255, 0.75);
+  --bg-glass-start: rgba(255, 255, 255, 0.6);
+  --bg-glass-mid: rgba(255, 255, 255, 0.3);
+  --bg-glass-end: rgba(255, 255, 255, 0.2);
+  --bg-personal-top: rgba(167, 233, 186, 0.85);
+  --border-light: rgba(255, 255, 255, 0.8);
+  --border-divider: rgba(80, 140, 134, 0.25);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --image-border: rgb(139, 194, 155);
+  --overlay-bg: rgba(202, 242, 203, 0.6);
+  --navbar-bg: rgba(255, 255, 255, 0.75);
+  --navbar-border: rgba(80, 140, 134, 0.25);
+
+  --wave-1-color: #2d5a27;
+  --wave-2-color: #4a8b3c;
+  --wave-3-color: #76c06a;
+  --wave-4-color: #caf2cb;
+
+  /* 日记书架。材质是"石灰木/刷白木"：刻意走灰绿低饱和，而不是胡桃木那种暖棕——
+     暖棕在薄荷绿页面 + 白玻璃卡片旁边是一块孤岛色，读起来又重又跳（实测对比后改）。
+     木纹只用重复渐变，不引入任何图片资源 */
+  --shelf-wood-1: rgb(170, 176, 159);
+  --shelf-wood-2: rgb(150, 157, 139);
+  --shelf-wood-3: rgb(103, 111, 95);
+  --shelf-grain: rgba(255, 255, 255, 0.075);
+  /* 木纹颗粒：内联 SVG 噪声（140×140 无缝平铺），当背景叠层用 soft-light 混色，
+     只加质感、不改底色。**强度必须压得很低**：opaqueness 上到 .3 以上、
+     再叠细密的周期性横线，整块会读成拉丝金属而不是木头（实踩一版） */
+  --shelf-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
+  /* 架体背后的墙面暖光。浅色底上是一层暖调；暗色底上同一层暖光会变成一块发灰的
+     橄榄色雾、还能看见柔边的形状，所以在暗色主题里整条关掉（见下方 dark 块） */
+  --shelf-glow: rgba(255, 226, 170, 0.2);
+  --shelf-plate: rgb(219, 209, 184);
+  --shelf-plate-text: rgb(74, 68, 52);
+  --book-paper: rgb(231, 220, 196);
+  --book-paper-2: rgb(212, 198, 168);
+  --book-edge: rgba(56, 36, 20, 0.38);
+  --book-title: rgb(250, 246, 236);
+  --notebook-paper: rgb(250, 246, 235);
+  --notebook-paper-2: rgb(242, 236, 220);
+  --notebook-line: rgba(150, 120, 88, 0.17);
+  --notebook-shell: rgb(92, 64, 43);
+  --notebook-shell-2: rgb(66, 44, 29);
+  --notebook-scrim: rgba(26, 19, 13, 0.72);
+}
+
+[data-theme="dark"] {
+  --color-primary: rgb(120, 180, 105);
+  --color-primary-hover: rgb(140, 200, 125);
+  --color-heading: rgb(180, 220, 190);
+  --color-text: rgb(160, 200, 175);
+  --color-muted: rgb(130, 170, 155);
+  --color-accent: rgb(100, 170, 160);
+
+  --color-primary-rgb: 120, 180, 105;
+  --color-accent-rgb: 100, 170, 160;
+
+  /* 樱花花瓣：暗色底上亮粉刺眼，整体降明度，但因底色很暗需比亮色模式留更多不透明度 */
+  --color-sakura-light: rgb(238, 186, 203);
+  --color-sakura-deep: rgb(196, 116, 148);
+
+  --bg-page: rgb(25, 35, 30);
+  --bg-card: rgba(40, 55, 50, 0.6);
+  --bg-card-strong: rgba(50, 65, 60, 0.85);
+  --bg-glass-start: rgba(50, 65, 60, 0.7);
+  --bg-glass-mid: rgba(40, 55, 50, 0.5);
+  --bg-glass-end: rgba(35, 45, 42, 0.4);
+  --bg-personal-top: rgba(60, 100, 80, 0.85);
+  --border-light: rgba(255, 255, 255, 0.12);
+  --border-divider: rgba(120, 160, 140, 0.25);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --image-border: rgb(90, 140, 110);
+  --overlay-bg: rgba(25, 35, 30, 0.85);
+  --navbar-bg: rgba(40, 55, 50, 0.85);
+  --navbar-border: rgba(120, 160, 140, 0.25);
+
+  --wave-1-color: #142018;
+  --wave-2-color: #1f3025;
+  --wave-3-color: #2d4535;
+  --wave-4-color: rgb(25, 35, 30);
+
+  /* 暗色：架体走冷调深灰绿（暗棕在深绿页面上同样是孤岛），书仍是暖纸色——
+     冷架 + 暖书，两边互相衬托 */
+  --shelf-wood-1: rgb(84, 92, 80);
+  --shelf-wood-2: rgb(69, 77, 66);
+  --shelf-wood-3: rgb(33, 39, 32);
+  --shelf-grain: rgba(255, 255, 255, 0.07);
+  --shelf-glow: transparent;
+  --shelf-plate: rgb(124, 120, 100);
+  --shelf-plate-text: rgb(228, 222, 202);
+  --book-paper: rgb(94, 82, 62);
+  --book-paper-2: rgb(76, 66, 50);
+  --book-edge: rgba(0, 0, 0, 0.5);
+  --book-title: rgb(245, 236, 218);
+  --notebook-paper: rgb(58, 54, 44);
+  --notebook-paper-2: rgb(47, 44, 36);
+  --notebook-line: rgba(226, 206, 168, 0.13);
+  --notebook-shell: rgb(56, 41, 29);
+  --notebook-shell-2: rgb(38, 27, 19);
+  --notebook-scrim: rgba(8, 10, 8, 0.8);
+}
+
+/* 窄屏收紧页面内边距（原 main.css 末尾的 480px 覆盖） */
+@media (max-width: 480px) {
+  :root {
+    --page-padding: 16px;
+  }
+}

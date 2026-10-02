@@ -83,7 +83,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import { formatDateLong, formatRelativeTime, formatWeekday } from '@/utils/date'
 import { diaryBody, diaryPhotoTilt, diaryTitle } from '@/utils/diary'
 

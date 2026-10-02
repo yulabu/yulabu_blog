@@ -22,13 +22,13 @@
         placeholder="搜索文章..."
         @keyup.enter="onSearch"
       />
-      <button v-if="!isSearchOpen" class="search-btn" @click.stop="openSearch">
+      <button v-if="!isSearchOpen" class="search-btn icon-round" @click.stop="openSearch">
         <AppIcon icon="material-symbols:search" class="search-icon" />
       </button>
-      <button class="theme-btn" @click="uiStore.toggleTheme">
+      <button class="theme-btn icon-round" @click="uiStore.toggleTheme">
         <AppIcon :icon="themeIcon" class="theme-icon" />
       </button>
-      <button class="menu-btn" :class="{ active: isMenuOpen }" @click.stop="toggleMenu" aria-label="菜单">
+      <button class="menu-btn icon-round" :class="{ active: isMenuOpen }" @click.stop="toggleMenu" aria-label="菜单">
         <AppIcon icon="material-symbols:menu" class="menu-icon" />
       </button>
     </div>
@@ -47,7 +47,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { navigate } from 'astro:transitions/client'
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import { useUiStore } from '@/stores/ui'
 
 const props = defineProps({
@@ -316,70 +316,12 @@ const vClickOutside = {
   color: var(--color-muted);
 }
 
-.search-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(99, 149, 86, 0.15);
-  color: var(--color-primary);
-  cursor: pointer;
-  transition: background 0.2s ease;
-  padding: 0;
-}
-
-.search-btn:hover {
-  background: rgba(99, 149, 86, 0.3);
-}
-
 .search-icon {
   font-size: 16px;
 }
 
-.theme-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(99, 149, 86, 0.15);
-  color: var(--color-primary);
-  cursor: pointer;
-  transition: background 0.2s ease;
-  padding: 0;
-}
-
-.theme-btn:hover {
-  background: rgba(99, 149, 86, 0.3);
-}
-
 .theme-icon {
   font-size: 16px;
-}
-
-.menu-btn {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(99, 149, 86, 0.15);
-  color: var(--color-primary);
-  cursor: pointer;
-  transition: background 0.2s ease;
-  padding: 0;
-}
-
-.menu-btn:hover,
-.menu-btn.active {
-  background: rgba(99, 149, 86, 0.3);
 }
 
 .menu-icon {
@@ -405,6 +347,16 @@ const vClickOutside = {
 .mobile-menu .mobile-link.active {
   color: var(--color-primary);
   background: rgba(99, 149, 86, 0.08);
+}
+
+/* 圆形图标按钮的公共声明在 styles/components.css 的 .icon-round；
+   下面只留菜单按钮自己的差异 */
+.menu-btn {
+  display: none;
+}
+
+.menu-btn.active {
+  background: rgba(99, 149, 86, 0.3);
 }
 
 @media (max-width: 768px) {

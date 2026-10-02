@@ -21,8 +21,15 @@
         </button>
       </div>
     </div>
-    <ContentState v-if="loading" kind="loading" size="compact">
-      加载中...
+    <Skeleton v-if="loading" variant="row" :count="3" />
+    <ContentState
+      v-else-if="error"
+      kind="error"
+      size="compact"
+      retry-text="重新加载"
+      @retry="fetchPosts"
+    >
+      {{ error }}
     </ContentState>
     <ContentState
       v-else-if="!posts.length"
@@ -119,19 +126,15 @@
 </template>
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import { formatDate, formatTime } from '@/utils/date'
-import { getPosts } from '@/api/post'
-import { useMessageBox } from '@/composables/useMessageBox'
+import { getPosts, POSTS_PAGE_SIZE as PAGE_SIZE } from '@/api/post'
 import { markPostSplash } from '@/utils/postSplash'
 import { createSilentSync, listFingerprint } from '@/utils/liveData'
-import ContentState from '@/components/common/ContentState.vue'
-import GlassPanel from '@/components/common/GlassPanel.vue'
-import Pagination from '@/components/common/Pagination.vue'
-
-// 首页每页条数。必须与 index.astro 的 fetchPosts(1, 8) 保持一致，
-// 否则构建期烘焙的切片与这里对账的切片不同，指纹永不相等 → 每次访问都无谓重绘
-const PAGE_SIZE = 8
+import ContentState from '@/components/ui/ContentState.vue'
+import GlassPanel from '@/components/ui/GlassPanel.vue'
+import Pagination from '@/components/ui/Pagination.vue'
+import Skeleton from '@/components/ui/Skeleton.vue'
 
 // 小卡封面的原图/缩略图二选一：sizes 描述卡片自身的显示宽度（桌面左右分栏时封面固定
 // 182px 宽；手机满铺卡约 83–89vw，取 88vw 作单一近似），候选给「缩略图 400w + 原图」，
@@ -167,6 +170,8 @@ const baked = props.initialData || {}
 const posts = ref(baked.posts || [])
 const total = ref(baked.total ?? 0)
 const loading = ref(!posts.value.length)
+// 客户端取数失败：就地渲染失败态（可重试），不再只用一句 toast 打发
+const error = ref('')
 // 分页状态。初值全部取自烘焙数据（index.astro 注入的第 1 页），
 // SSR 与客户端首帧一致 → 无水合差异，分页控件也能直接印进预渲染 HTML
 const page = ref(1)
@@ -176,7 +181,6 @@ const panelEl = ref(null)
 // 请求令牌：挂载首取（无筛选）、翻页、搜索词/分类变化的重取彼此存在竞态，
 // 只采纳最后一次请求的结果，防止过期响应覆盖过滤结果
 let fetchToken = 0
-const { toast } = useMessageBox()
 
 // 大图卡只出现在第 1 页：它身上写着「最近更新 / FEATURED NOTE」，
 // 而第 2 页起的第一篇并不是最新文章，照旧渲染这两个标签就是假信息
@@ -229,6 +233,7 @@ async function fetchPosts() {
   // 仅在没有任何内容可展示时才进入加载态：翻页/切换标签/搜索时保留旧列表，
   // 避免整块闪成「加载中」再闪回来
   if (!posts.value.length) loading.value = true
+  error.value = ''
   try {
     const data = await getPosts(target, PAGE_SIZE, props.categoryId, props.searchQuery || undefined)
     if (token !== fetchToken) return
@@ -243,7 +248,7 @@ async function fetchPosts() {
     totalPages.value = lastPage
   } catch (e) {
     if (token !== fetchToken) return
-    toast('获取文章列表失败', 'error')
+    error.value = '文章列表加载失败，请稍后重试'
   } finally {
     if (token === fetchToken) {
       loading.value = false

@@ -1,7 +1,7 @@
 {
   "extends": "astro/tsconfigs/base",
   "include": [".astro/types.d.ts", "env.d.ts", "src/**/*"],
-  "exclude": ["dist", "node_modules", "src/_archive"],
+  "exclude": ["dist", "node_modules"],
   "compilerOptions": {
     "resolveJsonModule": true,
     "paths": {

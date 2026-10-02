@@ -1,12 +1,13 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import PageFrame from '@/components/astro/PageFrame.astro'
-import DiaryView from '@/views/DiaryView.vue'
-import { fetchDiaries } from '@/utils/serverData'
+import DiaryView from '@/islands/DiaryView.vue'
+import { getPublicDiaries } from '@/api/diary'
+import { apiSoft } from '@/api/client'
 
-// 构建期取数第 1 页（pageSize 默认值与 api/diary.ts 保持一致）：
+// 构建期取数第 1 页（pageSize 取自 api/diary 的 DIARY_PAGE_SIZE，与 DiaryView 翻页同源）：
 // 预渲染产物 HTML 里直接带日记（后端不可达时传空对象，岛内退化为客户端取数）
-const diaries = await fetchDiaries(1)
+const diaries = await apiSoft(getPublicDiaries(1))
 ---
 
 <Layout title="日记">

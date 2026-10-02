@@ -1,9 +1,6 @@
 <template>
   <GlassPanel class="comments-card">
-    <div class="comments-header">
-      <span class="line"></span>
-      <h4>评论</h4>
-    </div>
+    <SectionHeader>评论</SectionHeader>
     <div ref="hostEl" class="giscus-host"></div>
     <ContentState v-if="stage !== 'ready'" size="compact" icon="mdi:message-text">
       <template v-if="stage === 'failed'">
@@ -20,8 +17,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import GlassPanel from '@/components/common/GlassPanel.vue'
-import ContentState from '@/components/common/ContentState.vue'
+import GlassPanel from '@/components/ui/GlassPanel.vue'
+import ContentState from '@/components/ui/ContentState.vue'
+import SectionHeader from '@/components/ui/SectionHeader.vue'
 
 // giscus 公开标识（非密钥，可入库），取自 https://giscus.app 配置器。
 // 评论落在独立仓库 yulabu/Blog_Content，与源码仓库解耦：
@@ -178,30 +176,6 @@ onUnmounted(() => {
   border-radius: 16px;
   /* 给 iframe 撑出空间，避免加载完成时的布局跳动 */
   min-height: 260px;
-}
-
-.comments-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--border-divider);
-  margin-bottom: 12px;
-}
-
-.comments-header .line {
-  width: 4px;
-  height: 18px;
-  background: var(--color-primary);
-  border-radius: 2px;
-}
-
-.comments-header h4 {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-weight: 600;
-  color: var(--color-primary);
-  font-size: 16px;
-  margin: 0;
 }
 
 .comments-fallback {

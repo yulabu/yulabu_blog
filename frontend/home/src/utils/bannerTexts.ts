@@ -12,7 +12,7 @@
  * 超长会在中等宽度下换行并溢出去压到下边的内容。
  *
  * 新增页面：这里加一个 key，调用处传 variant="<key>"（见 components/astro/PageFrame.astro
- * 与 components/common/SitePageFrame.vue）。忘了传就落到 home 那组。
+ * 与 components/astro/PageFrame.astro）。忘了传就落到 home 那组。
  */
 export type BannerVariant =
   | 'home'

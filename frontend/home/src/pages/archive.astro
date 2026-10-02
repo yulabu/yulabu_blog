@@ -1,12 +1,13 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import PageFrame from '@/components/astro/PageFrame.astro'
-import ArchiveView from '@/views/ArchiveView.vue'
-import { fetchArchive } from '@/utils/serverData'
+import ArchiveView from '@/islands/ArchiveView.vue'
+import { getArchive } from '@/api/post'
+import { apiSoft } from '@/api/client'
 
 // 构建期取数：预渲染产物 HTML 里直接带完整归档（后端不可达时传空数组，
 // 岛内退化为客户端取数）
-const archive = await fetchArchive()
+const archive = await apiSoft(getArchive())
 ---
 
 <Layout title="文章归档">

@@ -4,12 +4,12 @@
 export const prerender = false
 
 import Layout from '@/layouts/Layout.astro'
-import PostDetailView from '@/views/PostDetailView.vue'
-// 服务端取数与失败降级策略（404 才走 404 页 / 其余重试一次再抛错）的唯一实现
-import { fetchDetail } from '@/utils/ssrFetch'
+import PageFrame from '@/components/astro/PageFrame.astro'
+import PostDetailView from '@/islands/PostDetailView.vue'
+import { tryGetPost, getPrevPost, getNextPost } from '@/api/post'
+import { getPublicSettings } from '@/api/setting'
+import { apiSoft } from '@/api/client'
 
-// SSR 服务端取数走本机后端（生产由 pm2 注入 API_BASE_URL）
-const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:3000/api'
 const { id } = Astro.params
 
 let post = null
@@ -20,20 +20,20 @@ let commentsEnabled = true
 // 详情请求的最终状态：404 → 走 404 页；其它（429/5xx/网络错）→ 抛错让 Astro 返回 5xx
 let detailStatus = 404
 
-// 取数失败分两类处理（2026-10 止血，实现见 utils/ssrFetch 的 fetchDetail）：只在拿到 404 时走
-// 404 页；其余情况（429/5xx/网络错）重试一次，仍失败就抛错（明确 5xx，可重试语义）——改前一律
+// 取数失败分两类处理（2026-10 止血；策略的唯一实现在 api/client.ts 的 apiTryDetail）：只在拿到 404 时
+// 走 404 页；其余情况（429/5xx/网络错）重试一次，仍失败就抛错（明确 5xx，可重试语义）——改前一律
 // rewrite('/404')：一旦后端限流（SSR 回源曾与访客共用 60/min 的桶）或短暂故障，真实文章会对外
 // 谎称「不存在」，对读者与搜索引擎都是错的
 if (/^\d+$/.test(id ?? '')) {
-  const attempt = await fetchDetail(`/posts/${id}`)
+  const attempt = await tryGetPost(Number(id))
   detailStatus = attempt.ok ? 200 : attempt.status
 
   if (attempt.ok) {
     post = attempt.data
     const [prev, next, settings] = await Promise.all([
-      fetch(`${API_BASE}/posts/${id}/prev`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`${API_BASE}/posts/${id}/next`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`${API_BASE}/settings`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      apiSoft(getPrevPost(post.id)),
+      apiSoft(getNextPost(post.id)),
+      apiSoft(getPublicSettings()),
     ])
     prevPost = prev?.post ?? null
     nextPost = next?.post ?? null
@@ -53,14 +53,14 @@ const ogImage = post.cover || '/og-image.jpg'
 ---
 
 <Layout title={post.title} description={description} ogImage={ogImage}>
-  <PostDetailView
-    client:load
-    postId={post.id}
-    initialPost={post}
-    initialPrev={prevPost}
-    initialNext={nextPost}
-    commentsEnabled={commentsEnabled}
-  />
-
+  <PageFrame variant="post-detail" withRail={false}>
+    <PostDetailView
+      client:load
+      postId={post.id}
+      initialPost={post}
+      initialPrev={prevPost ?? {}}
+      initialNext={nextPost ?? {}}
+      commentsEnabled={commentsEnabled}
+    />
+  </PageFrame>
 </Layout>
-

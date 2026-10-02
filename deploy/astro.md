@@ -209,3 +209,22 @@ pm2 save
 
 排查启动问题：`pm2 logs blog-server --out` 看是否有 `[err] [server] 启动失败` 或 `[err] [server] 端口 … 监听失败`；重启窗口内 nginx 会 502、前台文章页（SSR）短暂返回 404——这是「宁可连接被拒，也不假装活着」的预期代价。
 
+## 九、前台改动的视觉回归对照（2026-10 起）
+
+重构/改版前台时，「视觉没变」不能靠肉眼。可复用的做法（本次分层重构就是这样逐页验的）：
+
+1. **留一份改造前的产物**：在动手前 `git stash push -- frontend/home` → `npm run build` →
+   `cp -R dist .baseline-dist` → `git stash pop`。（直接改目录名 `dist` 会被 .gitignore 忽略，
+   但 `.baseline-dist` 不会，收尾时记得删。）
+2. **起两个预览 + 一个代理**：`node .baseline-dist/server/entry.mjs`（PORT=4321）与
+   `node dist/server/entry.mjs`（PORT=4322）各起一份；预览服不带 `/api` 反代，用一个 20 行的
+   本地代理把 `/api`、`/uploads` 转到 `:3000`（否则岛内取数失败，两侧都会退化，对照失去意义）。
+   `.baseline-dist` 的 SSR 依赖外置包，必须放在 frontend/home 目录内才能解析到 node_modules。
+3. **采集「计算样式签名」而不是截图**：用浏览器工具对每页每个元素（`body *`）取
+   `getComputedStyle` 的 70 余项属性 + `getBoundingClientRect`，写成 JSON 落盘，再逐元素对账。
+   比截图更精确（能定位到具体属性）且不受渲染时机影响。三个必须归一化的噪声源：
+   - 打字机刊头（`.banner` 内文本长度随时间变化）→ 跳过几何、只比其余样式；
+   - 动画（`.wave`）→ 跳过盒模型；
+   - 第三方注入（giscus iframe、按需加载的动画光标、外链头像是否加载成功）→ 比对前隐去/剔除。
+4. **结构按标签序对齐**：类名重构（`category-tag` → `ui-chip`）不该算视觉变化，
+   所以结构比对只看 `tagName` 序列，视觉差异交给第 3 步的逐项比对。

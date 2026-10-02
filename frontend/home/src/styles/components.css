@@ -1,0 +1,80 @@
+/* 共享的组件级样式类（@layer components）。
+ *
+ * 放这里的标准：**跨页面逐字重复**、且不适合做成组件（没有行为、只是几行布局/排版）。
+ * 层级上排在 utilities 之前，所以工具类可以覆盖它；组件自己的 <style scoped> 是
+ * 无 layer 的，会压过它 —— 因此接入某个类时要同时删掉组件里的那份声明。
+ */
+@layer components {
+  /* 卡片网格：专栏列表与友链改前各写一份逐字相同的规则 */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  /* 单列内容页容器：宽度上限 + 统一页面内边距（专栏列表 / 友链 / 专栏详情共用） */
+  .page-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px var(--page-padding) 60px;
+  }
+
+  .page-container--wide {
+    max-width: 1200px;
+  }
+
+  .page-container--narrow {
+    max-width: 900px;
+  }
+
+  /* 28px 圆形图标按钮：导航栏的主题 / 菜单 / 搜索三个按钮改前是同一份声明抄三遍
+     （含 hover 的 0.3 底色）。各处只保留自己的差异：menu-btn 的 display:none 与 .active、
+     播放器皮肤那套配色不同，仍在各自组件里 */
+  .icon-round {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(99, 149, 86, 0.15);
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .icon-round:hover {
+    background: rgba(99, 149, 86, 0.3);
+  }
+
+  /* 卡片正文排版（标题 + 两行截断摘要）：专栏卡 / 友链卡 / 归档行 / 专栏目录行共用。
+     字体族刻意不在这里声明 —— 各页容器的字体族本来就不一样（卡片卡是雅黑栈、
+     专栏目录行继承 sans-serif），统一声明会改变已渲染的字形 */
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .card-title {
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-heading);
+    margin: 0;
+  }
+
+  .card-text {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text);
+    line-height: 1.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}

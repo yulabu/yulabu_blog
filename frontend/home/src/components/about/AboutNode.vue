@@ -52,8 +52,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import AppIcon from '@/components/common/AppIcon.vue'
-import GlassPanel from '@/components/common/GlassPanel.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import GlassPanel from '@/components/ui/GlassPanel.vue'
 
 interface Props {
   title: string

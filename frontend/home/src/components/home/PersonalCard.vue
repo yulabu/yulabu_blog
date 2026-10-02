@@ -53,9 +53,9 @@
 </template>
 
 <script setup>
-import AppIcon from '@/components/common/AppIcon.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import personalImgMeta from '@/assets/img/Personal_img.webp'
-import GlassPanel from '@/components/common/GlassPanel.vue'
+import GlassPanel from '@/components/ui/GlassPanel.vue'
 
 // Astro 下图片导入是 ImageMetadata 对象，用作 URL 必须取 .src
 const personalImg = personalImgMeta.src
