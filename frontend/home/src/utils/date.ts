@@ -58,6 +58,13 @@ export function formatDateLong(date: string): string {
   return `${s.getUTCFullYear()}年${s.getUTCMonth() + 1}月${s.getUTCDate()}日`
 }
 
+/** 9月25日 —— 书脊底部竖排日期与封面日期（北京月/日，不补零无年份） */
+export function formatDateMD(date: string): string {
+  const s = beijingParts(date)
+  if (!s) return '-'
+  return `${s.getUTCMonth() + 1}月${s.getUTCDate()}日`
+}
+
 /** 周三 */
 export function formatWeekday(date: string): string {
   const s = beijingParts(date)

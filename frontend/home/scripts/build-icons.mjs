@@ -29,6 +29,8 @@ const ICONS = {
   mdi: [
     // AboutNode / AboutView
     'close', 'github', 'email', 'account-heart', 'school', 'notebook', 'message-text',
+    // DiaryBook 书脊落款（桌面日记视觉）
+    'sprout',
   ],
 }
 

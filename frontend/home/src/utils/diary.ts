@@ -1,4 +1,5 @@
 import type { Diary } from '@/api/diary'
+import { beijingShifted } from '@/utils/date'
 
 // 日记的展示派生。后端 diary 表只有 content / images / created_at 三个业务字段，
 // 标题是正文首行（沿用旧日记页的约定），没有 title / summary 列。
@@ -37,10 +38,13 @@ function diarySeed(id: number, salt = 0): number {
   return Math.abs(h % 10000) / 10000
 }
 
-/** 无封面图时的书脊纸色档位（配色定义在 DiaryBook.vue 的 tone 类里，随主题走） */
-const TONE_COUNT = 4
-export function diaryTone(id: number): number {
-  return Math.min(TONE_COUNT - 1, Math.floor(diarySeed(id) * TONE_COUNT))
+/** 书脊布面的季节档位（0 春 / 1 夏 / 2 秋 / 3 冬），按日记的北京月份划分。
+ *  布面色是令牌 --book-cloth-1..4（随主题换值）；返回值直接当下标用 */
+export function diaryQuarter(date: string): number {
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return 0
+  const month = beijingShifted(d).getUTCMonth() + 1
+  return Math.min(3, Math.floor((month - 1) / 3))
 }
 
 /** 日记本里那张「贴上去的照片」的倾斜角（-1.6° ~ 1.6°），纯装饰 */
@@ -51,10 +55,4 @@ export function diaryPhotoTilt(id: number): number {
 /** 每本书的高度系数（0.87 ~ 1）：真实书架上不会本本一样高，纯视觉，确定性 */
 export function diaryHeightScale(id: number): number {
   return 0.87 + diarySeed(id, 5) * 0.13
-}
-
-/** 书脊上放不下时的确定性截断（竖排书名） */
-export function truncateText(text: string, max: number): string {
-  const t = (text || '').trim()
-  return t.length > max ? t.slice(0, max) + '…' : t
 }

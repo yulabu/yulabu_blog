@@ -31,6 +31,11 @@
 
   /* 字体：文楷用于标题/正文（自托管，Layout 非阻塞加载），正文 UI 用系统中文栈 */
   --font-kai: 'LXGW WenKai', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-ui: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+
+  /* 动效：全站事实标准缓动（PersonalCard/PostList/DiaryBook 等多位移动画共用的
+     同一条贝塞尔）→ 生成 ease-standard 工具类 */
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   /* ---- 色板（亮色）---- */
   --color-primary: rgb(99, 149, 86);
@@ -68,6 +73,19 @@
   --color-image-line: var(--image-border);
   /* 玻璃卡片的通用投影（首页/归档/专栏/友链的同一种阴影） */
   --shadow-soft: 0 8px 32px var(--shadow-color);
+
+  /* 桌面日记：层板（小面积暖木，暗色同步加深） */
+  --color-shelf-ledge: var(--shelf-ledge);
+  /* 布面书脊的四季布面（原始名 --book-cloth-N 在 :root，暗色只换值） */
+  --color-book-cloth-1: var(--book-cloth-1);
+  --color-book-cloth-2: var(--book-cloth-2);
+  --color-book-cloth-3: var(--book-cloth-3);
+  --color-book-cloth-4: var(--book-cloth-4);
+  /* 封面（唯一旋转主体）：奶油纸面 / 页缘描边 / 油墨——三者在亮暗主题各自成对换值 */
+  --color-book-pages-edge: var(--book-pages-edge);
+  --color-book-ink: var(--book-ink);
+  /* 近白纸色：DiaryView 空架提示与 DiaryNotebook 内文字（随主题换值） */
+  --color-book-title: var(--book-title);
 }
 
 :root {
@@ -97,25 +115,16 @@
   --wave-3-color: #76c06a;
   --wave-4-color: #caf2cb;
 
-  /* 日记书架。材质是"石灰木/刷白木"：刻意走灰绿低饱和，而不是胡桃木那种暖棕——
-     暖棕在薄荷绿页面 + 白玻璃卡片旁边是一块孤岛色，读起来又重又跳（实测对比后改）。
-     木纹只用重复渐变，不引入任何图片资源 */
-  --shelf-wood-1: rgb(170, 176, 159);
-  --shelf-wood-2: rgb(150, 157, 139);
-  --shelf-wood-3: rgb(103, 111, 95);
-  --shelf-grain: rgba(255, 255, 255, 0.075);
-  /* 木纹颗粒：内联 SVG 噪声（140×140 无缝平铺），当背景叠层用 soft-light 混色，
-     只加质感、不改底色。**强度必须压得很低**：opaqueness 上到 .3 以上、
-     再叠细密的周期性横线，整块会读成拉丝金属而不是木头（实踩一版） */
-  --shelf-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
-  /* 架体背后的墙面暖光。浅色底上是一层暖调；暗色底上同一层暖光会变成一块发灰的
-     橄榄色雾、还能看见柔边的形状，所以在暗色主题里整条关掉（见下方 dark 块） */
-  --shelf-glow: rgba(255, 226, 170, 0.2);
-  --shelf-plate: rgb(219, 209, 184);
-  --shelf-plate-text: rgb(74, 68, 52);
-  --book-paper: rgb(231, 220, 196);
-  --book-paper-2: rgb(212, 198, 168);
-  --book-edge: rgba(56, 36, 20, 0.38);
+  /* 桌面日记（「桌面上的私人日记」视觉，无箱体）：一条薄木层板 + 布面书脊 +
+     可旋开的封面。布面按日记的北京月份分四季，走参考图的低饱和粉彩——
+     与站点的浅绿/奶油/植物感同属一个世界，不做深色实木家具 */
+  --shelf-ledge: rgb(211, 192, 158);
+  --book-cloth-1: rgb(165, 185, 148); /* 春 · 鼠尾草绿 */
+  --book-cloth-2: rgb(219, 172, 184); /* 夏 · 低饱和粉 */
+  --book-cloth-3: rgb(226, 199, 163); /* 秋 · 奶油杏 */
+  --book-cloth-4: rgb(172, 174, 199); /* 冬 · 雾蓝紫 */
+  --book-pages-edge: rgba(74, 58, 38, 0.22); /* 纸缘/书页描边 */
+  --book-ink: rgb(55, 61, 53);            /* 纸面油墨 */
   --book-title: rgb(250, 246, 236);
   --notebook-paper: rgb(250, 246, 235);
   --notebook-paper-2: rgb(242, 236, 220);
@@ -160,25 +169,18 @@
   --wave-3-color: #2d4535;
   --wave-4-color: rgb(25, 35, 30);
 
-  /* 暗色：架体走冷调深灰绿（暗棕在深绿页面上同样是孤岛），书仍是暖纸色——
-     冷架 + 暖书，两边互相衬托 */
-  --shelf-wood-1: rgb(84, 92, 80);
-  --shelf-wood-2: rgb(69, 77, 66);
-  --shelf-wood-3: rgb(33, 39, 32);
-  --shelf-grain: rgba(255, 255, 255, 0.07);
-  --shelf-glow: transparent;
-  --shelf-plate: rgb(124, 120, 100);
-  --shelf-plate-text: rgb(228, 222, 202);
-  --book-paper: rgb(94, 82, 62);
-  --book-paper-2: rgb(76, 66, 50);
-  --book-edge: rgba(0, 0, 0, 0.5);
+  /* 暗色桌面日记：布面走「深而不灰」——保持色相、适度加深并稍提饱和度，
+     避免粉彩简单降亮度后发灰；封面纸换暖深纸 + 浅油墨，保证文字对比 */
+  --shelf-ledge: rgb(78, 67, 52);
+  --book-cloth-1: rgb(106, 128, 92);
+  --book-cloth-2: rgb(158, 110, 124);
+  --book-cloth-3: rgb(164, 132, 97);
+  --book-cloth-4: rgb(118, 120, 150);
+  --book-pages-edge: rgba(0, 0, 0, 0.45);
+  --book-ink: rgb(240, 234, 216);
   --book-title: rgb(245, 236, 218);
-  --notebook-paper: rgb(58, 54, 44);
-  --notebook-paper-2: rgb(47, 44, 36);
-  --notebook-line: rgba(226, 206, 168, 0.13);
-  --notebook-shell: rgb(56, 41, 29);
-  --notebook-shell-2: rgb(38, 27, 19);
-  --notebook-scrim: rgba(8, 10, 8, 0.8);
+  /* --notebook-* 刻意不在暗色覆盖：日记本（点击后的阅读页）配色恒定白天，
+     令牌回落到 :root 的日间值——单一出处，组件里零硬编码 */
 }
 
 /* 窄屏收紧页面内边距（原 main.css 末尾的 480px 覆盖） */
