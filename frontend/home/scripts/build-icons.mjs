@@ -27,6 +27,10 @@ const ICONS = {
     'visibility-outline',
     // FriendsView（好友卡片 + 添加友链信息卡）
     'group-outline', 'lightbulb-outline', 'content-copy',
+    // SharePanel（文章分享：meta-row 按钮 + 复制链接/保存海报）
+    'ios-share', 'download', 'link',
+    // PostDetailView 文末分享条
+    'share',
   ],
   mdi: [
     // AboutNode / AboutView

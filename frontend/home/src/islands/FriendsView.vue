@@ -134,6 +134,7 @@ import ContentState from '@/components/ui/ContentState.vue'
 import GlassPanel from '@/components/ui/GlassPanel.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import { getFriendLinks } from '@/api/friend'
+import { copyText } from '@/composables/useClipboard'
 import { createSilentSync } from '@/utils/liveData'
 import { useToast } from '@/stores/toast'
 import personalImgMeta from '@/assets/img/Personal_img.webp'
@@ -166,12 +167,9 @@ const SITE_FIELDS = [
 ]
 
 async function copyField(field) {
-  try {
-    await navigator.clipboard.writeText(field.value)
-    toast(`${field.label}已复制`)
-  } catch {
-    toast('复制失败，请手动输入', 'error')
-  }
+  const ok = await copyText(field.value)
+  if (ok) toast(`${field.label}已复制`)
+  else toast('复制失败，请手动输入', 'error')
 }
 
 // 有烘焙数据就直接渲染 → 预渲染 HTML 里就有内容，首屏不闪「加载中」

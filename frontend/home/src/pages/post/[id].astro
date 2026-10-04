@@ -50,6 +50,10 @@ if (!post) {
 
 const description = post.summary || '纳西妲世界第一可爱'
 const ogImage = post.cover || '/og-image.jpg'
+// 站点对外规范源（canonical origin）：与 Layout.astro 的 canonical/og:url 同一个来源
+// （同一个 Astro.site，写法镜像 Layout 的兜底）。分享链接与海报二维码恒用它拼出
+// blog.yulabu.cn，不随访客所在域变化（hairpin 只影响服务器本机，不影响访客）
+const siteOrigin = (Astro.site ?? new URL('https://blog.yulabu.cn')).origin
 ---
 
 <Layout title={post.title} description={description} ogImage={ogImage}>
@@ -61,6 +65,7 @@ const ogImage = post.cover || '/og-image.jpg'
       initialPrev={prevPost ?? {}}
       initialNext={nextPost ?? {}}
       commentsEnabled={commentsEnabled}
+      siteOrigin={siteOrigin}
     />
   </PageFrame>
 </Layout>

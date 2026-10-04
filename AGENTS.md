@@ -106,6 +106,7 @@ certbot renew --dry-run
 - 对外分享 / 友链自抓取统一用 blog.yulabu.cn：服务器本机 yulabu.cn 解析失败（hairpin/DNS 问题），blog 子域终端验证可通
 - 站点级 og:url / og:image / og:avatar 在 frontend/home/src/layouts/Layout.astro（site 配置在 astro.config.mjs），必须指向可抓的有效域名（blog 子域）；og:avatar 是社区约定扩展（2026-10-04 加），内容为 `/avatar.webp`（public/ 下与个人卡片同图的稳定地址，勿引用 /_astro 哈希产物），只是对外暴露的头像声明——我们的抓图逻辑不读它
 - 改 OG 标签后必须重 npm run build（home）；文章/专栏详情页 og 标签由 SSR 实时生成（post/[id].astro、columns/[id].astro），发新文章无需构建
+- 文章分享（复制链接 / 分享海报二维码）统一走 canonical origin `blog.yulabu.cn`：`post/[id].astro` 把 `Astro.site` 的 origin 作为**必填 prop（siteOrigin，不设默认值）**传入 PostDetailView → SharePanel，弹层里 `shareUrl` 是链接文本与海报二维码的唯一共同来源。海报是纯前端 Canvas 产物（`composables/useSharePoster.ts`，5:6 白底圆角卡 900×1080 逻辑尺寸 @2x 导出 PNG：封面满铺到顶 + 左下日期角标 + 标题/竖条摘要 + 头像署名 + 右侧码，固定配色不随访客主题变）：qrcode 包**只准用 `create()` 取模块矩阵自绘圆点码**（禁用其 toCanvas/toDataURL 等默认渲染器，三个定位角画圆角方块环保扫码率）；封面跨域按 `crossOrigin='anonymous'` 尝试，加载失败/超时（4s）降级「浅绿底+首字」，`toDataURL` 抛画布污染错误时自动换兜底封面重绘导出（双保险）。SharePanel 弹层只留海报预览 +「复制链接/保存海报」双按钮，自带 body 滚动锁——释放只有 `restoreBodyOverflow()` 这一个幂等实现（遮罩/ESC/关闭按钮/离场动画结束全走它），`onBeforeUnmount` 兜底调用；整弹层经 `defineAsyncComponent` 懒加载，文章页首屏 JS 零增重。复制文本统一走 `composables/useClipboard.ts` 的 `copyText`（FriendsView 同用）
 
 ### 4. 图片系统（2026-09 重构：引用归业务表，image 只存元数据）
 - image 表仅存 storage_path / thumb_path / file_size / orphan_since，**无引用语义**；引用由业务表持 image_id：

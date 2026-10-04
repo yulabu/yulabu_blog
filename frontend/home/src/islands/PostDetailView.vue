@@ -14,6 +14,9 @@
             <AppIcon icon="material-symbols:visibility-outline" class="view-icon" />
             {{ formatViewCount(post.viewCount) }} 次阅读
           </span>
+          <button type="button" class="share-btn" aria-label="分享文章" @click="shareVisible = true">
+            <AppIcon icon="material-symbols:ios-share" />
+          </button>
         </div>
       </GlassPanel>
       <nav v-if="prevPost || nextPost" class="chapter-nav">
@@ -60,7 +63,31 @@
           @onGetCatalog="handleCatalog"
         />
       </GlassPanel>
+      <!-- 文末分享条：与 meta-row 小按钮共用同一弹层，显眼入口放在文章读完的位置 -->
+      <aside class="share-banner">
+        <span class="share-banner__icon">
+          <AppIcon icon="material-symbols:share" />
+        </span>
+        <div class="share-banner__text">
+          <p class="share-banner__title">分享</p>
+          <p class="share-banner__desc">如果这篇文章对你有帮助，欢迎分享给更多人！</p>
+        </div>
+        <button type="button" class="share-banner__btn" @click="shareVisible = true">分享</button>
+      </aside>
       <GiscusComments v-if="commentsEnabled" />
+      <!-- 分享弹层懒加载（defineAsyncComponent）：组件与海报绘制代码、qrcode 包都只在
+           点击后下载，文章页首屏 JS 零增重 -->
+      <SharePanel
+        v-if="shareVisible"
+        :post-id="postId"
+        :post-title="post.title"
+        :summary="post.summary || ''"
+        :cover="post.cover || ''"
+        :author="post.author"
+        :created-at="post.createdAt"
+        :site-origin="siteOrigin"
+        @close="shareVisible = false"
+      />
     </main>
     <aside class="toc-sidebar">
       <GlassPanel class="toc-card">
@@ -82,7 +109,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 // 必须先于 md-editor-v3 求值：config() 要在这里注入本地 highlight.js 与本地
 // 主题 css（根除 unpkg.com 运行时外链）。放在本组件而非 _app.ts，是为了不让
@@ -100,6 +127,9 @@ import CategoryChip from '@/components/ui/CategoryChip.vue'
 import GlassPanel from '@/components/ui/GlassPanel.vue'
 import SectionHeader from '@/components/ui/SectionHeader.vue'
 import GiscusComments from '@/components/post/GiscusComments.vue'
+
+// 点分享才加载的弹层（模板里 v-if 守着，点击前不拉 chunk）
+const SharePanel = defineAsyncComponent(() => import('@/components/post/SharePanel.vue'))
 
 // SSR 页（post/[id].astro）服务端取好文章与上下篇，经 props 注入首屏；
 // MPA 整页跳转下不需要 watch 路由，prop 缺席时才退回客户端拉取
@@ -124,11 +154,17 @@ const props = defineProps({
   commentsEnabled: {
     type: Boolean,
     default: true
+  },
+  // 站点对外规范源（canonical origin，与 og:url 同源）：post/[id].astro 必传，不设默认值
+  siteOrigin: {
+    type: String,
+    required: true
   }
 })
 
 const { toast } = useToast()
 const uiStore = useUiStore()
+const shareVisible = ref(false)
 
 const post = ref(props.initialPost || {
   title: '',
@@ -261,9 +297,110 @@ onUnmounted(() => {
 .meta-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+  row-gap: 6px;
   font-size: 13px;
   color: var(--color-text);
+}
+
+/* 分享按钮推到 meta-row 右端（FriendsView 信息卡复制按钮同款形态） */
+.share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: rgba(var(--color-primary-rgb), 0.14);
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 17px;
+  transition: background 0.2s ease;
+}
+
+.share-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.28);
+}
+
+/* 文末分享条（与 FriendsView 信息卡同一套浅绿底习惯用法） */
+.share-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.share-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(var(--color-primary-rgb), 0.14);
+  color: var(--color-primary);
+  font-size: 26px;
+}
+
+.share-banner__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-banner__title {
+  margin: 0;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.share-banner__desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.share-banner__btn {
+  flex-shrink: 0;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(var(--color-primary-rgb), 0.16);
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.share-banner__btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.28);
+}
+
+@media (max-width: 480px) {
+  .share-banner {
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .share-banner__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 22px;
+  }
+
+  .share-banner__btn {
+    padding: 10px 20px;
+  }
 }
 
 .meta-separator {
