@@ -25,6 +25,10 @@ interface Props {
 const SITE_NAME = '鱼辣不的博客'
 const SITE_DESCRIPTION = '纳西妲世界第一可爱'
 const SITE_IMAGE = '/og-image.jpg'
+// 站点头像（与首页个人卡片同图，public/ 下的稳定地址）：
+// og:image 是封面横图不适合当头像。og:avatar 是社区约定扩展，只是对外声明
+// 站点头像（我们的抓图逻辑不读它，抓图头像仍走 favicon）
+const SITE_AVATAR = '/avatar.webp'
 
 // 字体样式表：桌面与移动**统一加载**，不按视口区分。
 // 唯一砍掉的是真正用不上的部分：只引 regular + bold 两档 —— Mono 三档与 Light 一档
@@ -41,6 +45,7 @@ const site = Astro.site ?? new URL('https://blog.yulabu.cn')
 const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME
 const canonical = new URL(Astro.url.pathname, site)
 const ogImageURL = new URL(ogImage, site)
+const ogAvatarURL = new URL(SITE_AVATAR, site)
 ---
 
 <!doctype html>
@@ -60,6 +65,7 @@ const ogImageURL = new URL(ogImage, site)
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImageURL} />
+    <meta property="og:avatar" content={ogAvatarURL} />
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:locale" content="zh_CN" />
     <meta name="twitter:card" content="summary_large_image" />

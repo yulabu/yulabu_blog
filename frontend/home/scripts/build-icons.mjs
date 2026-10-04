@@ -25,6 +25,8 @@ const ICONS = {
     'play-arrow-rounded', 'volume-up-outline-rounded',
     // ArchiveView / PostDetailView
     'visibility-outline',
+    // FriendsView（好友卡片 + 添加友链信息卡）
+    'group-outline', 'lightbulb-outline', 'content-copy',
   ],
   mdi: [
     // AboutNode / AboutView

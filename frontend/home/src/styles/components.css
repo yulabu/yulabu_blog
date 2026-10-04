@@ -5,14 +5,17 @@
  * 无 layer 的，会压过它 —— 因此接入某个类时要同时删掉组件里的那份声明。
  */
 @layer components {
-  /* 卡片网格：专栏列表与友链改前各写一份逐字相同的规则 */
+  /* 卡片网格：专栏列表与友链改前各写一份逐字相同的规则。
+     友链页在 FriendsView 的 scoped 里把列下限收到 260px（面板内容宽 884px，
+     280px 只能两列、260px 在 1440 宽下正好三列），其余取值以这里为准 */
   .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
   }
 
-  /* 单列内容页容器：宽度上限 + 统一页面内边距（专栏列表 / 友链 / 专栏详情共用） */
+  /* 单列内容页容器：宽度上限 + 统一页面内边距（专栏列表 / 专栏详情共用；
+     友链 2026-10-04 起改走 PageFrame 双列骨架，不再用这里） */
   .page-container {
     width: 100%;
     margin: 0 auto;

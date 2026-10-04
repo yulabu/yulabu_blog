@@ -5,13 +5,16 @@ import FriendsView from '@/islands/FriendsView.vue'
 import { getFriendLinks } from '@/api/friend'
 import { apiSoft } from '@/api/client'
 
-// 构建期取数：预渲染产物 HTML 里直接带友链卡片（后端不可达时传空数组，
+// 构建期取数：预渲染产物 HTML 里直接带好友列表（后端不可达时传空数组，
 // 岛内会退化为客户端取数）
 const links = await apiSoft(getFriendLinks())
 ---
 
 <Layout title="友链">
-  <PageFrame variant="friends" withRail={false}>
+  <!-- 与首页/归档/日记同一套骨架：左栏的常驻个人卡片在这几页之间是同一个 DOM 节点
+       （同一个 persist key personal-card），切换时整块搬运、位置不变。
+       rail 槽留空——友链页左栏只放卡片。 -->
+  <PageFrame variant="friends">
     <FriendsView client:load initialLinks={links ?? []} />
   </PageFrame>
 </Layout>

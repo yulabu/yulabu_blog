@@ -104,7 +104,7 @@ certbot renew --dry-run
 
 ### 3. 域名与对外链接
 - 对外分享 / 友链自抓取统一用 blog.yulabu.cn：服务器本机 yulabu.cn 解析失败（hairpin/DNS 问题），blog 子域终端验证可通
-- 站点级 og:url / og:image 在 frontend/home/src/layouts/Layout.astro（site 配置在 astro.config.mjs），必须指向可抓的有效域名（blog 子域）
+- 站点级 og:url / og:image / og:avatar 在 frontend/home/src/layouts/Layout.astro（site 配置在 astro.config.mjs），必须指向可抓的有效域名（blog 子域）；og:avatar 是社区约定扩展（2026-10-04 加），内容为 `/avatar.webp`（public/ 下与个人卡片同图的稳定地址，勿引用 /_astro 哈希产物），只是对外暴露的头像声明——我们的抓图逻辑不读它
 - 改 OG 标签后必须重 npm run build（home）；文章/专栏详情页 og 标签由 SSR 实时生成（post/[id].astro、columns/[id].astro），发新文章无需构建
 
 ### 4. 图片系统（2026-09 重构：引用归业务表，image 只存元数据）
@@ -118,7 +118,7 @@ certbot renew --dry-run
 - 删除文章/专栏/日记/友链**不再即时删图**：引用随行消失，物理文件由 GC 延迟回收；后台图片库会短暂出现无主图，属正常
 - 新增持图业务的标准步骤（2026-09 收口：改前③④是两处，漏一处就把在用图误判为孤儿）：① 业务表加 *_image_id 列（1:1）或建关联表（1:N）→ ② 保存逻辑派生 image_id（services/image/derive.js）→ ③ 在 services/image/refs.js 的 REFERENCE_SOURCES 加一条（孤儿对账 SQL、后台按类型筛图、反查引用位置都从它派生）→ ④ 若是**新类型**，先在 utils/imageRefTypes.js 登记该类型名（类型名只有这一个出处；筛图的 HTTP 白名单由它派生）→ ⑤ 跑 `node scripts/check-refs.js`：引用图有三份描述（账本条 / 模型关联 / 外键基准），它做四向断言并按提示补齐（新库外键由 sync 建表时内联生成，老库要往 `FK_TARGETS` 加一行；有意缺席必须登记进该脚本的 EXCEPTIONS 并写明理由）
 - 旧 image.reference_type / reference_id 列已废弃但保留库中未删（回滚保障），代码禁止再读写；稳定后可 DROP。勿再往 image 表加业务语义/枚举
-- 友链图片**彻底外链化、完全退出图片系统**（2026-09 v2）：avatar（头像）/ preview_image（背景图）双外链字段，DTO 共用白名单——只收 http(s):// 或 //（拒绝 /uploads/，无指针的本站路径会被 GC 误删）；**url 字段 2026-10 起只收绝对 http(s)://**；「抓图」= services/ogImage.js 的 fetchOgMeta：og:image→背景图覆盖写、favicon（apple-touch-icon 优先）→头像仅空时填（手填不覆盖，清空后可重抓）；不下载不落盘无 image 记录。**抓图出站已加固（2026-10）**：DNS 解析出的每个地址过 `ipaddr.js` 判非公网段（含 IPv4-mapped）、`redirect:'manual'` 逐跳复检（≤3 跳）、body 上限 512KB（**到上限只停止读取、仍按已读内容解析**：实测直接抛错会把 github.com 这类大首页误伤）、只收 text/html、失败路径记 `[warn] [og-image]`——友链 URL 是管理员填的，但「管理员可控」不等于可以任打内网（本机跑着 Nginx/SSR/MariaDB）。preview_image_id 已从模型移除（列留库待 DROP，代码禁止读写），GC 对账 SQL 与 imageController 的 friend_link 分支已删除——只被友链引用过的图会被 GC 正常回收。存量本地留存图由 migrate-image-ref.js 清空，部署后到后台逐条重新「抓图」恢复
+- 友链图片**彻底外链化、完全退出图片系统**（2026-09 v2）：avatar（头像）/ preview_image（背景图）双外链字段，DTO 共用白名单——只收 http(s):// 或 //（拒绝 /uploads/，无指针的本站路径会被 GC 误删）；**url 字段 2026-10 起只收绝对 http(s)://**；「抓图」= services/ogImage.js 的 fetchOgMeta：og:image→背景图覆盖写、favicon（apple-touch-icon 优先）→头像仅空时填（手填不覆盖，清空后可重抓）；抓图逻辑不读 og:avatar；不下载不落盘无 image 记录。**抓图出站已加固（2026-10）**：DNS 解析出的每个地址过 `ipaddr.js` 判非公网段（含 IPv4-mapped）、`redirect:'manual'` 逐跳复检（≤3 跳）、body 上限 512KB（**到上限只停止读取、仍按已读内容解析**：实测直接抛错会把 github.com 这类大首页误伤）、只收 text/html、失败路径记 `[warn] [og-image]`——友链 URL 是管理员填的，但「管理员可控」不等于可以任打内网（本机跑着 Nginx/SSR/MariaDB）。preview_image_id 已从模型移除（列留库待 DROP，代码禁止读写），GC 对账 SQL 与 imageController 的 friend_link 分支已删除——只被友链引用过的图会被 GC 正常回收。存量本地留存图由 migrate-image-ref.js 清空，部署后到后台逐条重新「抓图」恢复
 - 图片统一落 uploads/，services/image/store.js 的 saveImageFile 转 webp + thumb；frontend/home/public/ 静态资源（og-image.jpg 等）随 vite build 进 dist/；缩略图 *.thumb.webp 只被**首页文章列表的小卡封面**消费（列表接口的 `post.coverThumb`，见 server/models/index.js 的 `Post→Image` 关联 + server/vo/post.vo.js）——大图卡、文章页与过渡卡片仍用 `post_cover` 原图，勿把它当通用缩略图用（移动端实测：小卡显示 112–182px，400px 缩略图在 2x/3x 屏都够清晰）
 - 涉及图片结构变更的部署顺序：sync-schema.js → migrate-image-ref.js（均幂等，迁移以 URL 匹配为准、不盲信旧 reference_id）→ pm2 restart
 
@@ -192,10 +192,10 @@ certbot renew --dry-run
 - dev 工作流：根目录 npm run dev:home = server(3000) + astro dev(5174，vite proxy /api、/uploads)；本地验证 SSR 用 `node dist/server/entry.mjs`（standalone，不自动读 .env，API_BASE_URL 走 pm2 env 注入）
 - 死代码：src/_archive/（MapView 世界地图，未接线；tsconfig/依赖扫描已排除，不参与构建）；加载遮罩 TopProgressBar/LoadingOverlay 与 src/router、src/main.ts、src/App.vue 已删除（文章过渡卡片接棒加载体验）
 
-- **跨页常驻岛：个人卡片（2026-09）**——**首页 / 归档 / 日记**三页左栏是同一个 DOM 节点，三页之间来回切换零重建、位置不动（实测 absTop 388 / left 84 / 300×330 全程一致，且节点上的 JS 属性仍在）。
+- **跨页常驻岛：个人卡片（2026-09；友链 2026-10-04 加入）**——**首页 / 归档 / 日记 / 友链**四页左栏是同一个 DOM 节点，四页之间来回切换零重建、位置不动（实测 absTop 388 / left 84 / 300×330 全程一致，且节点上的 JS 属性仍在）。
   - **`transition:persist` 只在 `.astro` 模板里生效**：Astro 编译期把它改写成 `data-astro-transition-persist`，ClientRouter 才认；写在 Vue SFC 里只是原样透传一个属性。所以卡片必须由 Astro 渲染 → 新增 `src/components/astro/PageFrame.astro` 作为页面骨架（全宽刊头槽 + 左栏 rail + 主内容 main），首页与归档页都用它，两页的 persist key 必须同名（`personal-card`）。persist 挂在普通 div 上，不要直接挂 astro-island（moveBefore 边界 bug）
-  - 骨架左栏 ≤1024px 隐藏（沿用原首页左栏约定）；归档页与日记页左栏除卡片不放别的（rail 槽留空），首页 rail 槽放 TagBox
-  - `HomeView.vue` / `ArchiveView.vue` / `DiaryView.vue` 已退化为纯内容（DiaryView 只留 720px 正文）；2026-10 起另外 5 个视图（About / Columns / ColumnDetail / Friends / PostDetail）也走 `PageFrame.astro` 的 `withRail={false}` 单列模式，`SitePageFrame.vue` 已删除 —— **骨架全站唯一**，刊头（WelcomeBanner）因此成为与视图平级的 client:visible 岛
+  - 骨架左栏 ≤1024px 隐藏（沿用原首页左栏约定）；归档页、日记页、友链页左栏除卡片不放别的（rail 槽留空），首页 rail 槽放 TagBox
+  - `HomeView.vue` / `ArchiveView.vue` / `DiaryView.vue` 已退化为纯内容（DiaryView 只留 720px 正文）；2026-10 起另外 4 个视图（About / Columns / ColumnDetail / PostDetail）走 `PageFrame.astro` 的 `withRail={false}` 单列模式（友链曾在此列，2026-10-04 起改回双列加入上面的常驻卡片家族），`SitePageFrame.vue` 已删除 —— **骨架全站唯一**，刊头（WelcomeBanner）因此成为与视图平级的 client:visible 岛
   - 音乐播放器（MusicPlayer）的**完全展开白名单**是 `EXPAND_PATHS = ['/', '/diary']`：桌面端在这两页展开成完整面板，其余页面是迷你条；移动端 ≤768px 一律迷你条。它靠 `transition:persist` 跨页存活，所以这里只改「在哪几页展开」，播放状态不受影响
   - **slot 属性不能直接挂在 Vue 岛组件上**：Astro 传给框架组件的 slot 会作为 fallthrough 属性进入 Vue，而服务端渲染时 Astro 不输出该属性 → 水合属性不匹配告警（实测首页 banner/rail 两处）。要包一层普通元素：`<div slot="rail"><TagBox client:load /></div>`
 - **标签筛选的跨岛共享状态（stores/tagFilter.ts）**：TagBox 现在挂在骨架左栏、PostList 在中栏，二者分属不同岛，Astro 传给岛的 props 又是静态的，所以用**模块级 ref**（同一份 ESM 模块图，同页所有岛共享同一实例）。**不要用 pinia**（已删除）——每个岛是独立 app 实例、store 各注一份互不同步；也不要绕 DOM 事件，模块单例更简单。新增跨岛共享状态时沿用这个模式
