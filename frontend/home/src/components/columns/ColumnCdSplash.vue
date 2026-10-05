@@ -28,9 +28,10 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CdDiscFace from '@/components/columns/CdDiscFace.vue'
 
 const SPLASH_MAX_MS = 6000
-// 点击 → 第二幕的预期时长：抽出 0.18s + 飞行 0.85s + 中心悬停 0.3s。
-// 换页早于它就等到这一拍再揭示，晚于它（SSR 慢）则换页瞬间立即揭示
-const REVEAL_AFTER_MS = 1330
+// 点击 → 第二幕的拍点（2026-10-05 用户定调 ≈1.6s）：抽出 0.18s + 飞行 0.85s +
+// 中心悬停 ≈0.6s。第二幕最早到这一拍才开始淡出——生产 SSR 很快、换页常在
+// 0.2s 内完成，「换页即揭示」会把整个转场压成一闪而过（上线首版实踩「瞬秒」）
+const REVEAL_AFTER_MS = 1600
 const REVEAL_HOLD_MS = 720
 
 const visible = ref(false)
@@ -88,19 +89,26 @@ function show(data) {
   phase.value = 'origin'
   visible.value = true
   maxTimer = setTimeout(hide, Math.max(0, SPLASH_MAX_MS - (Date.now() - data.t0)))
-  // 双 rAF：确保原位样式先完成一次绘制，再加飞行类，transition 才会生效
+  // 双 rAF：确保原位样式先完成一次绘制，再加飞行类，transition 才会生效。
+  // 第二幕只由 tryReveal 定时（换页快慢两种路径都汇到它），这里不再各挂一份
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (!visible.value) return
       phase.value = 'fly'
-      revealTimer = setTimeout(tryReveal, Math.max(0, REVEAL_AFTER_MS - (Date.now() - data.t0)))
     })
   })
 }
 
 function tryReveal() {
   if (!visible.value || phase.value === 'reveal') return
-  if (!swapped) return // 换页未完成：碟在中心继续转，swap 命中后由 onAfterSwap 补揭示
+  if (!swapped) return // 换页未完成：碟在中心继续转，swap 命中后由 onAfterSwap 再叫
+  // 换页快于拍点：不提前揭示，把第二幕推迟到拍点（否则光碟刚起飞就淡出，实踩「瞬秒」）
+  const elapsed = Date.now() - payload.value.t0
+  clearTimeout(revealTimer)
+  if (elapsed < REVEAL_AFTER_MS) {
+    revealTimer = setTimeout(tryReveal, REVEAL_AFTER_MS - elapsed)
+    return
+  }
   phase.value = 'reveal'
   hideTimer = setTimeout(hide, REVEAL_HOLD_MS)
 }
@@ -123,7 +131,8 @@ function onSplashEvent(e) {
 
 function onAfterSwap() {
   if (!payload.value) return
-  // 换页结果与被点专栏一致 → 飞行拍点未到就先记住，到了立即揭示；已过拍点 → 现在就揭示。
+  // 换页结果与被点专栏一致 → 记住命中，揭示时机统一交给 tryReveal：
+  // 拍点未到就由它把第二幕定时到拍点，已过拍点（SSR 慢）则立即揭示。
   // 中途改点别的页 → 立即隐藏
   if (location.pathname === `/columns/${payload.value.id}`) {
     swapped = true
