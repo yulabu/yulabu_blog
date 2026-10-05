@@ -5,6 +5,7 @@ export const prerender = false
 import Layout from '@/layouts/Layout.astro'
 import PageFrame from '@/components/astro/PageFrame.astro'
 import ColumnDetailView from '@/islands/ColumnDetailView.vue'
+import ColumnCdSplash from '@/components/columns/ColumnCdSplash.vue'
 // 与文章页同一套止血策略（404 才走 404 页 / 其余重试一次再抛错），策略实现在 api/client.ts
 import { tryGetColumnDetail } from '@/api/column'
 
@@ -34,4 +35,9 @@ const ogImage = column.cover || '/og-image.jpg'
   <PageFrame variant="column-detail" withRail={false}>
     <ColumnDetailView client:load initialColumn={column} columnId={column.id} />
   </PageFrame>
+  <!-- CD 转场常驻岛：与 columns/index.astro 声明同一个 persist key，飞行碟从
+       列表页跨页活到这里收第二幕（persist 挂普通 div，纪律同 MusicPlayer/PostSplash） -->
+  <div transition:persist="column-cd-splash">
+    <ColumnCdSplash client:only="vue" />
+  </div>
 </Layout>

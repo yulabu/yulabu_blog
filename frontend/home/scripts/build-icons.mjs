@@ -31,6 +31,8 @@ const ICONS = {
     'ios-share', 'download', 'link',
     // PostDetailView 文末分享条
     'share',
+    // ColumnsView（专栏页头光碟徽标）
+    'album',
   ],
   mdi: [
     // AboutNode / AboutView

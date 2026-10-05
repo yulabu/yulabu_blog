@@ -132,6 +132,21 @@
   --notebook-shell: rgb(92, 64, 43);
   --notebook-shell-2: rgb(66, 44, 29);
   --notebook-scrim: rgba(26, 19, 13, 0.72);
+
+  /* 专栏 CD 收藏架（「光碟收藏」视觉）：木架沿用日记层板的 --shelf-ledge 木色体系，
+     这里只补架子铭牌 / 塑料盒 / 碟面自己的材质色。镀膜的彩色色相是材质常量
+     （写在 CdDiscFace 的渐变里），强度用 --cd-film-opacity 随主题调 */
+  --cd-wood-grain: rgba(122, 92, 58, 0.15);      /* 木纹细线 */
+  --cd-wood-light: rgba(255, 255, 255, 0.45);    /* 板顶受光 */
+  --cd-wood-shade: rgba(96, 72, 45, 0.2);        /* 板底沉影 */
+  --cd-plastic: rgba(255, 255, 255, 0.34);       /* 塑料盒体 */
+  --cd-plastic-strong: rgba(255, 255, 255, 0.72);/* 塑料高光 / 脊线 */
+  --cd-plastic-shade: rgba(70, 95, 78, 0.16);    /* 塑料暗边 */
+  --cd-disc-silver: rgb(235, 238, 240);          /* 碟面银基底（亮段） */
+  --cd-disc-silver-deep: rgb(204, 210, 214);     /* 银基底暗段 */
+  --cd-film-opacity: 0.72;                       /* 彩虹镀膜强度 */
+  --cd-case-paper: rgb(249, 250, 245);           /* 无封面时的插纸（不透明，挡住碟面） */
+  --cd-case-paper-deep: rgb(233, 240, 231);
 }
 
 [data-theme="dark"] {
@@ -181,6 +196,19 @@
   --book-title: rgb(245, 236, 218);
   /* --notebook-* 刻意不在暗色覆盖：日记本（点击后的阅读页）配色恒定白天，
      令牌回落到 :root 的日间值——单一出处，组件里零硬编码 */
+
+  /* 专栏 CD 架：暗处木架加深，塑料高光收敛，碟面银色压暗一档但保住金属反光 */
+  --cd-wood-grain: rgba(0, 0, 0, 0.3);
+  --cd-wood-light: rgba(255, 255, 255, 0.12);
+  --cd-wood-shade: rgba(0, 0, 0, 0.38);
+  --cd-plastic: rgba(255, 255, 255, 0.14);
+  --cd-plastic-strong: rgba(255, 255, 255, 0.4);
+  --cd-plastic-shade: rgba(0, 0, 0, 0.32);
+  --cd-disc-silver: rgb(212, 217, 221);
+  --cd-disc-silver-deep: rgb(166, 173, 178);
+  --cd-film-opacity: 0.55;
+  --cd-case-paper: rgb(42, 55, 48);
+  --cd-case-paper-deep: rgb(33, 45, 39);
 }
 
 /* 窄屏收紧页面内边距（原 main.css 末尾的 480px 覆盖） */

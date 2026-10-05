@@ -2,16 +2,27 @@
 import Layout from '@/layouts/Layout.astro'
 import PageFrame from '@/components/astro/PageFrame.astro'
 import ColumnsView from '@/islands/ColumnsView.vue'
+import ColumnCdSplash from '@/components/columns/ColumnCdSplash.vue'
 import { getColumns } from '@/api/column'
 import { apiSoft } from '@/api/client'
+// Cormorant Garamond Italic（页头 My Columns 与铭牌数字，均 600）：自托管 latin 子集，
+// 仅本页引入；不含 CJK，中文回落到组件声明的文楷/系统栈
+import '@fontsource/cormorant-garamond/600-italic.css'
 
-// 构建期取数：预渲染产物 HTML 里直接带专栏卡片（后端不可达时传空数组，
+// 构建期取数：预渲染产物 HTML 里直接带整面 CD 收藏架（后端不可达时传空数组，
 // 岛内会退化为客户端取数，不会白屏）
 const columns = await apiSoft(getColumns())
 ---
 
 <Layout title="专栏">
-  <PageFrame variant="columns" withRail={false}>
+  <!-- 与首页/归档/日记/友链同一套骨架：左栏是跨页常驻的个人卡片（同一个
+       persist key personal-card），CD 收藏架占主内容列 -->
+  <PageFrame variant="columns" withRail>
     <ColumnsView client:load initialColumns={columns ?? []} />
   </PageFrame>
+  <!-- CD 转场常驻岛：与 columns/[id].astro 声明同一个 persist key，
+       点击光碟起飞后跨页连续播放（persist 挂普通 div，纪律同 MusicPlayer/PostSplash） -->
+  <div transition:persist="column-cd-splash">
+    <ColumnCdSplash client:only="vue" />
+  </div>
 </Layout>
