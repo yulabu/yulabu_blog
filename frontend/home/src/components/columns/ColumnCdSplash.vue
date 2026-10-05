@@ -28,10 +28,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CdDiscFace from '@/components/columns/CdDiscFace.vue'
 
 const SPLASH_MAX_MS = 6000
-// 点击 → 第二幕的拍点（2026-10-05 用户定调 ≈1.6s）：抽出 0.18s + 飞行 0.85s +
-// 中心悬停 ≈0.6s。第二幕最早到这一拍才开始淡出——生产 SSR 很快、换页常在
-// 0.2s 内完成，「换页即揭示」会把整个转场压成一闪而过（上线首版实踩「瞬秒」）
-const REVEAL_AFTER_MS = 1600
+// 点击 → 第二幕的拍点（2026-10-05 用户定调 0.8s，先前的 1.6s 被嫌久）：抽出+飞行
+// 0.85s 与拍点几乎重合 → 光碟落位即开始化入新页。第二幕最早到这一拍才开始淡出——
+// 生产 SSR 很快、换页常在 0.2s 内完成，「换页即揭示」会把整个转场压成一闪而过
+//（上线首版实踩「瞬秒」）
+const REVEAL_AFTER_MS = 800
 const REVEAL_HOLD_MS = 720
 
 const visible = ref(false)
