@@ -5,11 +5,14 @@
     <span class="cd-label"></span>
   </span>
 
-  <a
+  <!-- hero：专栏详情页的放大陈列（不可点，hover 抽碟即全部交互），不出铭牌 -->
+  <component
+    :is="hero ? 'div' : 'a'"
     v-else
     class="cd-item"
-    :href="`/columns/${column.id}`"
-    :aria-label="`${column.name}，${column.post_count} 篇文章`"
+    :class="{ 'cd-item--hero': hero }"
+    :href="hero ? undefined : `/columns/${column.id}`"
+    :aria-label="hero ? undefined : `${column.name}，${column.post_count} 篇文章`"
     @click="onPick"
   >
     <span class="cd-stage">
@@ -33,14 +36,14 @@
       </span>
       <span class="cd-grounds" aria-hidden="true"></span>
     </span>
-    <!-- 铭牌：坐在木架板条上（相邻格子的板条无缝拼成整条架） -->
-    <span class="cd-label">
+    <!-- 铭牌：坐在木架板条上（相邻格子的板条无缝拼成整条架）；hero 陈列不出铭牌 -->
+    <span v-if="!hero" class="cd-label">
       <span class="cd-label__name">{{ column.name }}</span>
       <span class="cd-label__count">
         <i class="cd-label__num">{{ column.post_count }}</i> 篇
       </span>
     </span>
-  </a>
+  </component>
 </template>
 
 <script setup>
@@ -52,16 +55,19 @@ import { markColumnSplash } from '@/utils/columnSplash'
 const props = defineProps({
   // 列表烘焙注入的专栏条目（api/column.ts 的 ColumnItem）；ghost 补位格不传
   column: { type: Object, default: null },
-  ghost: { type: Boolean, default: false }
+  ghost: { type: Boolean, default: false },
+  // 专栏详情页的放大陈列：同一份几何整体放大，不可点、不出铭牌
+  hero: { type: Boolean, default: false }
 })
 
 const char = computed(() => (props.column?.name || '栏').charAt(0))
 
 // 点击不 preventDefault：<a> 默认行为走 ClientRouter 软导航，飞行碟由常驻岛
-// ColumnCdSplash 接管（信号只记起点与数据，导航本身照常发生）
+// ColumnCdSplash 接管（信号只记起点与数据，导航本身照常发生）；hero 陈列不可点
 const discRef = ref(null)
 
 function onPick() {
+  if (props.hero) return
   markColumnSplash(props.column, discRef.value)
 }
 </script>
@@ -128,6 +134,16 @@ function onPick() {
 .cd-item:hover .cd-disc,
 .cd-item:focus-visible .cd-disc {
   --disc-sheen: 0.85;
+}
+
+/* ---- hero 陈列（专栏详情页）：同一份百分比几何随容器整体放大，只收轻抽碟 ---- */
+.cd-item--hero {
+  --disc-peek: 10%;
+}
+
+.cd-item--hero:hover .cd-disc,
+.cd-item--hero:focus-visible .cd-disc {
+  rotate: 5deg;
 }
 
 /* ---- 透明塑料盒 ---- */

@@ -33,6 +33,8 @@ const ICONS = {
     'share',
     // ColumnsView（专栏页头光碟徽标）
     'album',
+    // ColumnDetailView（Back to Columns 叶饰 / Hero 更新日期）
+    'eco',
   ],
   mdi: [
     // AboutNode / AboutView

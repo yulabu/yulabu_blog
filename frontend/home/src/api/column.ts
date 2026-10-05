@@ -9,6 +9,9 @@ export interface ColumnItem {
   sort_order: number
   status: 'show' | 'hide'
   post_count: number
+  /** vo/column.vo.js 本就返回，详情页「更新于」展示用；列表接口同样携带，类型上按可选 */
+  created_at?: string
+  updated_at?: string
 }
 
 /** 专栏目录条目（vo/column.vo.js 的 columnPostItem）：cover 必须带上，过渡卡片靠它取封面 */

@@ -8,6 +8,9 @@ import ColumnDetailView from '@/islands/ColumnDetailView.vue'
 import ColumnCdSplash from '@/components/columns/ColumnCdSplash.vue'
 // 与文章页同一套止血策略（404 才走 404 页 / 其余重试一次再抛错），策略实现在 api/client.ts
 import { tryGetColumnDetail } from '@/api/column'
+// 自托管 Cormorant Garamond 600 italic（latin 子集），仅本页引入：
+// Back to Columns / Track List 小标 / Track 序号用；不含 CJK，中文回落文楷
+import '@fontsource/cormorant-garamond/600-italic.css'
 
 const { id } = Astro.params
 
@@ -32,7 +35,9 @@ const ogImage = column.cover || '/og-image.jpg'
 ---
 
 <Layout title={column.name} description={description} ogImage={ogImage}>
-  <PageFrame variant="column-detail" withRail={false}>
+  <!-- withRail：详情页归队左栏个人卡片 persist 家族（与专栏列表同 key personal-card），
+       CD 揭幕换页时卡片同位置存活；≤1024px 左栏由 PageFrame 隐藏 -->
+  <PageFrame variant="column-detail">
     <ColumnDetailView client:load initialColumn={column} columnId={column.id} />
   </PageFrame>
   <!-- CD 转场常驻岛：与 columns/index.astro 声明同一个 persist key，飞行碟从
