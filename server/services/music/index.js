@@ -13,13 +13,17 @@ const { warnTagLine } = require('@utils/log');
 const AppError = require('@errors/AppError');
 
 // 内部实现常量（外部定不了 → 不进 config/，判据见 AGENTS.md「config/ 的职责边界」）
-const PLAYLIST_TTL_MS = 10 * 60 * 1000;
+//
+// 歌单内容的新鲜度：60s。改前是 10 分钟 + SWR（先给旧数据、后台再刷），实测站长改了歌单页面
+// 要等两轮才认（过期点那一次请求发的仍是旧列表）。现在**过期就阻塞着取回来**，最坏滞后 1 分钟；
+// 代价只是触发刷新的那个访客多等约 0.5s（播放器本来就显示转圈），取不到时退回旧数据
+const PLAYLIST_TTL_MS = 60 * 1000;
 const VIP_TTL_MS = 10 * 60 * 1000;
 // 直链缓存留的余量：网易云的 expi 是「从现在起 20 分钟」，贴着边界用容易在播到一半时失效
 const URL_SAFETY_MARGIN_MS = 60 * 1000;
 
-const playlistCache = new Map();   // 歌单 id → { data, trackIds: Set, at }
-const playlistInflight = new Map(); // 歌单 id → 进行中的后台刷新（单飞）
+const playlistCache = new Map();    // 歌单 id → { data, trackIds: Set, at }
+const playlistInflight = new Map(); // 歌单 id → 进行中的刷新（单飞：并发请求共享同一趟上游取数）
 const urlCache = new Map();         // 曲目 id → { url, br, level, type, expiresAt }
 const vipCache = new Map();         // 曲目 id → { reason, at }，只缓存「与地区无关」的不可播结论
 
@@ -34,26 +38,33 @@ function storePlaylist(id, data) {
   return entry;
 }
 
-// 后台刷新（单飞）：SWR 的意义是「过期了也先把旧数据给出去」，刷新失败就继续用旧的
-function refreshInBackground(id) {
-  if (playlistInflight.has(id)) return;
+// 刷新歌单（单飞）：同一时刻只向网易云发一次，并发请求共享同一个 promise。
+// 失败**不抛**——退回调用方手上的旧数据 + 记一行 warn：歌单是可再生的外部内容，
+// 上游抖动不该让播放器变砖（与降级策略一致）
+function refreshPlaylist(id, stale) {
+  const inflight = playlistInflight.get(id);
+  if (inflight) return inflight;
+
   const task = fetchPlaylist(id)
-    .then((data) => storePlaylist(id, data))
+    .then((data) => storePlaylist(id, data).data)
     .catch((err) => {
       console.warn(warnTagLine('music', `歌单 ${id} 刷新失败，继续用旧数据：${err.message}`));
+      return stale.data;
     })
     .finally(() => playlistInflight.delete(id));
+
   playlistInflight.set(id, task);
+  return task;
 }
 
 async function loadPlaylist(id) {
-  const entry = playlistCache.get(id);
-  if (entry) {
-    if (Date.now() - entry.at > PLAYLIST_TTL_MS) refreshInBackground(id);
-    return entry.data;
+  const cached = playlistCache.get(id);
+  if (!cached) {
+    // 冷启动（进程刚起来 / 刚加歌单）：本次请求同步等一次取数（实测约 1s）
+    return storePlaylist(id, await fetchPlaylist(id)).data;
   }
-  // 冷启动（进程刚起来 / 刚加歌单）：本次请求同步等一次取数（实测约 1s）
-  return storePlaylist(id, await fetchPlaylist(id)).data;
+  if (Date.now() - cached.at <= PLAYLIST_TTL_MS) return cached.data;
+  return refreshPlaylist(id, cached);
 }
 
 // 全部配置歌单（含曲目）。未配置时返回空数组（不是错误）：前端据此退化为本地默认曲目。

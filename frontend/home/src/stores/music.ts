@@ -104,38 +104,82 @@ function toTrack(track: MusicTrack): Track {
 }
 
 let loadPromise: Promise<void> | null = null
+/** 队列的加载时刻：超过 CLIENT_PLAYLIST_TTL_MS 后，下次展开/播放会静默重拉一次歌单 */
+let playlistLoadedAt = 0
+/**
+ * 客户端侧的队列新鲜度：5 分钟。
+ * 服务端 60s 就能拿到新歌单，但一个页面里的队列只在加载时取一次 —— 长开着的标签页
+ * （软导航也因为播放器 persist 而不重建）会一直用旧队列。超过这个时长后，下一次
+ * 「展开播放器 / 按下播放」会静默重拉并原地换队列（不闪转圈、不打断播放）。
+ */
+const CLIENT_PLAYLIST_TTL_MS = 5 * 60 * 1000
+
+/**
+ * 用远端曲目重建播放队列。**正在播的那一首始终留在原位**（它要对上音频与标签）：
+ *   · 仍在歌单里 → 用它在歌单里的新位置（队列顺序以远端为准），并把它已解析的直链带过去
+ *   · 已被移出歌单 → 留在队首（不打断当前播放，下一首再走歌单）
+ * 没有在播的曲目时整列替换。
+ */
+function applyRemoteQueue(remote: Track[]) {
+  const playing = loadedIndex.value >= 0 ? playlist.value[loadedIndex.value] : null
+  if (!playing) {
+    playlist.value = remote
+    currentIndex.value = 0
+    showTrackDuration(remote[0])
+    return
+  }
+
+  const fresh = playing.remoteId != null ? remote.findIndex((track) => track.remoteId === playing.remoteId) : -1
+  if (fresh >= 0) {
+    // 直链与「不可播」标记沿用旧的：正在播的那首不该被重置成待解析
+    remote[fresh] = {
+      ...remote[fresh],
+      src: playing.src,
+      srcExpiresAt: playing.srcExpiresAt,
+      unavailable: playing.unavailable,
+    }
+    playlist.value = remote
+    currentIndex.value = fresh
+    loadedIndex.value = fresh
+    return
+  }
+
+  playlist.value = [playing, ...remote]
+  currentIndex.value = 0
+  loadedIndex.value = 0
+}
 
 /**
  * 取歌单并换成播放队列（**幂等 + 单飞**：展开面板、首次播放、音像店点播都会调它，
- * 只会有一次请求）。失败不抛、只记一行 warn：播放器继续用本地降级曲目。
+ * 只会有一次请求）。失败不抛、只记一行 warn：播放器继续用当前队列（或本地降级曲目）。
  *
  * 调用时机刻意是「用户有交互」——展开播放器或按下播放/收起条，不在挂载时请求，
  * 与既有的 `preload='none'`（首次播放才拉音源）同一条纪律：首屏零请求。
  */
 function loadPlaylists(): Promise<void> {
-  if (playlistState.value === 'ready') return Promise.resolve()
+  // 已经拿到歌单：只有放久了才静默换一份新的（长开的标签页也能跟上歌单改动）
+  const refreshing = playlistState.value === 'ready'
+  if (refreshing && Date.now() - playlistLoadedAt < CLIENT_PLAYLIST_TTL_MS) return Promise.resolve()
   if (loadPromise) return loadPromise
 
-  playlistState.value = 'loading'
+  // 首次加载才进 loading（播放按钮转圈）；原地刷新是静默的，失败也不改状态
+  if (!refreshing) playlistState.value = 'loading'
+
   loadPromise = (async () => {
     try {
       const { playlists } = await getMusicPlaylists()
       const remote = playlists.flatMap((playlist) => playlist.tracks).map(toTrack)
       if (!remote.length) {
-        // 未配置歌单或歌单是空的：后端返回空列表是正常状态，不报错、保持本地曲目
-        playlistState.value = 'idle'
+        // 未配置歌单或歌单是空的：后端返回空列表是正常状态，不报错、保持现状
+        if (!refreshing) playlistState.value = 'idle'
         return
       }
-      // 已经在播的本地降级曲目留在队首（否则标签会跳到第一首而声音还是原来那首）
-      const loaded = loadedIndex.value >= 0 ? playlist.value[loadedIndex.value] : null
-      playlist.value = loaded ? [loaded, ...remote] : remote
-      currentIndex.value = 0
-      if (loaded) loadedIndex.value = 0
-      else showTrackDuration(remote[0])
+      applyRemoteQueue(remote)
+      playlistLoadedAt = Date.now()
       playlistState.value = 'ready'
     } catch (err) {
-      console.warn('[music] 歌单取数失败，播放器继续用本地曲目', err)
-      playlistState.value = 'error'
+      console.warn('[music] 歌单取数失败，播放器继续用当前队列', err)
+      if (!refreshing) playlistState.value = 'error'
     } finally {
       loadPromise = null
     }
