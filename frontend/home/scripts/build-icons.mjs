@@ -23,6 +23,7 @@ const ICONS = {
     // MusicPlayer
     'keyboard-arrow-down', 'music-note-rounded', 'pause-rounded',
     'play-arrow-rounded', 'volume-up-outline-rounded',
+    'skip-previous-rounded', 'skip-next-rounded',
     // ArchiveView / PostDetailView
     'visibility-outline',
     // FriendsView（好友卡片 + 添加友链信息卡）

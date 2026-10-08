@@ -280,3 +280,18 @@ certbot renew --dry-run
 - **改了前台怎么验**：`npm run build` + `npm run check` + `npm run check:layers` 三条全绿是底线；
   涉及视觉/布局的改动，用「改造前产物 + 计算样式签名逐元素对照」验证（见 deploy/astro.md 的说明），
   别只凭肉眼。
+
+### 15. 音乐歌单（网易云，2026-10-08）
+播放器从「一首本地 mp3」升级为「播站长配置的网易云公开歌单」。设计原则：**不做 DB 表、不加定时任务、不代理音频、零新依赖**，token 可选且默认不配。
+
+- **接口**（公开，挂 `publicLimiter`）：`GET /api/music/playlists`（歌单含全部曲目；未配歌单时返回空数组）、`GET /api/music/tracks/:id/url`（解析直链）。**`playable:false`（VIP/版权/地区）是正常的 200**，不是错误——前端据此标注并跳下一首
+- **分层**：`services/music/netease.js` 是**全项目唯一认识网易云的地方**（协议、cookie、`X-Real-IP`、字段名；接口变更或切自建 API 只改它，`NETEASE_API_BASE` 可切根地址）；`services/music/index.js` 管缓存 + 白名单守卫 + 降级；`vo/music.vo.js` 是出参形状唯一出处；TTL / 音质档 / 超时是**内部常量**（放服务文件顶部，不进 config/）
+- **地区校验靠 `X-Real-IP` 头，且只认大陆 IP**（实测：`X-Forwarded-For` 无效；裸请求从境外一律 404）。默认**转发访客真实 IP**（`req.ip` 由 controller 取好传给 service——services 不认识 req；回环/私网地址不发）；`NETEASE_REGION_IP` 可固定一个大陆 IP（海外访客也听全 = 以大陆 IP 名义绕过地区校验，风险自担，默认不设）。该头是网易云自己 App 上报客户端 IP 的字段
+- **缓存只缓存「与地区无关」的结论**：直链成功结果全局缓存（音频字节层实测无地区性：大陆解析出的直链境外也能取到）；`vip`（账号级）负缓存；**地区型失败不缓存**——否则一个海外访客的首访会把大陆访客的解析结果污染成「不可播」
+- **解析接口有白名单守卫**（只对配置歌单内的曲目放行）：没有它这就是个公开的网易云直链代理，会被拿去刷任意曲目、烧本机 IP 配额
+- **不代理音频、不下载封面**：直链 CDN 支持 Range、无 Referer 校验、带 `access-control-allow-origin: *`，访客浏览器直连（服务器在境外，代理等于每字节跨洋绕一圈）；封面只升级 https + 索要 `?param=300y300`。**音频/封面 URL 必须升级成 https**，否则被 HTTPS 页面的混合内容规则静默拦掉
+- **直链 20 分钟过期**（响应 `expi:1200`）：服务端缓存留 60s 余量；前端在 audio `error` 事件里重解析一次并 seek 回原进度（覆盖「暂停很久再点播放」）
+- **配置**（`config/env.js` → `config/music.js`）：`NETEASE_PLAYLIST_IDS`（逗号分隔 = 多歌单；空 = 功能关闭）、`NETEASE_COOKIE`（可选 MUSIC_U；公开歌单不需要，填了才能读私有歌单 / 播 VIP 曲目）、`NETEASE_API_BASE`、`NETEASE_REGION_IP`。cookie 只进 env——不进前端 / 日志 / 错误文案
+- **前端**：`api/music.ts`（类型 + 两个函数）、`stores/music.ts`（队列 = 歌单曲目，直链按需解析；本地那首 mp3 是**降级曲目**，歌单取数失败时播放器行为与改造前完全一致）、`MusicPlayer.vue`（上一首/下一首 + 序号 `3 / 5` + 取歌单时的转圈）。**取歌单时机 = 播放器被展开或按下播放**（store 内幂等单飞），桌面首页/日记一进来面板就是展开的，其余页面与移动端等用户点开——别改成挂载即请求
+- **音像店（二期）的接口已在位**：`useMusicStore().playTrack(remoteId)` 按 id 点播（同一个 audio 实例，音量/进度/跨页 persist 全继承）；`playlists` 返回数组（多歌单 = 多货架）；曲目 VO 含 `album{id,name,cover}` / `durationMs` / `fee`。二期只需新增页面 + 岛，后端与播放器零改动
+- **部署**：`.env` 加 `NETEASE_PLAYLIST_IDS` 即可，无 DB 变更（不需要 sync-schema）；验证 `curl -s https://blog.yulabu.cn/api/music/playlists`，服务器上 `node scripts/music.js --ip=<大陆IP>`

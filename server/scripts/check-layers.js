@@ -66,7 +66,7 @@ const LAYER_RULES = {
 };
 
 // 断言③：@config/env 的合法引用方（其余文件一律走 @config/<domain>）
-const ENV_MODULE_ALLOWLIST = new Set(['config/database.js', 'config/image.js', 'config/backup.js', 'config/auth.js', 'app.js', 'seed.js']);
+const ENV_MODULE_ALLOWLIST = new Set(['config/database.js', 'config/image.js', 'config/backup.js', 'config/auth.js', 'config/music.js', 'app.js', 'seed.js']);
 
 // 断言④：utils/ 里禁止出现的依赖（纯函数才会被各层安全共用）
 const UTILS_FORBIDDEN_REQUIRES = new Set([

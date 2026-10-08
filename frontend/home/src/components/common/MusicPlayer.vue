@@ -28,6 +28,7 @@
         <div class="track-copy">
           <strong>{{ musicStore.currentTrack.title }}</strong>
           <span>{{ musicStore.currentTrack.artist }}</span>
+          <span v-if="canStep" class="track-count">{{ musicStore.currentIndex + 1 }} / {{ musicStore.playlist.length }}</span>
         </div>
       </div>
 
@@ -46,15 +47,44 @@
         <span>{{ musicStore.formatTime(musicStore.duration) }}</span>
       </div>
 
+      <p v-if="playlistFailed" class="playlist-hint">
+        歌单暂时取不到，正在播放本地曲目
+        <button type="button" class="hint-retry" @click="musicStore.loadPlaylists()">重试</button>
+      </p>
+
       <div class="player-controls">
-        <button
-          type="button"
-          class="play-button"
-          :aria-label="musicStore.isPlaying ? '暂停' : '播放'"
-          @click="musicStore.togglePlay"
-        >
-          <AppIcon :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'" />
-        </button>
+        <div class="transport">
+          <button
+            type="button"
+            class="step-btn"
+            :disabled="!canStep"
+            aria-label="上一首"
+            @click="musicStore.prev"
+          >
+            <AppIcon icon="material-symbols:skip-previous-rounded" />
+          </button>
+          <button
+            type="button"
+            class="play-button"
+            :class="{ loading: isLoading }"
+            :aria-label="musicStore.isPlaying ? '暂停' : '播放'"
+            @click="musicStore.togglePlay"
+          >
+            <AppIcon
+              v-if="!isLoading"
+              :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'"
+            />
+          </button>
+          <button
+            type="button"
+            class="step-btn"
+            :disabled="!canStep"
+            aria-label="下一首"
+            @click="musicStore.next"
+          >
+            <AppIcon icon="material-symbols:skip-next-rounded" />
+          </button>
+        </div>
         <div class="volume-control">
           <AppIcon icon="material-symbols:volume-up-outline-rounded" class="volume-icon" />
           <input
@@ -80,10 +110,14 @@
       <span class="mini-title">{{ musicStore.currentTrack.title }}</span>
       <button
         class="icon-btn mini-play-btn"
+        :class="{ loading: isLoading }"
         :aria-label="musicStore.isPlaying ? '暂停' : '播放'"
         @click.stop="musicStore.togglePlay"
       >
-        <AppIcon :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'" />
+        <AppIcon
+          v-if="!isLoading"
+          :icon="musicStore.isPlaying ? 'material-symbols:pause-rounded' : 'material-symbols:play-arrow-rounded'"
+        />
       </button>
     </div>
   </div>
@@ -147,6 +181,21 @@ const expanded = ref(false)
 
 watch([expandRoute, isMobile], ([onExpandRoute, mobile]) => {
   expanded.value = onExpandRoute && !mobile
+}, { immediate: true })
+
+// 曲目切换控件只在有多首时可用（歌单取数失败时队列里只有本地那一首）
+const canStep = computed(() => musicStore.playlist.length > 1)
+// 取歌单中（首次展开/首次播放会真的发一次请求）
+const isLoading = computed(() => musicStore.playlistState === 'loading')
+// 取歌单失败：面板里留一行可见说明 + 可点重试（§14「失败要有可见出口」——
+// 播放器是常驻小部件，套不了页面的 ContentState，所以用一行文案 + 重试按钮等价落地）
+const playlistFailed = computed(() => musicStore.playlistState === 'error')
+
+// 歌单取数时机 =「播放器被展开」或「按下播放」（store 内部幂等，只会请求一次）：
+// 桌面首页/日记一进来面板就是展开的（immediate 捕捉这一次），其余页面与移动端要等用户
+// 点开播放器——与既有的 preload='none' 同一条纪律，不让没打算听歌的访客为它多付一个请求
+watch(expanded, (value) => {
+  if (value) void musicStore.loadPlaylists()
 }, { immediate: true })
 
 function onSeek(e) {
@@ -331,6 +380,15 @@ function onVolumeChange(e) {
   white-space: nowrap;
 }
 
+/* 曲目序号（3 / 5）：队列有多首时才出现 */
+.track-copy .track-count {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+  opacity: .85;
+}
+
 .progress-row {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr) 32px;
@@ -343,6 +401,29 @@ function onVolumeChange(e) {
 
 .progress-row span:last-child {
   text-align: right;
+}
+
+/* 取歌单失败的说明行（面板内可见出口） */
+.playlist-hint {
+  margin: 10px 0 0;
+  color: var(--color-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.hint-retry {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 10px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.hint-retry:hover {
+  color: var(--color-primary-hover);
 }
 
 .seekbar,
@@ -361,6 +442,71 @@ function onVolumeChange(e) {
   justify-content: space-between;
   gap: 12px;
   margin-top: 15px;
+}
+
+/* 上一首 / 播放 / 下一首 */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+
+.step-btn:hover:not(:disabled) {
+  background: rgba(99, 149, 86, .14);
+  color: var(--color-primary);
+}
+
+.step-btn:disabled {
+  opacity: .3;
+  cursor: default;
+}
+
+.step-btn :deep(svg) {
+  font-size: 19px;
+}
+
+/* 取歌单中：图标换成转圈（播放器在等后端返回歌单，通常几百毫秒） */
+.play-button.loading :deep(svg),
+.mini-play-btn.loading :deep(svg) {
+  display: none;
+}
+
+.play-button.loading::after,
+.mini-play-btn.loading::after {
+  content: '';
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .4);
+  border-top-color: #fff;
+  animation: spin .7s linear infinite;
+}
+
+.play-button.loading::after {
+  width: 15px;
+  height: 15px;
+}
+
+.mini-play-btn.loading::after {
+  width: 13px;
+  height: 13px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .play-button {

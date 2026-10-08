@@ -67,6 +67,19 @@ module.exports = {
     keep: num('BACKUP_KEEP', 30)
   },
 
+  // 音乐歌单（config/music.js 消费）——歌单 ID 列表与可选 token，都属「运维经 env 定」
+  music: {
+    // 逗号分隔的歌单 ID（歌单页 URL 里的 playlist?id=XXXXX）；空 = 音乐功能整体关闭
+    playlistIds: str('NETEASE_PLAYLIST_IDS', ''),
+    // 可选：MUSIC_U cookie。公开歌单不需要它；填了才能读私有歌单、解析 VIP 曲目直链。
+    // 属账号凭据：只出现在这里，不进日志、不进响应、不进错误文案
+    cookie: str('NETEASE_COOKIE', ''),
+    // 网易云 API 根地址。留作预案：官方接口变更或改走自建 NeteaseCloudMusicApi 实例时改这里
+    apiBase: str('NETEASE_API_BASE', 'https://music.163.com'),
+    // 可选：固定用这个 IP 充当 X-Real-IP（默认空 = 转发访客真实 IP，见 services/music/netease.js）
+    regionIp: str('NETEASE_REGION_IP', '')
+  },
+
   // 初始管理员（seed.js 消费）
   seed: {
     name: str('SEED_ADMIN_NAME', 'yulabu'),

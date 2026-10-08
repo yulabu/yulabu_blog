@@ -273,6 +273,16 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 - 备份与导出经 `backups/.lock` 文件锁跨进程互斥（cron 与 PM2 是两个进程），重复触发返回 409；导出包 = dump + uploads 镜像 + `restore.sh` + 恢复说明，**不含 `.env`**
 - 后台导出走流式下载，客户端断开时会结束 tar 进程并释放锁（`services/backup/export.js`）
 
+### 音乐歌单（网易云公开歌单）
+
+- 数据源是站长在 `NETEASE_PLAYLIST_IDS` 里配的一个或多个网易云公开歌单；**不做 DB 表、不加定时任务**，缓存全在进程内存（歌单 10 min + SWR 后台刷新、直链缓存到过期前 60s、`vip` 负缓存 10 min）——它是可再生的外部内容，重启后第一个访客多等一次取数即可
+- 唯一的网易云实现是 `services/music/netease.js`（协议、cookie、`X-Real-IP`、字段名都锁在这一个文件；接口变更或切自建 `NETEASE_API_BASE` 只改它）；`services/music/index.js` 管缓存、白名单守卫与降级；`vo/music.vo.js` 是出参形状唯一出处
+- **地区校验靠 `X-Real-IP` 头**：本服务器在境外，网易云对版权曲目按请求 IP 判地区（裸请求一律 404）。默认转发访客真实 IP（大陆访客天然可播）；`NETEASE_REGION_IP` 可固定一个大陆 IP（海外访客也听全，属绕过地区校验，风险自担）
+- **不代理音频**：直链 CDN 支持 Range、无 Referer 校验、带 CORS 头，访客浏览器直连即可（服务器在境外的代理只会让每字节跨洋绕一圈）。直链 **20 分钟过期**（响应 `expi`），前端到点重新解析并 seek 回原进度
+- 解析接口**只对配置歌单内的曲目放行**（`services/music/index.js` 的白名单守卫）——没有它这就是个公开的网易云直链代理
+- 上游不可用时：有旧缓存用旧的（记 `[warn] [music]`），完全没有才 503；前端再把播放器退化成页内自带的那首本地曲目
+- 手工入口：`node scripts/music.js [--ip=大陆IP]`（打印歌单、逐首解析结果与直链 CDN 可达性；**服务器在境外时不带 `--ip` 会看到版权曲目「地区受限」，那是预期**）
+
 ## 定时任务
 
 | 任务 | 间隔 | 启动即跑 | 做什么 |
@@ -312,6 +322,8 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 | GET | `/api/diaries` | 日记书架（`page` / `pageSize`） |
 | GET | `/api/friendlinks` | 友链列表（仅 `show`） |
 | GET | `/api/settings` | 公开站点设置（如 `comments_enabled`） |
+| GET | `/api/music/playlists` | 音乐歌单（含全部曲目；数据源是网易云公开歌单，未配置歌单时返回空数组） |
+| GET | `/api/music/tracks/:id/url` | 逐曲解析播放直链。`playable:false`（VIP/版权/地区）是**正常的 200**；不在配置歌单内的曲目回 404（防开放直链代理） |
 | POST | `/api/visits` | 记录一次访问（`page_path` 必填，`post_id` 可选） |
 
 登录（`POST /api/auth/login`）请求体与成功响应：
@@ -380,6 +392,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 | `node scripts/sync-schema.js` | 补齐 `sequelize.sync()` 不做的 ALTER（新增列 / ENUM 追加）。**ENUM 新值必须追加在末尾**（MySQL 按索引存储，插中间会让存量数据错位） |
 | `node scripts/migrate-image-ref.js` | 一次性数据迁移：把图片引用从废弃的 `image.reference_type/reference_id` 迁到业务表外键 / 关联表（以 URL 匹配为准） |
 | `node scripts/gc.js` · `daily-stat.js` · `visit-gc.js` | 三个定时任务的手工入口 |
+| `node scripts/music.js` | 音乐歌单的手工入口（需网络，不连库）：打印配置歌单、逐首解析结果与直链 CDN 可达性；`--ip=大陆IP` 可模拟大陆访客（境外服务器上不带它，版权曲目会显示「地区受限」，属预期） |
 | `node scripts/backup.js` | 备份 CLI（cron 调用的就是它） |
 
 新增表由 `sequelize.sync()` 启动时自动创建；**已有表的新列 / 新 ENUM 值 sync 不管**，要写进 `sync-schema.js`。

@@ -1,4 +1,6 @@
 import { ref, computed, reactive } from 'vue'
+import { getMusicPlaylists, getTrackStream, type MusicTrack } from '@/api/music'
+import { useToast } from '@/stores/toast'
 import defaultCoverMeta from '@/assets/img/music_player.webp'
 import defaultSrc from '@/assets/music/我爱你 - nxd.mp3'
 
@@ -6,13 +8,23 @@ export interface Track {
   id: string
   title: string
   artist: string
-  src: string
+  /** 播放地址。null = 还没解析（网易云曲目按需解析直链，解析成功才填上） */
+  src: string | null
   cover: string
+  /** 网易云 song id —— 「音像店」按 id 点播的入口（playTrack）；本地降级曲目没有它 */
+  remoteId?: number
+  /** 直链过期时刻（epoch ms）。网易云直链 20 分钟失效，到点重新解析 */
+  srcExpiresAt?: number
+  /** 时长（毫秒）。网易云曲目自带，未加载元数据前也能显示正确时长 */
+  durationMs?: number
+  /** 解析判定为不可播（VIP / 版权 / 地区）——界面据此标注，本轮不再反复试 */
+  unavailable?: boolean
 }
 
-// 后续加入歌单就改这个 Track
+// 本地默认曲目：**降级曲目**。歌单取数失败（后端挂了 / 未配歌单）时播放器就播它，
+// 与改造前行为完全一致——播放器不会因为外部内容不可用而变砖
 const defaultTrack: Track = {
-  id: '1',
+  id: 'local:1',
   title: '我爱你',
   artist: '纳西妲 · Yulabu playlist',
   src: defaultSrc,
@@ -33,6 +45,9 @@ const playlist = ref<Track[]>([defaultTrack])
 const currentIndex = ref(0)
 const currentTrack = computed(() => playlist.value[currentIndex.value] ?? defaultTrack)
 
+/** 歌单取数状态：idle = 还没取（或后端未配歌单）/ loading / ready / error（继续用本地曲目） */
+const playlistState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+
 const isPlaying = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
@@ -44,9 +59,7 @@ const progress = computed(() => (currentTime.value / duration.value) * 100 || 0)
 /**
  * Audio 惰性创建：本模块会被 SSR 包求值（Layout → MusicPlayer → 这里），
  * 模块顶层 `new Audio()` 在 Node 里会直接 ReferenceError。
- * 顺带保住「不在初始化时 load」的既有优化：preload='none'，首次播放才真正拉这首 3.7 MB
- * 的曲子（实测它是 Lighthouse 网络负载的第一项，占第一方流量的 49%），
- * 未播放前时长显示 0:00 是已知代价。
+ * 顺带保住「不在初始化时 load」的既有优化：preload='none'，首次播放才真正拉音源。
  */
 let audio: HTMLAudioElement | null = null
 
@@ -63,16 +76,177 @@ function getAudio(): HTMLAudioElement {
     duration.value = audio!.duration
   })
   audio.addEventListener('ended', () => next())
+  audio.addEventListener('error', onAudioError)
   return audio
 }
 
-function loadTrack(index: number) {
+// ============ 歌单取数（网易云） ============
+
+/**
+ * 未加载音频时用曲目自带的时长占位（网易云曲目都带 dt）。
+ * 不这么做的话，没按下播放前时长显示 0:00，与右侧已经知道的总长对不上。
+ * 已加载的曲目不动：真实时长以 loadedmetadata 为准（比 dt 略准）
+ */
+function showTrackDuration(track: Track | undefined) {
+  if (track?.durationMs) duration.value = track.durationMs / 1000
+}
+
+function toTrack(track: MusicTrack): Track {
+  return {
+    id: `ne:${track.id}`,
+    remoteId: track.id,
+    title: track.name,
+    artist: track.artists.join(' / '),
+    src: null,
+    cover: track.album.cover || defaultCoverMeta.src,
+    durationMs: track.durationMs,
+  }
+}
+
+let loadPromise: Promise<void> | null = null
+
+/**
+ * 取歌单并换成播放队列（**幂等 + 单飞**：展开面板、首次播放、音像店点播都会调它，
+ * 只会有一次请求）。失败不抛、只记一行 warn：播放器继续用本地降级曲目。
+ *
+ * 调用时机刻意是「用户有交互」——展开播放器或按下播放/收起条，不在挂载时请求，
+ * 与既有的 `preload='none'`（首次播放才拉音源）同一条纪律：首屏零请求。
+ */
+function loadPlaylists(): Promise<void> {
+  if (playlistState.value === 'ready') return Promise.resolve()
+  if (loadPromise) return loadPromise
+
+  playlistState.value = 'loading'
+  loadPromise = (async () => {
+    try {
+      const { playlists } = await getMusicPlaylists()
+      const remote = playlists.flatMap((playlist) => playlist.tracks).map(toTrack)
+      if (!remote.length) {
+        // 未配置歌单或歌单是空的：后端返回空列表是正常状态，不报错、保持本地曲目
+        playlistState.value = 'idle'
+        return
+      }
+      // 已经在播的本地降级曲目留在队首（否则标签会跳到第一首而声音还是原来那首）
+      const loaded = loadedIndex.value >= 0 ? playlist.value[loadedIndex.value] : null
+      playlist.value = loaded ? [loaded, ...remote] : remote
+      currentIndex.value = 0
+      if (loaded) loadedIndex.value = 0
+      else showTrackDuration(remote[0])
+      playlistState.value = 'ready'
+    } catch (err) {
+      console.warn('[music] 歌单取数失败，播放器继续用本地曲目', err)
+      playlistState.value = 'error'
+    } finally {
+      loadPromise = null
+    }
+  })()
+
+  return loadPromise
+}
+
+// ============ 播放（直链按需解析） ============
+
+type LoadResult = 'ok' | 'unavailable' | 'error'
+
+/**
+ * 确保曲目的 src 可用（网易云曲目惰性解析直链，过期则重解析）。
+ * 'unavailable' = 这首确实播不了（VIP/版权/地区）；'error' = 这次没拿到（网络/后端），
+ * 两者必须分开——前者标注并跳下一首，后者不该把歌标成不可播。
+ */
+async function ensureSrc(track: Track): Promise<LoadResult> {
+  if (!track.remoteId) return track.src ? 'ok' : 'error'
+  if (track.src && (!track.srcExpiresAt || track.srcExpiresAt > Date.now())) return 'ok'
+
+  try {
+    const stream = await getTrackStream(track.remoteId)
+    if (stream.playable) {
+      track.src = stream.url
+      track.srcExpiresAt = stream.expiresAt
+      track.unavailable = false
+      return 'ok'
+    }
+    track.unavailable = true
+    return 'unavailable'
+  } catch (err) {
+    // 后端不可达 / 限流 / 曲目被移出歌单（404）：算「这次没拿到」，不标记 unavailable
+    console.warn('[music] 直链解析失败', err)
+    return 'error'
+  }
+}
+
+/** 加载并播放某个下标；startAt（秒）用于直链过期后重连时回到原进度 */
+async function loadAndPlay(index: number, startAt = 0): Promise<LoadResult> {
   const track = playlist.value[index]
-  if (!track) return
+  if (!track) return 'error'
   const el = getAudio()
-  el.src = track.src
+
+  const result = await ensureSrc(track)
+  if (result !== 'ok') return result
+
+  el.src = track.src as string
   el.load()
   loadedIndex.value = index
+  // 网易云曲目自带时长：元数据加载完成前先显示正确时长（不然是 0:00）
+  if (track.durationMs) duration.value = track.durationMs / 1000
+  if (startAt > 1) {
+    const seek = () => {
+      el.currentTime = startAt
+      el.removeEventListener('loadedmetadata', seek)
+    }
+    el.addEventListener('loadedmetadata', seek)
+  }
+
+  try {
+    await el.play()
+    isPlaying.value = true
+    return 'ok'
+  } catch {
+    isPlaying.value = false
+    return 'error'
+  }
+}
+
+/**
+ * 指针回退到**实际在播的那一首**（没有在播的就保持不动）。
+ * playAt 会把 currentIndex 乐观地先拨到目标曲目（点击立刻有反馈，解析要等几百毫秒），
+ * 解析失败时必须退回来——否则标题/封面/序号会与正在响的音频、进度条、总时长错位成两首歌
+ */
+function restorePlayhead() {
+  if (loadedIndex.value >= 0) currentIndex.value = loadedIndex.value
+}
+
+/**
+ * 从 startIndex 起找一个能播的曲目并播放（自动跳过不可播的）。
+ * 最多绕队列一圈；全是不可播就提示一句，不空转。
+ */
+async function playAt(startIndex: number): Promise<void> {
+  const total = playlist.value.length
+  if (!total) return
+  const { toast } = useToast()
+  const from = ((startIndex % total) + total) % total
+  let skipped: Track | null = null
+
+  for (let step = 0; step < total; step++) {
+    const index = (from + step) % total
+    const track = playlist.value[index]
+    if (!track || track.unavailable) continue
+
+    currentIndex.value = index
+    const result = await loadAndPlay(index)
+    if (result === 'ok') {
+      if (skipped) toast(`《${skipped.title}》暂时无法播放，已跳到下一首`, 'info')
+      return
+    }
+    if (result === 'error') {
+      restorePlayhead()
+      toast('音乐服务暂时不可用，请稍后再试', 'error')
+      return
+    }
+    skipped ??= track
+  }
+
+  restorePlayhead()
+  toast('歌单里的曲目暂时都播不了', 'error')
 }
 
 async function togglePlay() {
@@ -83,14 +257,22 @@ async function togglePlay() {
     return
   }
 
-  if (loadedIndex.value !== currentIndex.value) loadTrack(currentIndex.value)
+  await loadPlaylists()
 
-  try {
-    await el.play()
-    isPlaying.value = true
-  } catch {
-    isPlaying.value = false
+  // 同一首已经加载过且直链没过期 → 续播（进度保留）；否则走完整加载
+  const track = playlist.value[currentIndex.value]
+  const stale = track?.srcExpiresAt != null && track.srcExpiresAt <= Date.now()
+  if (track && loadedIndex.value === currentIndex.value && track.src && !stale) {
+    try {
+      await el.play()
+      isPlaying.value = true
+      return
+    } catch {
+      /* 元素已出错（如直链失效），落到重新加载 */
+    }
   }
+
+  await playAt(currentIndex.value)
 }
 
 function seek(percent: number) {
@@ -105,31 +287,48 @@ function setVolume(val: number) {
 }
 
 function next() {
-  const nextIndex = (currentIndex.value + 1) % playlist.value.length
-  currentIndex.value = nextIndex
-  loadTrack(nextIndex)
-  getAudio()
-    .play()
-    .then(() => {
-      isPlaying.value = true
-    })
-    .catch(() => {
-      isPlaying.value = false
-    })
+  void playAt(currentIndex.value + 1)
 }
 
 function prev() {
-  const prevIndex = currentIndex.value === 0 ? playlist.value.length - 1 : currentIndex.value - 1
-  currentIndex.value = prevIndex
-  loadTrack(prevIndex)
-  getAudio()
-    .play()
-    .then(() => {
-      isPlaying.value = true
-    })
-    .catch(() => {
-      isPlaying.value = false
-    })
+  void playAt(currentIndex.value - 1)
+}
+
+/**
+ * 按网易云曲目 id 直接点播 —— **「音像店」的入口**：访客在唱片架上点某首歌，
+ * 调它即可（同一个 audio 实例、同一份音量与进度状态，跨页 persist 也照旧）。
+ * 返回 false 表示该曲不在当前队列里。
+ */
+async function playTrack(remoteId: number): Promise<boolean> {
+  await loadPlaylists()
+  const index = playlist.value.findIndex((track) => track.remoteId === remoteId)
+  if (index < 0) return false
+  await playAt(index)
+  return true
+}
+
+/**
+ * 播放中断的兜底：直链 20 分钟过期（多见于「暂停很久再点播放」）或网络抖动。
+ * 重新解析一次并 seek 回原进度；只重试一次，避免坏源造成死循环。
+ */
+let recovering = false
+
+async function onAudioError() {
+  const track = playlist.value[currentIndex.value]
+  if (!track?.remoteId || recovering) return
+
+  recovering = true
+  try {
+    const position = currentTime.value
+    track.src = null
+    const result = await loadAndPlay(currentIndex.value, position)
+    if (result !== 'ok') {
+      const { toast } = useToast()
+      toast(`《${track.title}》暂时无法播放`, 'error')
+    }
+  } finally {
+    recovering = false
+  }
 }
 
 function formatTime(seconds: number) {
@@ -145,11 +344,14 @@ const musicStore = reactive({
   playlist,
   currentIndex,
   currentTrack,
+  playlistState,
   isPlaying,
   currentTime,
   duration,
   progress,
   volume,
+  loadPlaylists,
+  playTrack,
   togglePlay,
   seek,
   setVolume,

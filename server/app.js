@@ -57,6 +57,9 @@ app.use('/api/diaries', publicLimiter, diaryRoutes);
 // 站点设置路由（公开读；写入口在 /api/admin/settings）
 const settingRoutes = require('@routes/settingRoutes');
 app.use('/api/settings', publicLimiter, settingRoutes);
+// 音乐歌单路由（公开读；解析直链的接口只对配置歌单内的曲目放行）
+const musicRoutes = require('@routes/musicRoutes');
+app.use('/api/music', publicLimiter, musicRoutes);
 const { UPLOAD_DIR } = require('@config/image');
 // 静态图片服务
 app.use('/uploads', staticLimiter, express.static(UPLOAD_DIR, {
