@@ -389,6 +389,17 @@ onUnmounted(() => {
    改前正文是 md-editor 库默认值（16px / 行高 1.5 / sans-serif / #222），
    与站点令牌无关；这里逐项收进站点体系（字号/行高/字距/代码块/表格/引用/链接）。
    代码块面色走令牌 --bg-code（亮/暗各一份，见 styles/tokens.css） */
+
+/* 正文子树自成一个层叠上下文：md-editor 给代码块头栏（sticky）写死了
+   z-index: 10000，目录 10002、下拉与模态 20000+ 属同一类，而站点浮层都在其下
+   （分享弹层 2200、过渡卡片 3000、导航栏 1000、播放器 1100）——没有这层 containment
+   时它们会直接穿到弹层之上（去卡片化之前的玻璃卡靠 backdrop-filter 意外挡住了）。
+   只能挂在生成盒子的元素上：单列骨架 .page-frame__main 是 display:contents，
+   它的 position/z-index 失效（实测），所以落在这里 */
+.post-prose {
+  isolation: isolate;
+}
+
 .post-prose :deep(.md-editor) {
   --md-bk-color: transparent;
   --md-color: var(--color-text);
