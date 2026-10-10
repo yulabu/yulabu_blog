@@ -69,7 +69,11 @@ const { variant = '', withRail = true } = Astro.props
     width: 100%;
     min-height: 100vh;
     background-color: var(--bg-page);
-    overflow: hidden;
+    /* overflow-x: clip 而不是 hidden（2026-10-10 实修）：hidden 会让本容器成为
+       裁剪容器，吞掉所有后代 position: sticky —— 左栏个人卡片与文章页目录的吸顶
+       都因此失效（实测目录滚过 820px 后已离开视口）。clip 的裁剪语义相同（横向越界
+       的刊头波浪照样裁掉），但不创建滚动端口，sticky 恢复。 */
+    overflow-x: clip;
   }
 
   .page-frame__banner {

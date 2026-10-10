@@ -102,6 +102,10 @@
   --bg-glass-mid: rgba(255, 255, 255, 0.3);
   --bg-glass-end: rgba(255, 255, 255, 0.2);
   --bg-personal-top: rgba(167, 233, 186, 0.85);
+  /* 文章正文里代码块的面色（md-editor 的 .md-editor-code 消费；亮色是纸面上
+     压暗一档的中性底，暗色反过来提亮一档。此前写在 PostDetailView 的 scoped
+     样式里，2026-10-10 归位到令牌唯一出处） */
+  --bg-code: rgba(0, 0, 0, 0.045);
   --border-light: rgba(255, 255, 255, 0.8);
   --border-divider: rgba(80, 140, 134, 0.25);
   --shadow-color: rgba(0, 0, 0, 0.1);
@@ -171,6 +175,7 @@
   --bg-glass-mid: rgba(40, 55, 50, 0.5);
   --bg-glass-end: rgba(35, 45, 42, 0.4);
   --bg-personal-top: rgba(60, 100, 80, 0.85);
+  --bg-code: rgba(255, 255, 255, 0.06);
   --border-light: rgba(255, 255, 255, 0.12);
   --border-divider: rgba(120, 160, 140, 0.25);
   --shadow-color: rgba(0, 0, 0, 0.3);
