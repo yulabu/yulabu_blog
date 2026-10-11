@@ -1,6 +1,17 @@
 <template>
   <div class="detail-container">
     <main class="main-content">
+      <!-- 左上角返回链：能回上一页就回上一页，否则落到 href="/" 回首页。
+           花体 / 箭头 / 叶饰与专栏详情页的 Back to Columns 同款，Cormorant 由
+           post/[id].astro 页面级引入 -->
+      <nav class="post-topbar">
+        <a class="post-back" href="/" @click="goBack">
+          <span class="post-back__arrow" aria-hidden="true">←</span>
+          <span class="post-back__text">Back</span>
+          <AppIcon class="post-back__leaf" icon="material-symbols:eco" />
+        </a>
+      </nav>
+
       <!-- 文章本体是一张「纸面」（无圆角/无边框/无投影）：标题、元信息、正文同处一面，
            不再各自成卡。玻璃材质只留给真正独立的功能模块（分享条/评论区）。
            去卡片化改造 2026-10-10，依据见 .zcode/plans/plan-post-detail-redesign.md -->
@@ -276,6 +287,18 @@ function scrollToHeading(event, id) {
   activeHeading.value = id
 }
 
+// 左上角返回链：有上一页就回上一页（浏览器原生行为，Astro 软导航接管 popstate），
+// 否则交给 href="/" 回首页 —— history.length > 1 是唯一判据：新标签/书签/分享链接
+// 直接落地时它天然为 1。不用 document.referrer：软导航不会更新它，站内跳转会被误判成站外。
+// 带修饰键的点击（Ctrl/Cmd+点击开新标签、中键）不拦，交回浏览器默认行为
+function goBack(event) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  if (window.history.length > 1) {
+    event.preventDefault()
+    window.history.back()
+  }
+}
+
 watch(catalog, async () => {
   await nextTick()
   syncActiveHeading()
@@ -314,6 +337,46 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 20px;
   min-width: 0;
+}
+
+/* ---- 左上角返回链（与专栏详情页的 Back to Columns 同款：箭头 + Cormorant 花体 + 叶饰）---- */
+.post-topbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.post-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--color-primary);
+  transition:
+    color 0.5s var(--ease-standard),
+    transform 0.5s var(--ease-standard);
+}
+
+.post-back:hover {
+  color: var(--color-primary-hover);
+  transform: translateX(-3px);
+}
+
+.post-back__arrow {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.post-back__text {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.post-back__leaf {
+  font-size: 14px;
+  opacity: 0.75;
 }
 
 /* ========== 纸面：标题 + 元信息 + 正文同处一面 ==========

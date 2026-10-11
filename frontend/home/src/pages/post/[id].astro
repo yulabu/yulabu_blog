@@ -9,6 +9,9 @@ import PostDetailView from '@/islands/PostDetailView.vue'
 import { tryGetPost, getPrevPost, getNextPost } from '@/api/post'
 import { getPublicSettings } from '@/api/setting'
 import { apiSoft } from '@/api/client'
+// 自托管 Cormorant Garamond 600 italic（latin 子集），仅本页引入：
+// 左上角返回链的 Back 花体用（与专栏详情页 Back to Columns 同款）；不含 CJK
+import '@fontsource/cormorant-garamond/600-italic.css'
 
 const { id } = Astro.params
 
