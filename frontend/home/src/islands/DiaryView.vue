@@ -229,11 +229,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 占满主内容列（照片墙需要宽度；旧书架的 700px 阅读宽与 92px 顶部留白
-   都是为书脊飞行留的，已经不需要） */
+/* 日记页走单列骨架（withRail=false），个人卡片不渲染，照片墙铺满内容列。
+   骨架在单列模式用 display:contents，不提供网格 max-width / 内边距，
+   所以这里自己给页面宽度与留白（与 PageFrame 两列模式的 1320 / 24px 对齐）。 */
 .diary-page {
   width: 100%;
-  padding-top: clamp(12px, 3vw, 32px);
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: clamp(12px, 3vw, 32px) var(--page-padding) 64px;
 }
 
 /* 页码居中落在墙下方 */

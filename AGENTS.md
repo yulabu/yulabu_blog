@@ -194,10 +194,10 @@ certbot renew --dry-run
 - dev 工作流：根目录 npm run dev:home = server(3000) + astro dev(5174，vite proxy /api、/uploads)；本地验证 SSR 用 `node dist/server/entry.mjs`（standalone，不自动读 .env，API_BASE_URL 走 pm2 env 注入）
 - 死代码：src/_archive/（MapView 世界地图，未接线；tsconfig/依赖扫描已排除，不参与构建）；加载遮罩 TopProgressBar/LoadingOverlay 与 src/router、src/main.ts、src/App.vue 已删除（文章过渡卡片接棒加载体验）
 
-- **跨页常驻岛：个人卡片（2026-09；友链 2026-10-04 加入）**——**首页 / 归档 / 日记 / 友链**四页左栏是同一个 DOM 节点，四页之间来回切换零重建、位置不动（实测 absTop 388 / left 84 / 300×330 全程一致，且节点上的 JS 属性仍在）。
-  - **`transition:persist` 只在 `.astro` 模板里生效**：Astro 编译期把它改写成 `data-astro-transition-persist`，ClientRouter 才认；写在 Vue SFC 里只是原样透传一个属性。所以卡片必须由 Astro 渲染 → 新增 `src/components/astro/PageFrame.astro` 作为页面骨架（全宽刊头槽 + 左栏 rail + 主内容 main），首页与归档页都用它，两页的 persist key 必须同名（`personal-card`）。persist 挂在普通 div 上，不要直接挂 astro-island（moveBefore 边界 bug）
-  - 骨架左栏 ≤1024px 隐藏（沿用原首页左栏约定）；归档页、日记页、友链页左栏除卡片不放别的（rail 槽留空），首页 rail 槽放 TagBox
-  - `HomeView.vue` / `ArchiveView.vue` / `DiaryView.vue` 已退化为纯内容（DiaryView 只留照片墙，宽度随主内容列）；2026-10 起另外 4 个视图（About / Columns / ColumnDetail / PostDetail）走 `PageFrame.astro` 的 `withRail={false}` 单列模式（友链曾在此列，2026-10-04 起改回双列加入上面的常驻卡片家族），`SitePageFrame.vue` 已删除 —— **骨架全站唯一**，刊头（WelcomeBanner）因此成为与视图平级的 client:visible 岛
+- **跨页常驻岛：个人卡片（2026-09；友链 2026-10-04、专栏加入）**——**首页 / 归档 / 友链 / 专栏**左栏是同一个 DOM 节点，这些页面之间来回切换零重建、位置不动（实测 absTop 388 / left 84 / 300×330 全程一致，且节点上的 JS 属性仍在）。**日记页 2026-11 起改单列（withRail=false），不再渲染个人卡片，照片墙铺满内容列**。
+  - **`transition:persist` 只在 `.astro` 模板里生效**：Astro 编译期把它改写成 `data-astro-transition-persist`，ClientRouter 才认；写在 Vue SFC 里只是原样透传一个属性。所以卡片必须由 Astro 渲染 → 新增 `src/components/astro/PageFrame.astro` 作为页面骨架（全宽刊头槽 + 左栏 rail + 主内容 main），首页/归档/友链/专栏都用它，各页的 persist key 必须同名（`personal-card`）。persist 挂在普通 div 上，不要直接挂 astro-island（moveBefore 边界 bug）
+  - 骨架左栏 ≤1024px 隐藏（沿用原首页左栏约定）；归档页、友链页、专栏页左栏除卡片不放别的（rail 槽留空），首页 rail 槽放 TagBox
+  - `HomeView.vue` / `ArchiveView.vue` / `DiaryView.vue` 已退化为纯内容（DiaryView 单列 `withRail={false}`，照片墙铺满内容列）；About / PostDetail 走 `PageFrame.astro` 的 `withRail={false}` 单列模式（Columns / ColumnDetail 仍两列，带个人卡片；友链 2026-10-04 起双列加入上面的常驻卡片家族），`SitePageFrame.vue` 已删除 —— **骨架全站唯一**，刊头（WelcomeBanner）因此成为与视图平级的 client:visible 岛
   - 音乐播放器（MusicPlayer）的**完全展开白名单**是 `EXPAND_PATHS = ['/']`：桌面端只在首页展开成完整面板，日记页与其余页面是迷你条；移动端 ≤768px 一律迷你条。它靠 `transition:persist` 跨页存活，所以这里只改「在哪几页展开」，播放状态不受影响
   - **slot 属性不能直接挂在 Vue 岛组件上**：Astro 传给框架组件的 slot 会作为 fallthrough 属性进入 Vue，而服务端渲染时 Astro 不输出该属性 → 水合属性不匹配告警（实测首页 banner/rail 两处）。要包一层普通元素：`<div slot="rail"><TagBox client:load /></div>`
 - **标签筛选的跨岛共享状态（stores/tagFilter.ts）**：TagBox 现在挂在骨架左栏、PostList 在中栏，二者分属不同岛，Astro 传给岛的 props 又是静态的，所以用**模块级 ref**（同一份 ESM 模块图，同页所有岛共享同一实例）。**不要用 pinia**（已删除）——每个岛是独立 app 实例、store 各注一份互不同步；也不要绕 DOM 事件，模块单例更简单。新增跨岛共享状态时沿用这个模式

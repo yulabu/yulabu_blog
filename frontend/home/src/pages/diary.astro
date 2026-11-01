@@ -11,9 +11,9 @@ const diaries = await apiSoft(getPublicDiaries(1))
 ---
 
 <Layout title="日记">
-  <!-- 与首页/归档同一套骨架：左栏的常驻个人卡片在这三页之间是同一个 DOM 节点，
-       切换时整块搬运、位置不变。rail 槽留空——日记页左栏只放卡片。 -->
-  <PageFrame variant="diary">
+  <!-- 日记页用单列骨架（withRail=false）：不渲染左栏个人卡片，
+       照片墙铺满内容列；页面自己的 max-width 与留白在 DiaryView 里给。 -->
+  <PageFrame variant="diary" withRail={false}>
     <DiaryView client:load initialDiaries={diaries ?? {}} />
   </PageFrame>
 </Layout>
