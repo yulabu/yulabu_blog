@@ -12,8 +12,8 @@ function diaryDetail(diary) {
     // include coverImage 的查询），前端一律 `coverThumb || images[0]` 回退。
     // URL 前缀的唯一出处是 utils/uploadUrl（护栏断言⑦ 守着「别处不许手拼 /uploads/」）
     coverThumb: diary.coverImage ? toUploadUrl(diary.coverImage.thumb_path) : null,
-    // 封面原图像素（EXIF 旋转后）：照片卡按真实比例铺，不裁切；老图未回填时为 null，
-    // 前端回退到 id 派生的确定性比例（含未 include coverImage 的后台查询）
+    // 封面原图像素（EXIF 旋转后）：只作 img 的 width/height 预留（照片卡按列宽缩放、
+    // 不裁切）；老图未回填/未 include coverImage 时为 null，前端按图片自身比例撑开
     coverWidth: diary.coverImage ? diary.coverImage.width : null,
     coverHeight: diary.coverImage ? diary.coverImage.height : null
   };

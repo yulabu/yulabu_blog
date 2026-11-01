@@ -7,7 +7,7 @@ export interface Diary {
   images: string[]
   /** 400px 封面缩略图（照片卡与日记本过渡封面用）；外链封面/老数据为 null，回退 images[0] */
   coverThumb: string | null
-  /** 封面原图像素（EXIF 旋转后）；老图未回填时为 null，照片卡回退确定性比例 */
+  /** 封面原图像素（EXIF 旋转后）；只作 img 的 width/height 预留，老图/外链为 null 按图片自身比例撑开 */
   coverWidth: number | null
   coverHeight: number | null
   created_at: string

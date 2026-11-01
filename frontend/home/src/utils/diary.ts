@@ -52,21 +52,10 @@ export function diaryPhotoTilt(id: number): number {
   return (diarySeed(id, 3) - 0.5) * 3.2
 }
 
-// 照片墙的视觉派生：比例、倾斜、胶带都由 id 纯函数决定，构建期与客户端一致。
+// 照片墙的视觉派生：倾斜/胶带由 id 纯函数决定，构建期与客户端一致。
 // 这不是"随机顺序"——列表顺序仍由接口决定，这些只让每张卡长得不一样。
-
-const PRINT_RATIOS = [
-  [4, 5],
-  [3, 4],
-  [1, 1],
-  [4, 3]
-] as const
-
-/** 冲印照片的宽高比（4:5 / 3:4 / 1:1 / 4:3 四档之一） */
-export function diaryPrintRatio(id: number): { w: number; h: number } {
-  const i = Math.floor(diarySeed(id, 11) * PRINT_RATIOS.length)
-  return { w: PRINT_RATIOS[i][0], h: PRINT_RATIOS[i][1] }
-}
+// 图片比例不在这里派生：照片卡按列宽缩放、高 auto，真实比例由 coverWidth/Height
+// （img 的 width/height 属性）在加载前预留。
 
 /** 卡片在墙上的轻微倾斜（-0.7° ~ 0.7°） */
 export function diaryCardTilt(id: number): number {

@@ -3,7 +3,8 @@
     照片墙上的一件陈列：有图是白边冲印 + 胶带 + 批注；无图是点阵纸笺。
     职责只有「一件的视觉 + 点击测量」；布局（多列墙）在 DiaryGallery，
     打开后的本子在 DiaryNotebook。
-    比例/倾斜/胶带位置都由 id 确定性派生（utils/diary），构建期与客户端一致。
+    倾斜/胶带位置由 id 确定性派生（utils/diary）；图片比例不派生：
+    按列宽缩放、高 auto，coverWidth/Height 只作 img width/height 预留。
   -->
   <button
     ref="rootEl"
@@ -24,11 +25,13 @@
     ></span>
 
     <template v-if="cover">
-      <span ref="photoEl" class="diary-print__photo" :style="photoStyle">
+      <span ref="photoEl" class="diary-print__photo">
         <img
           class="diary-print__img"
           :src="cover"
           :alt="title"
+          :width="diary.coverWidth || undefined"
+          :height="diary.coverHeight || undefined"
           :loading="index === 0 ? 'eager' : 'lazy'"
           :fetchpriority="index === 0 ? 'high' : undefined"
           decoding="async"
@@ -69,7 +72,6 @@ import {
   diaryCardTilt,
   diaryCover,
   diaryExcerpt,
-  diaryPrintRatio,
   diaryQuarter,
   diaryTape,
   diaryTitle
@@ -92,17 +94,9 @@ const excerpt = computed(() => diaryExcerpt(props.diary, 80))
 const dateMD = computed(() => formatDateMD(props.diary.created_at))
 const ariaLabel = computed(() => `${formatDateLong(props.diary.created_at)}，${title.value}`)
 
-// 优先用 API 给的原图宽高：照片卡按真实 cover 比例陈列，不裁切；
-// 老图未回填时为 null，回退到 id 派生的确定性比例（避免 CLS / 水合差异）
-const photoStyle = computed(() => {
-  const w = Number(props.diary.coverWidth)
-  const h = Number(props.diary.coverHeight)
-  if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
-    return { aspectRatio: `${w} / ${h}` }
-  }
-  const fallback = diaryPrintRatio(props.diary.id)
-  return { aspectRatio: `${fallback.w} / ${fallback.h}` }
-})
+// 照片卡只按列宽缩放、不裁切：img 宽 100%、高 auto；coverWidth/coverHeight
+// 只作为 <img width/height> 让浏览器在加载前按真实比例预留（零 CLS）。
+// 缺失/null 时不做预留，图片加载后按自身比例撑开，仍不裁切。
 
 const tilt = computed(() => diaryCardTilt(props.diary.id))
 const tape = computed(() => diaryTape(props.diary.id))
@@ -207,12 +201,10 @@ function handleClick() {
 }
 
 .diary-print__img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
   display: block;
+  width: 100%;
+  height: auto;
+  /* 不裁切：高度随图片自身比例；加载前由 HTML width/height 属性按真实比例预留 */
   transition: transform 0.5s var(--ease-standard);
 }
 

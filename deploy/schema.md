@@ -127,4 +127,4 @@ node scripts/reconcile-schema.js --apply    # 执行补齐（先校验孤儿引�
 - `image.width` / `image.height`：`INT UNSIGNED NULL`，原图 **EXIF 旋转后**的像素；纯增量列，可空，无数据迁移。
 - 新上传由 `services/image/store.js` 的 sharp 输出信息写入；历史图用 `node scripts/backfill-image-dimensions.js` 幂等回填（只补 null/0，读 uploads 原图；缺文件跳过并记 warn）。
 - 部署顺序：`node scripts/sync-schema.js` → `node scripts/backfill-image-dimensions.js` → `pm2 restart blog-server`（sync-schema 启动时也会自动跑，但回填需要列先存在，故先手动跑一次）。
-- 公开日记接口新增 `coverWidth` / `coverHeight`；缺失/null 时前端回退到 id 派生的确定性比例，照片卡按真实 cover 比例陈列。
+- 公开日记接口新增 `coverWidth` / `coverHeight`；只作照片卡 img 的 width/height 在加载前预留（按列宽缩放、不裁切）；缺失/null 时按图片自身比例撑开。

@@ -249,7 +249,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 - **孤儿回收交给 `jobs/imageGc.js`**（启动即跑 + 每 24 小时）：按 `services/image/refs.js` 的账本 SQL 对账，三态处理——有引用清标记（复活）/ 无引用打标 / **标记超 24h 且文件创建超 72h** 才删文件与记录（**删除前还会重取一次新鲜引用集合**：对账快照之后刚被重新引用的图会被救回）。所以删除文章、专栏、日记**不会即时删图**，后台图片库会短暂出现无主图，属正常
 - **图片引用账本的唯一出处是 `services/image/refs.js` 的 `REFERENCE_SOURCES`**：它同时派生孤儿对账 SQL、后台图片库按类型筛图、反查引用位置。**新增持图业务只改这一处**（详见「常见改动指引」）——但账本不是全部：模型关联（查询取缩略图那侧）与 `FK_TARGETS`（老库外键基准）是另外两份描述，三方一致性由 `node scripts/check-refs.js` 四向断言（2026-10-02 加），改完持图业务跑一次即知有没有漏改
 - **图片类型名（`post_content` / `cover` / `diary` + 伪类型 `other`）的唯一出处是 `utils/imageRefTypes.js`**：HTTP 白名单（`type=` 参数）与反查字段 `reference_type` 都从这里派生——改前三处各写一份且已漂移（账本叫 diary、白名单里没有、标签写成 cover），只作日记封面的图因此任何筛选都查不到
-- 缩略图的消费者都是**小尺寸展示位**：首页文章列表的小卡封面与日记照片卡 / 日记本过渡封面（VO 的 `coverThumb`，日记同时返回 `coverWidth` / `coverHeight` 供画廊按真实比例陈列）——大图卡、文章页、日记本内页与灯箱仍用原图
+- 缩略图的消费者都是**小尺寸展示位**：首页文章列表的小卡封面与日记照片卡 / 日记本过渡封面（VO 的 `coverThumb`，日记同时返回 `coverWidth` / `coverHeight` 供照片卡作 img width/height 预留；卡片按列宽缩放、不裁切）——大图卡、文章页、日记本内页与灯箱仍用原图
 - 友链图片**彻底外链化、完全退出图片系统**：`avatar` / `preview_image` 只收 `http(s)://` 或 `//`（拒绝 `/uploads/`——没有引用指针的本站路径会被 GC 当孤儿回收）；`url` 只收绝对 `http(s)://`。「抓图」= `services/ogImage.js` 抓 `og:image` 与 favicon，不下载不落盘
 - **抓图的出站加固（2026-10）**：目标必须是**公网**——DNS 解析出的每个地址都过 `ipaddr.js` 判定（私网/环回/链路本地/ULA/CGNAT/保留段，含 `::ffff:127.0.0.1` 这类映射地址）；`redirect: 'manual'` **逐跳复检**（≤3 跳，改前 `follow` 一跳就能被带去内网）；响应体积上限 512KB（流式读，到上限就停止读取但**按已读部分照常解析**——meta 都在 `<head>` 里，大首页不该因此抓不到图）；只接受 `text/html`；非 2xx / 非 HTML / 超限 / 超时**一律记 `[warn] [og-image]`**（改前这些路径静默）；`og:image` 的相对地址按**最终跳**的 URL 解析
 
