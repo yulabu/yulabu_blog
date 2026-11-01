@@ -4,6 +4,9 @@ import PageFrame from '@/components/astro/PageFrame.astro'
 import ArchiveView from '@/islands/ArchiveView.vue'
 import { getArchive } from '@/api/post'
 import { apiSoft } from '@/api/client'
+// Cormorant Garamond Italic：只给归档页的 Archive / 年份 / 月份等英文与数字点缀；
+// 与 columns / post / about 页一样按页引入，不做全站字体增重
+import '@fontsource/cormorant-garamond/600-italic.css'
 
 // 构建期取数：预渲染产物 HTML 里直接带完整归档（后端不可达时传空数组，
 // 岛内退化为客户端取数）

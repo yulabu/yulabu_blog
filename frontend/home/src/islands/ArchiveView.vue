@@ -1,10 +1,16 @@
 <template>
   <main class="archive-main">
     <GlassPanel class="archive-card">
-      <div class="archive-header">
-        <h1 class="archive-title">文章年份列表</h1>
-        <span v-if="totalPosts > 0" class="total-count">共 {{ totalPosts }} 篇</span>
-      </div>
+      <header class="archive-head">
+        <div class="archive-head__copy">
+          <span class="archive-kicker" lang="en">Archive</span>
+          <h1 class="archive-title">文章归档</h1>
+        </div>
+        <span v-if="totalPosts > 0" class="archive-count">
+          <strong>{{ totalPosts }}</strong>
+          <span>篇文章</span>
+        </span>
+      </header>
 
       <Skeleton v-if="loading" variant="row" :count="4" />
 
@@ -23,52 +29,74 @@
       </ContentState>
 
       <div v-else class="year-list">
-        <div
-          v-for="year in archives"
-          :key="year.year"
-          class="year-section"
-        >
-          <div class="year-title" @click="toggleYear(year.year)">
-            <span class="arrow" :class="{ expanded: expandedYears[year.year] }">▶</span>
-            <span class="year-text">{{ year.year }} 年</span>
-            <span class="year-count">（{{ year.count }} 篇）</span>
-          </div>
-
-          <div v-show="expandedYears[year.year]" class="year-content">
-            <div
-              v-for="month in year.months"
-              :key="month.month"
-              class="month-section"
+        <section v-for="year in archives" :key="year.year" class="year-section">
+          <h2 class="year-heading">
+            <button
+              class="year-toggle"
+              type="button"
+              :aria-expanded="!!expandedYears[year.year]"
+              :aria-controls="`year-content-${year.year}`"
+              @click="toggleYear(year.year)"
             >
-              <div class="month-title">{{ month.month }} 月</div>
+              <span class="year-number">{{ year.year }}</span>
+              <span class="year-meta">{{ year.count }} 篇</span>
+              <span class="year-chevron" :class="{ 'is-open': expandedYears[year.year] }">
+                <AppIcon icon="material-symbols:chevron-right" />
+              </span>
+            </button>
+          </h2>
+
+          <div
+            v-show="expandedYears[year.year]"
+            :id="`year-content-${year.year}`"
+            class="year-content"
+          >
+            <section v-for="month in year.months" :key="month.month" class="month-section">
+              <h3 class="month-heading">
+                <span class="month-number">{{ formatMonth(month.month) }}</span>
+                <span class="month-unit">月</span>
+                <span class="month-rule" aria-hidden="true"></span>
+                <span class="month-count">{{ month.count }} 篇</span>
+              </h3>
+
               <div class="post-list">
                 <a
                   v-for="post in month.posts"
                   :key="post.id"
-                  class="post-item"
+                  class="post-row"
                   :href="`/post/${post.id}`"
                   @click="markPostSplash(post)"
                 >
-                  <div class="date-badge">
-                    <span class="day">{{ dayOf(post.createdAt) }}</span>
-                    <span class="month">{{ monthOf(post.createdAt) }}月</span>
-                  </div>
-                  <div class="post-info">
-                    <h3 class="post-title">{{ post.title }}</h3>
-                    <p class="post-summary card-text">{{ post.summary || '暂无摘要' }}</p>
+                  <span class="post-day">
+                    <span class="post-day__num">{{ dayOf(post.createdAt) }}</span>
+                    <span class="post-month">{{ monthOf(post.createdAt) }}</span>
+                  </span>
+
+                  <div class="post-body">
+                    <h4 class="post-title">{{ post.title }}</h4>
+                    <p v-if="post.summary" class="post-summary">{{ post.summary }}</p>
                     <div class="post-meta">
-                      <CategoryChip v-if="post.category">{{ post.category.name }}</CategoryChip>
-                      <span class="views">
-                        <AppIcon icon="material-symbols:visibility-outline" class="view-icon" />
+                      <CategoryChip v-if="post.category" size="sm">
+                        {{ post.category.name }}
+                      </CategoryChip>
+                      <span class="post-views" :aria-label="`阅读 ${post.viewCount}`">
+                        <AppIcon
+                          icon="material-symbols:visibility-outline"
+                          class="post-views__icon"
+                        />
                         {{ formatViewCount(post.viewCount) }}
                       </span>
                     </div>
                   </div>
+
+                  <span class="post-arrow" aria-hidden="true">
+                    <AppIcon icon="material-symbols:arrow-forward-rounded" />
+                  </span>
                 </a>
               </div>
-            </div>
+            </section>
           </div>
-        </div>
+        </section>
       </div>
     </GlassPanel>
   </main>
@@ -136,8 +164,15 @@ function dayOf(date) {
   return formatDayMonth(date).day
 }
 
+// 行内日期只显示日号 + 月份（月份分组已给出上下文，这里保留完整日期便于单行阅读）
 function monthOf(date) {
-  return formatDayMonth(date).month
+  const month = formatDayMonth(date).month
+  return month ? `${month}月` : '--'
+}
+
+// 月份分组标签补零（09 月），与年份数字一起构成索引的层级
+function formatMonth(month) {
+  return String(month).padStart(2, '0')
 }
 
 function toggleYear(year) {
@@ -163,218 +198,526 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 页面骨架（含左栏空位与常驻个人卡片）已上移到 Astro 层
-   （pages/archive.astro + components/astro/PageFrame.astro），
-   本组件只负责主内容本身 */
+/* 页面骨架（含左栏空位与常驻个人卡片）在 Astro 层
+   （pages/archive.astro + components/astro/PageFrame.astro），本组件只负责主内容。
+   版式思路：把归档当一本索引来做 —— 年份/月份负责分区，日期列负责定位，
+   标题负责可读性；不再给每篇文章套一张玻璃卡（卡套卡会把层级压平）。 */
 .archive-main {
   min-width: 0;
 }
 
 .archive-card {
-  padding: 28px 32px;
+  padding: 28px 32px 24px;
   border-radius: 16px;
+  /* 全局 reset 给所有元素设了 sans-serif；这里把整张索引的默认字体
+     拉回站点 UI 栈，具体标题/日期/花体再由各自规则覆盖 */
+  font-family: var(--font-ui);
 }
 
-.archive-header {
+/* ---------- 页头 ---------- */
+.archive-head {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding-bottom: 16px;
-  border-bottom: 1px dashed var(--border-divider);
-  margin-bottom: 24px;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-divider);
 }
 
-.archive-title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-primary);
-  margin: 0;
+/* 复用首页列表页头的 72px 主色短线，让两页像同一个系统里的 */
+.archive-head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 72px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
 }
 
-.total-count {
-  font-size: 13px;
-  color: var(--color-text);
-  background: rgba(var(--color-accent-rgb), 0.12);
-  padding: 4px 12px;
-  border-radius: 12px;
+.archive-head__copy {
+  min-width: 0;
 }
 
-.year-section {
-  margin-bottom: 16px;
-}
-
-.year-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 0;
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.2s;
-}
-
-.year-title:hover {
-  color: var(--color-primary);
-}
-
-.arrow {
-  font-size: 12px;
-  color: var(--color-muted);
-  transition: transform 0.2s;
-}
-
-.arrow.expanded {
-  transform: rotate(90deg);
-}
-
-.year-text {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+.archive-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-primary-hover);
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 20px;
-  font-weight: 700;
-  color: var(--color-heading);
-}
-
-.year-count {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-.month-section {
-  padding-left: 24px;
-  margin-bottom: 20px;
-}
-
-.month-title {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  font-size: 16px;
+  font-style: italic;
   font-weight: 600;
-  color: var(--color-primary);
-  margin-bottom: 12px;
-  padding-left: 8px;
-  border-left: 3px solid var(--color-primary);
-}
-
-.post-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.post-item {
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 12px;
-  background: linear-gradient(to right bottom,
-      var(--bg-glass-start),
-      var(--bg-glass-mid),
-      var(--bg-glass-end));
-  border-top: 1px solid var(--border-light);
-  border-left: 1px solid var(--border-light);
-  cursor: pointer;
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.post-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px var(--shadow-color);
-}
-
-.date-badge {
-  flex-shrink: 0;
-  width: 56px;
-  height: 64px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--color-primary), rgba(var(--color-primary-rgb), 0.75));
-  color: white;
-  box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.3);
-}
-
-.day {
-  font-size: 24px;
-  font-weight: 700;
   line-height: 1;
 }
 
-.month {
-  font-size: 12px;
-  margin-top: 4px;
-  opacity: 0.9;
+.archive-title {
+  margin: 0;
+  color: var(--color-heading);
+  font-family: var(--font-kai);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
 }
 
-.post-info {
+.archive-count {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: baseline;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 1px solid rgba(var(--color-accent-rgb), 0.18);
+  border-radius: 12px;
+  background: rgba(var(--color-accent-rgb), 0.09);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.archive-count strong,
+.archive-count span {
+  font-family: var(--font-ui);
+}
+
+.archive-count strong {
+  color: var(--color-heading);
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* ---------- 年份 ---------- */
+.year-list {
+  margin-top: 4px;
+}
+
+.year-section {
+  margin-top: 16px;
+}
+
+.year-section + .year-section {
+  margin-top: 30px;
+}
+
+.year-heading,
+.month-heading {
+  font: inherit;
+}
+
+.year-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border-divider);
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s ease;
+}
+
+.year-toggle:hover {
+  background: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.year-toggle:focus-visible {
+  outline: 2px solid var(--color-primary-hover);
+  outline-offset: -2px;
+}
+
+.year-number {
+  color: var(--color-primary-hover);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 40px;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.year-meta {
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.year-chevron {
+  display: inline-flex;
+  align-self: center;
+  margin-left: auto;
+  color: var(--color-primary-hover);
+  font-size: 19px;
+  line-height: 1;
+  transition: transform 0.25s var(--ease-standard);
+}
+
+.year-chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.year-content {
+  padding-top: 2px;
+}
+
+/* ---------- 月份 ---------- */
+.month-section {
+  margin-top: 12px;
+}
+
+.month-section + .month-section {
+  margin-top: 20px;
+}
+
+.month-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 2px;
+  padding: 0 8px;
+}
+
+.month-number {
+  color: var(--color-primary-hover);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 21px;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.month-unit {
+  color: var(--color-text);
+  font-family: var(--font-kai);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.month-rule {
   flex: 1;
-  min-width: 0;
+  height: 1px;
+  background: var(--border-divider);
+  opacity: 0.55;
+}
+
+.month-count {
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ---------- 文章行 ---------- */
+.post-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+}
+
+.post-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 18px;
+  gap: 16px;
+  padding: 13px 8px;
+  border-bottom: 1px dashed var(--border-divider);
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.post-row:last-child {
+  border-bottom: 0;
+}
+
+.post-row:hover,
+.post-row:focus-visible {
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.post-row:active {
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.post-row:focus-visible {
+  outline: 2px solid var(--color-primary-hover);
+  outline-offset: -2px;
+}
+
+.post-day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding-top: 1px;
+  padding-right: 14px;
+  border-right: 1px solid var(--border-divider);
+  color: var(--color-heading);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.post-day__num {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.post-month {
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.post-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .post-title {
-  font-family: 'LXGW WenKai', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--color-primary);
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
-  line-height: 1.4;
-  transition: color 0.2s;
+  color: var(--color-heading);
+  font-family: var(--font-kai);
+  font-size: 17.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-wrap: pretty;
+  transition: color 0.2s ease;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.post-item:hover .post-title {
+.post-row:hover .post-title,
+.post-row:focus-visible .post-title {
   color: var(--color-primary-hover);
 }
 
-/* 摘要排版在 .card-text（styles/components.css），字体族是有意保留的现状 */
 .post-summary {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.7;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .post-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: auto;
+  gap: 10px;
+  margin-top: 2px;
+  font-family: var(--font-ui);
 }
 
-.views {
-  display: flex;
+/* 共享 chip 自己不声明字体（吃全局 reset 的 sans）；这里把它拉回站点 UI 栈 */
+.post-meta :deep(.ui-chip) {
+  font-family: var(--font-ui);
+}
+
+.post-views {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  color: var(--color-muted);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
 }
 
-.view-icon {
-  font-size: 14px;
+.post-views__icon {
+  font-size: 13px;
 }
 
+.post-arrow {
+  display: inline-flex;
+  align-self: center;
+  color: var(--color-primary-hover);
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s ease, transform 0.25s var(--ease-standard);
+}
+
+.post-row:hover .post-arrow,
+.post-row:focus-visible .post-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ---------- 响应式 ---------- */
 @media (max-width: 768px) {
   .archive-card {
-    padding: 20px;
+    padding: 22px 18px 20px;
   }
 
-  .post-item {
+  .archive-kicker {
+    font-size: 18px;
+  }
+
+  .archive-title {
+    font-size: 22px;
+  }
+
+  .year-toggle {
+    gap: 10px;
+    padding: 12px 4px 9px;
+  }
+
+  .year-number {
+    font-size: 34px;
+  }
+
+  .month-heading {
+    padding: 0 4px;
+  }
+
+  .post-row {
+    grid-template-columns: 40px minmax(0, 1fr) 16px;
     gap: 12px;
+    padding: 12px 4px;
   }
 
-  .date-badge {
-    width: 48px;
-    height: 56px;
+  .post-day {
+    padding-right: 10px;
   }
 
-  .day {
-    font-size: 20px;
+  .post-day__num {
+    font-size: 17px;
   }
 
   .post-title {
     font-size: 16px;
+  }
+
+  .post-summary {
+    font-size: 12.5px;
+  }
+
+  .post-meta {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .archive-card {
+    padding: 20px 14px 18px;
+  }
+
+  .archive-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .archive-kicker {
+    font-size: 17px;
+  }
+
+  .archive-title {
+    font-size: 21px;
+  }
+
+  .year-toggle {
+    gap: 8px;
+    padding: 11px 2px 8px;
+  }
+
+  .year-number {
+    font-size: 30px;
+  }
+
+  .year-meta {
+    font-size: 11px;
+  }
+
+  .year-chevron {
+    font-size: 17px;
+  }
+
+  .month-heading {
+    gap: 6px;
+    padding: 0 2px;
+  }
+
+  .month-number {
+    font-size: 19px;
+  }
+
+  .month-unit {
+    font-size: 12px;
+  }
+
+  .month-count {
+    font-size: 10.5px;
+  }
+
+  .post-row {
+    grid-template-columns: 34px minmax(0, 1fr) 14px;
+    gap: 10px;
+    padding: 11px 2px;
+  }
+
+  .post-day {
+    padding-right: 8px;
+  }
+
+  .post-day__num {
+    font-size: 16px;
+  }
+
+  .post-month {
+    font-size: 9.5px;
+  }
+
+  .post-title {
+    font-size: 15.5px;
+  }
+
+  .post-summary {
+    font-size: 12px;
+  }
+
+  .post-views {
+    font-size: 11px;
+  }
+
+  .post-arrow {
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .year-toggle,
+  .year-chevron,
+  .post-row,
+  .post-title,
+  .post-arrow {
+    transition: none;
+  }
+
+  .post-row:hover .post-arrow,
+  .post-row:focus-visible .post-arrow {
+    transform: none;
   }
 }
 </style>
