@@ -13,7 +13,7 @@
           <div
             ref="bookEl"
             class="nb__book"
-            :class="{ 'is-ready': ready, 'is-rest': resting }"
+            :class="{ 'is-ready': ready, 'is-rest': resting, 'is-flying': flying, 'is-printing': printing }"
             tabindex="-1"
           >
             <!-- 纸面背景层：装订侧压痕 + 打孔 -->
@@ -62,13 +62,22 @@
               </button>
             </div>
 
-            <!-- 封面层：飞行落位后绕装订侧翻开，转过 90° 即被 backface 隐去 -->
+            <!-- 封面层：飞行落位后绕装订侧翻开，转过 90° 即被 backface 隐去。
+                 冲印白边/胶带只在飞行阶段出现：落位后淡出/飘落，读作「照片被取下来，
+                 变成一本本子」。 -->
             <div class="nb__cover" aria-hidden="true">
-              <img v-if="image" class="nb__cover-img" :src="image" alt="" />
+              <img v-if="coverImage" class="nb__cover-img" :src="coverImage" alt="" />
               <span class="nb__cover-label">
                 <span class="nb__cover-date">{{ longDate }}</span>
                 <span class="nb__cover-title">{{ title }}</span>
               </span>
+              <span v-if="coverImage" class="nb__print-mat"></span>
+              <span
+                v-if="coverImage && tape"
+                class="nb__print-tape"
+                :class="[`nb__print-tape--${quarter}`, tape.side === 'left' ? 'is-left' : 'is-right']"
+                :style="{ '--tape-angle': `${tape.angle}deg` }"
+              ></span>
             </div>
           </div>
         </div>
@@ -85,11 +94,19 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import { formatDateLong, formatRelativeTime, formatWeekday } from '@/utils/date'
-import { diaryBody, diaryPhotoTilt, diaryTitle } from '@/utils/diary'
+import {
+  diaryBody,
+  diaryCardTilt,
+  diaryCover,
+  diaryPhotoTilt,
+  diaryQuarter,
+  diaryTape,
+  diaryTitle
+} from '@/utils/diary'
 
 const props = defineProps({
   diary: { type: Object, required: true },
-  /** 被点那本书书脊条的屏幕矩形：日记本从它那儿起飞（FLIP） */
+  /** 被点那张照片的屏幕矩形：冲印从它那儿起飞（FLIP） */
   originRect: { type: Object, default: null },
   hasPrev: { type: Boolean, default: false },
   hasNext: { type: Boolean, default: false },
@@ -114,15 +131,28 @@ const dir = ref(1)
 
 const title = computed(() => diaryTitle(props.diary))
 const body = computed(() => diaryBody(props.diary))
+// 正文里的贴纸照片用原图（点开可看灯箱）；飞行的封面用 400px 缩略图，
+// 保证与墙上那张卡同图同裁切、起飞快
 const image = computed(() => (props.diary.images && props.diary.images[0]) || '')
+const coverImage = computed(() => diaryCover(props.diary))
 const longDate = computed(() => formatDateLong(props.diary.created_at))
 const weekday = computed(() => formatWeekday(props.diary.created_at))
 // 相对时间只在客户端出现：放进预渲染/SSR 会烘焙成过期文本，且两侧必然算不出同一句
 const ago = computed(() => formatRelativeTime(props.diary.created_at))
 const tilt = computed(() => diaryPhotoTilt(props.diary.id))
 const slideName = computed(() => (dir.value > 0 ? 'leaf-next' : 'leaf-prev'))
+const tape = computed(() => diaryTape(props.diary.id))
+const quarter = computed(() => diaryQuarter(props.diary.created_at))
+
+// 飞行阶段：有封面时铺白边 + 胶带（printing），纯文字日记飞的是带标题的棕色书壳。
+// flying 单独控制「落位后再翻开」的时序，printing 只控制冲印装饰与封面标签的显隐。
+// 初始 false；book 在 ready 前是 visibility:hidden，不会先闪一帧
+const flying = ref(false)
+const printing = ref(false)
+const FLY_MS = 520
 
 let bodyOverflow = ''
+let splashTimer = null
 
 function close() {
   open.value = false
@@ -171,9 +201,20 @@ onMounted(async () => {
 
   if (el && o && o.height > 0 && !reduce) {
     const r = el.getBoundingClientRect()
-    el.style.setProperty('--fly-x', `${o.left + o.width / 2 - (r.left + r.width / 2)}px`)
-    el.style.setProperty('--fly-y', `${o.top + o.height / 2 - (r.top + r.height / 2)}px`)
-    el.style.setProperty('--fly-s', String(o.height / r.height))
+    // 飞行起点：以照片中心为中心、按书体「实际」宽高比校正的冲印矩形。
+    // 用 r 的实际比例而不是写死 660/720——移动端书本被 84dvh 拉成长竖幅，
+    // 写死比例会让等比缩放算错，冲印起跳时变形。
+    const printW = Math.min(Math.max(o.width * 1.1, 240), 480)
+    const printCenterX = o.left + o.width / 2
+    const printCenterY = o.top + o.height / 2
+    el.style.setProperty('--fly-x', `${printCenterX - (r.left + r.width / 2)}px`)
+    el.style.setProperty('--fly-y', `${printCenterY - (r.top + r.height / 2)}px`)
+    el.style.setProperty('--fly-s', String(printW / r.width))
+    el.style.setProperty('--fly-rot', `${diaryCardTilt(props.diary.id)}deg`)
+    // 统一走「飞行 → 落位 → 翻开」：flying 延迟封面翻转；printing 只在有封面时
+    // 铺白边/胶带并暂藏封面标签（纯文字日记保持标题可见）
+    flying.value = true
+    printing.value = Boolean(coverImage.value)
     // 读一次布局，让"起点"这一帧先定稿（此时 is-ready 未挂、transition 关着）；
     // 不这样点两次的话起点与终点会合并成一次样式计算，过渡根本不触发
     void el.offsetWidth
@@ -184,7 +225,15 @@ onMounted(async () => {
     // 飞行会卡在起点（实测无头/后台标签页里 rAF 800ms 都不触发）
     void el.offsetWidth
     resting.value = true
+    // 落位后卸掉冲印白边/胶带并允许封面翻转（CSS 再延迟 0.2s 起翻）
+    splashTimer = setTimeout(() => {
+      flying.value = false
+      printing.value = false
+    }, FLY_MS)
   } else {
+    // reduced-motion / 没有起点矩形：直接落位，不铺冲印白边
+    flying.value = false
+    printing.value = false
     ready.value = true
     resting.value = true
   }
@@ -193,6 +242,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (splashTimer) clearTimeout(splashTimer)
   window.removeEventListener('keydown', onKeydown)
   document.body.style.overflow = bodyOverflow
 })
@@ -208,7 +258,9 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--notebook-scrim);
+  background:
+    radial-gradient(52% 46% at 50% 44%, var(--notebook-spot), transparent 72%),
+    var(--notebook-scrim);
   backdrop-filter: blur(7px);
 }
 
@@ -231,14 +283,15 @@ onBeforeUnmount(() => {
   visibility: hidden;
   outline: none;
   perspective: 1800px;
-  /* 起点态（--fly-* 由行内 style 写入）不带过渡，挂上 is-ready 后才开 */
-  transform: translate(var(--fly-x, 0px), var(--fly-y, 0px)) scale(var(--fly-s, 1));
+  /* 起点态（--fly-* 由行内 style 写入）不带过渡，挂上 is-ready 后才开。
+     rotate 让冲印从墙上那张卡的倾斜角起跳，落位时转正 */
+  transform: translate(var(--fly-x, 0px), var(--fly-y, 0px)) rotate(var(--fly-rot, 0deg)) scale(var(--fly-s, 1));
   box-shadow: 0 42px 72px -30px rgba(0, 0, 0, 0.72);
 }
 
 .nb__book.is-ready {
   visibility: visible;
-  transition: transform 0.46s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition: transform 0.52s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 /* 落位态：直接覆盖 transform，而不是在类里把 --fly-* 改回 0 ——
@@ -302,7 +355,8 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-bottom: 14px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  color: var(--color-muted);
+  /* 奶油纸是恒定白天材质：纸上的文字必须用 --paper-*，不能走会随暗色翻转的页面主题色 */
+  color: var(--paper-muted);
 }
 
 .nb__date {
@@ -327,7 +381,7 @@ onBeforeUnmount(() => {
   font-size: 25px;
   font-weight: 700;
   line-height: 1.5;
-  color: var(--color-heading);
+  color: var(--paper-ink);
   word-break: break-word;
 }
 
@@ -335,7 +389,7 @@ onBeforeUnmount(() => {
   margin: 0 0 18px;
   font-size: 15px;
   line-height: 2;
-  color: var(--color-text);
+  color: var(--paper-text);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -353,7 +407,7 @@ onBeforeUnmount(() => {
   padding: 9px;
   border: 0;
   border-radius: 2px;
-  background: #fdfbf5;
+  background: var(--gallery-print);
   cursor: zoom-in;
   transform: rotate(var(--tilt));
   box-shadow:
@@ -396,12 +450,12 @@ onBeforeUnmount(() => {
   cursor: pointer;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 13px;
-  color: var(--color-text);
+  color: var(--paper-text);
   transition: color 0.2s ease, background 0.2s ease;
 }
 
 .nb__step:hover:not(:disabled) {
-  color: var(--color-heading);
+  color: var(--paper-ink);
   background: rgba(0, 0, 0, 0.05);
 }
 
@@ -429,11 +483,13 @@ onBeforeUnmount(() => {
   background: linear-gradient(155deg, var(--notebook-shell), var(--notebook-shell-2));
   transform-origin: left center;
   backface-visibility: hidden;
-  transition: transform 0.52s cubic-bezier(0.42, 0, 0.2, 1) 0.32s;
+  transition: transform 0.52s cubic-bezier(0.42, 0, 0.2, 1) 0.2s;
 }
 
-/* 落位后延迟起翻：与飞行（0.46s）错开，读作「书飞过来 → 翻开」 */
-.nb__book.is-rest .nb__cover {
+/* 飞行 0.52s → 白边/胶带淡出（flying/printing 在 520ms 卸掉）→ 延迟 0.2s 起翻。
+   :not(.is-flying) 是关键：is-rest 在起飞时就挂上了，如果只按 is-rest 起翻，
+   封面会在飞行途中就翻开。 */
+.nb__book.is-rest:not(.is-flying) .nb__cover {
   transform: rotateY(-164deg);
 }
 
@@ -454,6 +510,13 @@ onBeforeUnmount(() => {
   padding: 34px 26px 24px;
   color: var(--book-title);
   background: linear-gradient(transparent, rgba(8, 10, 9, 0.78));
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+/* 冲印阶段先藏起封面标签，等白边淡出时再浮现 */
+.nb__book.is-printing .nb__cover-label {
+  opacity: 0;
 }
 
 .nb__cover-date {
@@ -468,6 +531,69 @@ onBeforeUnmount(() => {
   font-size: 22px;
   font-weight: 700;
   line-height: 1.4;
+}
+
+/* 飞行阶段铺在封面上的冲印白边：落位后淡出，露出满版封面 */
+.nb__print-mat {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 8px solid var(--gallery-print);
+  border-bottom-width: 22px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  box-shadow: inset 0 0 0 1px var(--notebook-line);
+}
+
+.nb__book.is-printing .nb__print-mat {
+  opacity: 1;
+}
+
+/* 胶带：与墙上那张卡共用左右/角度；落位后向下飘落并淡出 */
+.nb__print-tape {
+  position: absolute;
+  top: 6px;
+  z-index: 3;
+  width: 64px;
+  height: 20px;
+  border-radius: 1px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(28px) rotate(calc(var(--tape-angle, 0deg) + 18deg));
+  clip-path: polygon(2% 0, 100% 4%, 97% 100%, 0 95%);
+  box-shadow: inset 0 1px 0 var(--border-light);
+  transition: opacity 0.24s ease, transform 0.3s ease-in;
+}
+
+.nb__print-tape.is-left {
+  left: 14%;
+}
+
+.nb__print-tape.is-right {
+  right: 12%;
+}
+
+.nb__print-tape--0 {
+  background: var(--gallery-tape-1);
+}
+
+.nb__print-tape--1 {
+  background: var(--gallery-tape-2);
+}
+
+.nb__print-tape--2 {
+  background: var(--gallery-tape-3);
+}
+
+.nb__print-tape--3 {
+  background: var(--gallery-tape-4);
+}
+
+.nb__book.is-printing .nb__print-tape {
+  opacity: 0.85;
+  transform: rotate(var(--tape-angle, 0deg));
 }
 
 .nb__close {

@@ -26,7 +26,9 @@ async function createImageFromUpload(sourcePath) {
     return await Image.create({
       storage_path: info.storagePath,
       thumb_path: info.thumbPath,
-      file_size: info.fileSize
+      file_size: info.fileSize,
+      width: info.width,
+      height: info.height
     })
   } catch (err) {
     // 补偿（2026-10）：转码已落盘、记录没建成时**回删刚落盘的原图与缩略图**再抛。

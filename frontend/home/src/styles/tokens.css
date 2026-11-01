@@ -73,19 +73,6 @@
   --color-image-line: var(--image-border);
   /* 玻璃卡片的通用投影（首页/归档/专栏/友链的同一种阴影） */
   --shadow-soft: 0 8px 32px var(--shadow-color);
-
-  /* 桌面日记：层板（小面积暖木，暗色同步加深） */
-  --color-shelf-ledge: var(--shelf-ledge);
-  /* 布面书脊的四季布面（原始名 --book-cloth-N 在 :root，暗色只换值） */
-  --color-book-cloth-1: var(--book-cloth-1);
-  --color-book-cloth-2: var(--book-cloth-2);
-  --color-book-cloth-3: var(--book-cloth-3);
-  --color-book-cloth-4: var(--book-cloth-4);
-  /* 封面（唯一旋转主体）：奶油纸面 / 页缘描边 / 油墨——三者在亮暗主题各自成对换值 */
-  --color-book-pages-edge: var(--book-pages-edge);
-  --color-book-ink: var(--book-ink);
-  /* 近白纸色：DiaryView 空架提示与 DiaryNotebook 内文字（随主题换值） */
-  --color-book-title: var(--book-title);
 }
 
 :root {
@@ -119,25 +106,39 @@
   --wave-3-color: #76c06a;
   --wave-4-color: #caf2cb;
 
-  /* 桌面日记（「桌面上的私人日记」视觉，无箱体）：一条薄木层板 + 布面书脊 +
-     可旋开的封面。布面按日记的北京月份分四季，走参考图的低饱和粉彩——
-     与站点的浅绿/奶油/植物感同属一个世界，不做深色实木家具 */
+  /* 木架基色：专栏 CD 收藏架在用（原桌面日记层板的遗留令牌，日记页已不用） */
   --shelf-ledge: rgb(211, 192, 158);
-  --book-cloth-1: rgb(165, 185, 148); /* 春 · 鼠尾草绿 */
-  --book-cloth-2: rgb(219, 172, 184); /* 夏 · 低饱和粉 */
-  --book-cloth-3: rgb(226, 199, 163); /* 秋 · 奶油杏 */
-  --book-cloth-4: rgb(172, 174, 199); /* 冬 · 雾蓝紫 */
-  --book-pages-edge: rgba(74, 58, 38, 0.22); /* 纸缘/书页描边 */
-  --book-ink: rgb(55, 61, 53);            /* 纸面油墨 */
-  --book-title: rgb(250, 246, 236);
+
+  /* 日记照片墙：纸、墙面光池、胶带。
+     纸（冲印/纸笺/日记本）是恒定「白天材质」，--paper-* / --gallery-print /
+     --gallery-tape-* 在暗色块刻意不覆盖——深色主题只压墙、光池与影子。 */
+  --gallery-print: rgb(252, 249, 242);
+  --gallery-print-shadow: 0 2px 4px rgba(60, 80, 65, 0.1), 0 18px 34px -18px rgba(60, 80, 65, 0.35);
+  --gallery-print-shadow-hover: 0 4px 8px rgba(60, 80, 65, 0.12), 0 26px 46px -20px rgba(60, 80, 65, 0.45);
+  --gallery-wall-light: rgba(255, 255, 255, 0.5);
+  --gallery-wall-light-2: rgba(255, 255, 255, 0.35);
+  --gallery-wall-fiber: rgba(255, 255, 255, 0.02);
+  --gallery-tape-1: rgb(165, 185, 148); /* 春 · 鼠尾草绿 */
+  --gallery-tape-2: rgb(219, 172, 184); /* 夏 · 低饱和粉 */
+  --gallery-tape-3: rgb(226, 199, 163); /* 秋 · 奶油杏 */
+  --gallery-tape-4: rgb(172, 174, 199); /* 冬 · 雾蓝紫 */
+
+  /* 奶油纸上的恒定纸墨：浅色取现主题 heading/text，暗色不翻转；
+     muted 用 104,100,88（奶油纸上约 5.5:1，供日期/摘要/页眉）。 */
+  --paper-ink: rgb(45, 90, 65);
+  --paper-text: rgb(65, 110, 105);
+  --paper-muted: rgb(104, 100, 88);
+
+  --book-title: rgb(250, 246, 236); /* 日记本封面标签（压深棕封面） */
   --notebook-paper: rgb(250, 246, 235);
   --notebook-paper-2: rgb(242, 236, 220);
   --notebook-line: rgba(150, 120, 88, 0.17);
   --notebook-shell: rgb(92, 64, 43);
   --notebook-shell-2: rgb(66, 44, 29);
   --notebook-scrim: rgba(26, 19, 13, 0.72);
+  --notebook-spot: rgba(255, 238, 206, 0.15); /* 点开日记时的暖色光池 */
 
-  /* 专栏 CD 收藏架（「光碟收藏」视觉）：木架沿用日记层板的 --shelf-ledge 木色体系，
+  /* 专栏 CD 收藏架（「光碟收藏」视觉）：木架沿用 --shelf-ledge 木色体系，
      这里只补架子铭牌 / 塑料盒 / 碟面自己的材质色。镀膜的彩色色相是材质常量
      （写在 CdDiscFace 的渐变里），强度用 --cd-film-opacity 随主题调 */
   --cd-wood-grain: rgba(122, 92, 58, 0.15);      /* 木纹细线 */
@@ -189,18 +190,17 @@
   --wave-3-color: #2d4535;
   --wave-4-color: rgb(25, 35, 30);
 
-  /* 暗色桌面日记：布面走「深而不灰」——保持色相、适度加深并稍提饱和度，
-     避免粉彩简单降亮度后发灰；封面纸换暖深纸 + 浅油墨，保证文字对比 */
+  /* 暗色木架：专栏 CD 收藏架仍在用 */
   --shelf-ledge: rgb(78, 67, 52);
-  --book-cloth-1: rgb(106, 128, 92);
-  --book-cloth-2: rgb(158, 110, 124);
-  --book-cloth-3: rgb(164, 132, 97);
-  --book-cloth-4: rgb(118, 120, 150);
-  --book-pages-edge: rgba(0, 0, 0, 0.45);
-  --book-ink: rgb(240, 234, 216);
+
+  /* 暗色只压墙、光池与影子。--paper-* / --gallery-print / --gallery-tape-* /
+     --notebook-* 刻意不在暗色覆盖：纸与胶带是恒定白天材质，回落到 :root 值。 */
+  --gallery-wall-light: rgba(190, 225, 200, 0.07);
+  --gallery-wall-light-2: rgba(190, 225, 200, 0.05);
+  --gallery-wall-fiber: rgba(0, 0, 0, 0.02);
+  --gallery-print-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 20px 38px -18px rgba(0, 0, 0, 0.55);
+  --gallery-print-shadow-hover: 0 4px 8px rgba(0, 0, 0, 0.4), 0 28px 52px -20px rgba(0, 0, 0, 0.62);
   --book-title: rgb(245, 236, 218);
-  /* --notebook-* 刻意不在暗色覆盖：日记本（点击后的阅读页）配色恒定白天，
-     令牌回落到 :root 的日间值——单一出处，组件里零硬编码 */
 
   /* 专栏 CD 架：暗处木架加深，塑料高光收敛，碟面银色压暗一档但保住金属反光 */
   --cd-wood-grain: rgba(0, 0, 0, 0.3);

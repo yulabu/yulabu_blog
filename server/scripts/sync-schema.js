@@ -149,6 +149,20 @@ async function syncSchema() {
     console.log(infoLine('sync-schema', 'image.orphan_since 已添加'));
   }
 
+  // image.width / image.height：原图尺寸（画廊按真实 cover 比例陈列；EXIF 旋转后像素）
+  if (!(await hasColumn('image', 'width'))) {
+    await sequelize.query(
+      `ALTER TABLE \`image\` ADD COLUMN \`width\` INT UNSIGNED NULL COMMENT '原图宽度（像素，EXIF 旋转后）' AFTER \`file_size\``
+    );
+    console.log(infoLine('sync-schema', 'image.width 已添加'));
+  }
+  if (!(await hasColumn('image', 'height'))) {
+    await sequelize.query(
+      `ALTER TABLE \`image\` ADD COLUMN \`height\` INT UNSIGNED NULL COMMENT '原图高度（像素，EXIF 旋转后）' AFTER \`width\``
+    );
+    console.log(infoLine('sync-schema', 'image.height 已添加'));
+  }
+
   // post.cover_image_id
   if (!(await hasColumn('post', 'cover_image_id'))) {
     await sequelize.query(

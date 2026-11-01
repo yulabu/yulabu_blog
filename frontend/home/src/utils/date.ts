@@ -44,13 +44,6 @@ function beijingParts(date: string) {
   return beijingShifted(d)
 }
 
-/** 2026.09.02 —— 书脊、封面卡信息带用的紧凑绝对日期 */
-export function formatDateDot(date: string): string {
-  const s = beijingParts(date)
-  if (!s) return '-'
-  return `${s.getUTCFullYear()}.${pad(s.getUTCMonth() + 1)}.${pad(s.getUTCDate())}`
-}
-
 /** 2026年9月2日 —— 日记本页眉用的长日期（月/日不补零） */
 export function formatDateLong(date: string): string {
   const s = beijingParts(date)
@@ -58,7 +51,7 @@ export function formatDateLong(date: string): string {
   return `${s.getUTCFullYear()}年${s.getUTCMonth() + 1}月${s.getUTCDate()}日`
 }
 
-/** 9月25日 —— 书脊底部竖排日期与封面日期（北京月/日，不补零无年份） */
+/** 9月25日 —— 照片卡日期与日记本封面日期（北京月/日，不补零无年份） */
 export function formatDateMD(date: string): string {
   const s = beijingParts(date)
   if (!s) return '-'
@@ -81,7 +74,7 @@ export function formatDayMonth(date: string): { day: string; month: number | nul
 
 // 相对时间（刚刚 / N 天前）只允许在纯客户端场景使用：它的文本随时间变化，放进
 // 预渲染页会在构建期就烘焙成一句到访客打开时早已过期的话，而且服务端与客户端必然
-// 算出不同文本 → 水合不一致。日记书架与本子一律用上面的绝对日期。
+// 算出不同文本 → 水合不一致。照片墙与本子一律用上面的绝对日期。
 export function formatRelativeTime(date: string): string {
   const s = beijingParts(date)
   if (!s) return '-'

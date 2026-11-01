@@ -21,6 +21,16 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true,
             comment: '原图字节数（统计存储占用）'
         },
+        width: {
+            type: DataTypes.INTEGER.UNSIGNED,
+            allowNull: true,
+            comment: '原图宽度（像素，EXIF 旋转后）'
+        },
+        height: {
+            type: DataTypes.INTEGER.UNSIGNED,
+            allowNull: true,
+            comment: '原图高度（像素，EXIF 旋转后）'
+        },
         orphan_since: {
             type: DataTypes.DATE,
             allowNull: true,

@@ -135,11 +135,11 @@ const nahidaDeco = nahidaDecoMeta.src
 const musicStore = useMusicStore()
 
 // 组件带 transition:persist，跨页存活；展开判定从 URL 推导并在软导航后刷新。
-// 完全展开（面板态）的页面：首页 + 日记页；其余页面显示迷你条。
-const EXPAND_PATHS = ['/', '/diary']
+// 完全展开（面板态）只在首页；日记页与其他页面显示迷你条。
+const EXPAND_PATHS = ['/']
 
 function isExpandPath(pathname) {
-  // 归一化尾部斜杠，/diary/ 这类形态也要命中
+  // 归一化尾部斜杠，空串一律落到首页
   const p = (pathname || '').replace(/\/+$/, '') || '/'
   return EXPAND_PATHS.includes(p)
 }
@@ -176,7 +176,7 @@ onUnmounted(() => {
   document.removeEventListener('astro:after-swap', updateExpandRoute)
 })
 
-// 展开逻辑：桌面端 + 展开页（首页 / 日记）才展开，移动端始终收起迷你条
+// 展开逻辑：桌面端 + 首页才展开，日记页与其他页面、移动端始终收起迷你条
 const expanded = ref(false)
 
 watch([expandRoute, isMobile], ([onExpandRoute, mobile]) => {
@@ -192,8 +192,9 @@ const isLoading = computed(() => musicStore.playlistState === 'loading')
 const playlistFailed = computed(() => musicStore.playlistState === 'error')
 
 // 歌单取数时机 =「播放器被展开」或「按下播放」（store 内部幂等，只会请求一次）：
-// 桌面首页/日记一进来面板就是展开的（immediate 捕捉这一次），其余页面与移动端要等用户
-// 点开播放器——与既有的 preload='none' 同一条纪律，不让没打算听歌的访客为它多付一个请求
+// 只有桌面首页一进来面板就是展开的（immediate 捕捉这一次）；日记页与其他页面、移动端
+// 都是迷你条，要等用户点开或按下播放——与既有的 preload='none' 同一条纪律，
+// 不让没打算听歌的访客为它多付一个请求
 watch(expanded, (value) => {
   if (value) void musicStore.loadPlaylists()
 }, { immediate: true })

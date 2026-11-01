@@ -40,7 +40,7 @@ const ICONS = {
   mdi: [
     // AboutNode / AboutView
     'close', 'github', 'email', 'account-heart', 'school', 'notebook', 'message-text',
-    // DiaryBook 书脊落款（桌面日记视觉）
+    // DiaryPrint 纸笺落款（原 DiaryBook 书脊沿用）
     'sprout',
   ],
 }

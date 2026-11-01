@@ -13,18 +13,17 @@
     </ContentState>
 
     <template v-else>
-      <!-- 书架：首屏 HTML 里就是一整面书（构建期烘焙 + 预渲染），水合后才可抽书 -->
-      <DiaryShelf
+      <!-- 照片墙：首屏 HTML 里就是整面墙（构建期烘焙 + 预渲染），点一张打开日记本 -->
+      <DiaryGallery
         :diaries="diaries"
         :total="total"
-        :page="page"
-        :total-pages="totalPages"
+        :active-index="activeIndex"
         @open="openNotebook"
       >
-        <!-- 不用 ContentState：它的文字走 --color-text（亮色下是深绿），压在木色上
-             只有 ~1.5:1，读不出来。空架提示要用能在两种主题的木色上都读清的颜色 -->
-        <p v-if="!diaries.length" class="diary-empty">书架还空着</p>
-      </DiaryShelf>
+        <!-- 空态用同一张奶油纸：文字不能走页面主题色——纸是恒定白天材质，
+             主题色在暗色下会翻成浅绿，压在纸面上读不出来 -->
+        <p v-if="!diaries.length" class="diary-empty">墙上还空着</p>
+      </DiaryGallery>
 
       <Pagination
         v-if="totalPages > 1"
@@ -34,7 +33,7 @@
       />
     </template>
 
-    <!-- 日记本浮层：点书 → 从书脊位置飞到屏幕中央 → 封面翻开 -->
+    <!-- 日记本浮层：点照片 → 冲印从墙上飞到屏幕中央 → 封面翻开 -->
     <DiaryNotebook
       v-if="activeDiary"
       :diary="activeDiary"
@@ -80,7 +79,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import ContentState from '@/components/ui/ContentState.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import Pagination from '@/components/ui/Pagination.vue'
-import DiaryShelf from '@/components/diary/DiaryShelf.vue'
+import DiaryGallery from '@/components/diary/DiaryGallery.vue'
 import DiaryNotebook from '@/components/diary/DiaryNotebook.vue'
 import { getPublicDiaries } from '@/api/diary'
 import { createSilentSync } from '@/utils/liveData'
@@ -92,10 +91,10 @@ const props = defineProps({
 })
 
 const baked = props.initialDiaries || {}
-// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有整面书架，首屏不闪「加载中」
+// 有烘焙数据就直接渲染 → 预渲染 HTML 里就有整面照片墙，首屏不闪「加载中」
 const diaries = ref(baked.diaries || [])
 const loading = ref(!diaries.value.length)
-// 客户端取数失败：就地渲染失败态（可重试）；改前只 console.error，页面上只剩空书架
+// 客户端取数失败：就地渲染失败态（可重试）；改前只 console.error，页面上只剩空墙
 const error = ref('')
 // Teleport 守卫：SSR 与客户端首帧都不输出 teleport 标记（Astro 向岛内注入的水合
 // 脚本与 Vue 期望的空注释错位会触发 hydrateTeleport mismatch），挂载后再挂
@@ -110,7 +109,7 @@ let fetchToken = 0
 const activeIndex = ref(-1)
 const originRect = ref(null)
 const activeDiary = computed(() => diaries.value[activeIndex.value] || null)
-// 关闭后把焦点还给刚才那本书（键盘用户不会掉到页面顶部）
+// 关闭后把焦点还给刚才那张照片（键盘用户不会掉到页面顶部）
 let originEl = null
 
 // —— 图片灯箱 ——
@@ -187,6 +186,9 @@ const silentSync = createSilentSync({
   apply: (res) => {
     // 对账期间用户可能已翻页，别用第 1 页的数据覆盖当前页
     if (page.value !== 1) return
+    // 用户正在读本子时也别换列表：否则 activeIndex / 被隐藏的卡片会错位。
+    // 下次访问再对账，阅读体验优先。
+    if (activeIndex.value >= 0) return
     applyPage(res)
   }
 })
@@ -208,7 +210,7 @@ async function fetchDiaries() {
 }
 
 watch(page, () => {
-  // 换架时书架整体重画，顺手关掉可能开着的本子
+  // 换页时整面墙重画，顺手关掉可能开着的本子
   activeIndex.value = -1
   fetchDiaries()
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -227,33 +229,35 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 靠左铺满内容列（不要 margin: 0 auto）：骨架左栏已有卡片，若这里再居中，
-   正文会离卡片多出一大截空白。与首页 PostList 对齐方式保持一致 */
+/* 占满主内容列（照片墙需要宽度；旧书架的 700px 阅读宽与 92px 顶部留白
+   都是为书脊飞行留的，已经不需要） */
 .diary-page {
   width: 100%;
-  max-width: 700px;
-  /* 书架上方留出"房间的顶"：抽出的封面卡会向上探出第一层，窄屏（刊头隐藏）
-     时这点余量也保证它不会顶到导航栏 */
-  padding-top: clamp(24px, 7vw, 92px);
+  padding-top: clamp(12px, 3vw, 32px);
 }
 
-/* 页码与书架同宽，居中落在书架正下方 */
+/* 页码居中落在墙下方 */
 .diary-page__pager {
-  max-width: 700px;
+  width: 100%;
 }
 
-/* 空架提示：--book-title 是近白纸色，压亮/暗两种木色都够对比度 */
+/* 空态：一张奶油纸笺。纸是恒定白天材质，文字走 --paper-*，不随暗色翻转 */
 .diary-empty {
   position: relative;
   z-index: 1;
-  margin: 0;
-  padding: 76px 0 88px;
+  max-width: 420px;
+  margin: 10px auto 0;
+  padding: 34px 28px;
+  border-radius: 2px;
+  background-color: var(--gallery-print);
+  background-image: radial-gradient(var(--notebook-line) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+  box-shadow: var(--gallery-print-shadow);
   text-align: center;
-  font-family: 'LXGW WenKai', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-family: var(--font-kai);
   font-size: 15px;
   letter-spacing: 0.08em;
-  color: var(--book-title);
-  opacity: 0.7;
+  color: var(--paper-text);
 }
 
 /* 灯箱（从日记本里的照片点开）*/

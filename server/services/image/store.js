@@ -47,12 +47,14 @@ async function saveImageFile(sourcePath) {
 
   // 注意：sharp 0.35 默认（不调用 withMetadata/keepExif）即剥离全部元数据（EXIF/ICC）。
   // 实测 withMetadata(false) 反而会保留元数据并注入 sRGB ICC（行为与文档相反），切勿添加。
-  await sharp(buffer)
+  const saved = await sharp(buffer)
     .rotate()
     .webp({ quality: IMAGE_QUALITY })
     .toFile(path.join(targetDir, `${baseName}.webp`))
 
-  const { width } = metadata
+  // saved 的 width/height 才是 EXIF 旋转后的实际像素（metadata 是旋转前）；
+  // 缩略图阈值与前端画廊的真实比例都以它为准
+  const { width, height } = saved
   if (width > THUMB_WIDTH) {
     await sharp(buffer)
       .rotate()
@@ -68,7 +70,7 @@ async function saveImageFile(sourcePath) {
 
   const fileSize = (await fs.stat(path.join(targetDir, `${baseName}.webp`))).size
 
-  return { storagePath, thumbPath, fileSize }
+  return { storagePath, thumbPath, fileSize, width, height }
 }
 
 // 物理删除图片文件（原图 + 可选缩略图），ENOENT 忽略

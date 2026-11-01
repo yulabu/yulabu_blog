@@ -8,8 +8,8 @@ exports.getPublicDiaries = async (req, res) => {
   const { page, pageSize, offset } = listDiariesDTO(req.query);
 
   const { count, rows } = await Diary.findAndCountAll({
-    // 书架的封面走 400px 缩略图（VO 的 coverThumb），见 vo/diary.vo.js
-    include: [{ model: Image, as: 'coverImage', attributes: ['thumb_path'] }],
+    // 照片墙的封面走 400px 缩略图（VO 的 coverThumb），宽高供画廊按真实比例陈列
+    include: [{ model: Image, as: 'coverImage', attributes: ['thumb_path', 'width', 'height'] }],
     order: [['createdAt', 'DESC']],
     limit: pageSize,
     offset

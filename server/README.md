@@ -10,7 +10,7 @@
 
 | 类别 | 技术 |
 |---|---|
-| 运行时 | Node.js 22 / 24 LTS（生产 22.23.2；前端包用 `engines` 声明，后端请用同一版本） |
+| 运行时 | Node.js 22 / 24 LTS（生产 **22.23.4**；Node ≥ 22.23.4，含 eMudhra G3 根移除；前端包用 `engines` 声明，后端请用同一版本） |
 | 框架 | Express 5（识别 async 抛错，控制器无需 try-catch） |
 | 数据库 | MySQL 协议：生产 MariaDB 10.11，本地 MySQL / MariaDB 均可 |
 | ORM | Sequelize 6（`timestamps` + `underscored`，时区固定 +08:00） |
@@ -19,11 +19,13 @@
 | 限流 | express-rate-limit 8.x（`trust proxy` 已设 `loopback`） |
 | 模块别名 | module-alias（`@config` / `@services` … 见 package.json 的 `_moduleAliases`） |
 
+> **生产运行基线（2026-10）**：Node 必须 ≥ 22.23.4（移除 eMudhra `emSign ECC Root CA - G3`，不要降级）；系统 CA 已禁用 `emSign_ECC_Root_CA_-_G3` 与 `Comodo_AAA_Services_root`，每次 `apt upgrade` 升级 `ca-certificates` 后按根 [README.md](../README.md#生产部署) 复查；只重启应用用 `pm2 restart blog-server blog-web`，需要重启 PM2 服务/systemd 托管时用 `systemctl restart pm2-root`；**不要用 `pm2 update`**（实测会卡住并停应用）。
+
 ## 快速开始
 
 ### 1. 环境要求
 
-- Node.js 22 或 24 LTS（不要用奇数版，peer 依赖解析会出问题）
+- Node.js 22.23.4+ 或 24 LTS（生产 22.23.4；不要用奇数版，peer 依赖解析会出问题）
 - 一个可连的 MySQL / MariaDB，库的字符集用 utf8mb4
 
 ### 2. 安装依赖
@@ -114,7 +116,7 @@ server/
 | `blog_column` · `column_post` | 专栏与「专栏-文章」关联；`column_post.post_id` 唯一，一篇文章只属于一个专栏，专栏内顺序看 `sort_order` |
 | `diary` | 日记。`images` 是单图契约（≤1 张，与 `cover_image_id` 一一对应） |
 | `friend_link` | 友链。`avatar` / `preview_image` 只存外链，不进图片系统 |
-| `image` | 图片元数据（`storage_path` / `thumb_path` / `file_size` / `orphan_since`），**不含引用语义** |
+| `image` | 图片元数据（`storage_path` / `thumb_path` / `file_size` / `width` / `height` / `orphan_since`），**不含引用语义** |
 | `post_image` | 文章正文图关联（1:N），与各 `*_image_id` 列同为图片引用来源 |
 | `admin` | 管理员账号（bcrypt 哈希） |
 | `visit_log` · `daily_stat` | 访问明细（保留 90 个完整自然日）/ 每日聚合（永久保留） |
@@ -238,7 +240,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 
 ### 图片系统（引用归业务表，image 只存元数据）
 
-上传链路：`POST /api/images/upload` → multer 流式落到 `UPLOAD_DIR/.tmp` → sharp 转 webp（+ 400px 缩略图 `*.thumb.webp`）落到 `UPLOAD_DIR/YYYY/MM/` → 写 `image` 表（只存 `storage_path` / `thumb_path` / `file_size` / `orphan_since`）→ 每张返回 `{ image_id, url, thumb_url }`（形状唯一出处 `vo/image.vo.js` 的 `uploadedImageVO`，专栏封面上传共用同一形状）。编排（单请求总量校验 / 顺序落库 / 临时文件收尾）与失败补偿都在 `services/image/upload.js`：**建行失败会回删刚落盘的原图与缩略图**——否则这对文件在 `image` 表里没有任何记录，GC 的三条路径都碰不到（会永久占盘且从库里看不出来）。批量上传保持「任一张失败即中断、已成功的留库由 GC 宽限回收」的语义（前端分片上传同样不回滚、不重试）。
+上传链路：`POST /api/images/upload` → multer 流式落到 `UPLOAD_DIR/.tmp` → sharp 转 webp（+ 400px 缩略图 `*.thumb.webp`）落到 `UPLOAD_DIR/YYYY/MM/` → 写 `image` 表（只存 `storage_path` / `thumb_path` / `file_size` / `width` / `height` / `orphan_since`；宽高取 sharp **EXIF 旋转后**的输出尺寸）→ 每张返回 `{ image_id, url, thumb_url }`（形状唯一出处 `vo/image.vo.js` 的 `uploadedImageVO`，专栏封面上传共用同一形状）。编排（单请求总量校验 / 顺序落库 / 临时文件收尾）与失败补偿都在 `services/image/upload.js`：**建行失败会回删刚落盘的原图与缩略图**——否则这对文件在 `image` 表里没有任何记录，GC 的三条路径都碰不到（会永久占盘且从库里看不出来）。批量上传保持「任一张失败即中断、已成功的留库由 GC 宽限回收」的语义（前端分片上传同样不回滚、不重试）。
 
 引用与回收：
 
@@ -247,11 +249,11 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 - **孤儿回收交给 `jobs/imageGc.js`**（启动即跑 + 每 24 小时）：按 `services/image/refs.js` 的账本 SQL 对账，三态处理——有引用清标记（复活）/ 无引用打标 / **标记超 24h 且文件创建超 72h** 才删文件与记录（**删除前还会重取一次新鲜引用集合**：对账快照之后刚被重新引用的图会被救回）。所以删除文章、专栏、日记**不会即时删图**，后台图片库会短暂出现无主图，属正常
 - **图片引用账本的唯一出处是 `services/image/refs.js` 的 `REFERENCE_SOURCES`**：它同时派生孤儿对账 SQL、后台图片库按类型筛图、反查引用位置。**新增持图业务只改这一处**（详见「常见改动指引」）——但账本不是全部：模型关联（查询取缩略图那侧）与 `FK_TARGETS`（老库外键基准）是另外两份描述，三方一致性由 `node scripts/check-refs.js` 四向断言（2026-10-02 加），改完持图业务跑一次即知有没有漏改
 - **图片类型名（`post_content` / `cover` / `diary` + 伪类型 `other`）的唯一出处是 `utils/imageRefTypes.js`**：HTTP 白名单（`type=` 参数）与反查字段 `reference_type` 都从这里派生——改前三处各写一份且已漂移（账本叫 diary、白名单里没有、标签写成 cover），只作日记封面的图因此任何筛选都查不到
-- 缩略图的消费者都是**小尺寸展示位**：首页文章列表的小卡封面与日记书架的封面（VO 的 `coverThumb`）——大图卡、文章页与过渡卡片仍用原图
+- 缩略图的消费者都是**小尺寸展示位**：首页文章列表的小卡封面与日记照片卡 / 日记本过渡封面（VO 的 `coverThumb`，日记同时返回 `coverWidth` / `coverHeight` 供画廊按真实比例陈列）——大图卡、文章页、日记本内页与灯箱仍用原图
 - 友链图片**彻底外链化、完全退出图片系统**：`avatar` / `preview_image` 只收 `http(s)://` 或 `//`（拒绝 `/uploads/`——没有引用指针的本站路径会被 GC 当孤儿回收）；`url` 只收绝对 `http(s)://`。「抓图」= `services/ogImage.js` 抓 `og:image` 与 favicon，不下载不落盘
 - **抓图的出站加固（2026-10）**：目标必须是**公网**——DNS 解析出的每个地址都过 `ipaddr.js` 判定（私网/环回/链路本地/ULA/CGNAT/保留段，含 `::ffff:127.0.0.1` 这类映射地址）；`redirect: 'manual'` **逐跳复检**（≤3 跳，改前 `follow` 一跳就能被带去内网）；响应体积上限 512KB（流式读，到上限就停止读取但**按已读部分照常解析**——meta 都在 `<head>` 里，大首页不该因此抓不到图）；只接受 `text/html`；非 2xx / 非 HTML / 超限 / 超时**一律记 `[warn] [og-image]`**（改前这些路径静默）；`og:image` 的相对地址按**最终跳**的 URL 解析
 
-结构变更的部署顺序：`node scripts/sync-schema.js` → `node scripts/migrate-image-ref.js`（两个都幂等）→ `pm2 restart blog-server`。
+结构变更的部署顺序：`node scripts/sync-schema.js` → `node scripts/migrate-image-ref.js`（两个都幂等）→ `pm2 restart blog-server`。**图片宽高列（2026-11）另跑 `node scripts/backfill-image-dimensions.js`**（幂等，读 uploads 原图回填历史图；新上传自动写入），顺序：sync-schema → backfill → restart。
 
 ### 访问统计（visit_log + daily_stat）
 
@@ -430,6 +432,7 @@ grep '^\[info\]' /root/.pm2/logs/blog-server-out.log | grep '\[image-gc\]'   # �
 ## 相关文档
 
 - 仓库根 [AGENTS.md](../AGENTS.md)：生产环境清单、部署流程、开发惯例（部署只走 GitHub 推送这一条路径）
+- 仓库根 [README.md](../README.md)：生产部署最小清单、Node/系统 CA 基线、PM2 重启方式
 - [deploy/schema.md](../deploy/schema.md)：数据库结构基线与对账（外键生成规则、遗留对象清单、reconcile 脚本用法与回滚）
 - [deploy/astro.md](../deploy/astro.md)：前台 Astro 的 nginx / PM2 配置与回滚、上传链路的三层上限、日志与运行时环境
 - [deploy/backup.md](../deploy/backup.md)：备份 cron 配置、恢复与异机迁移步骤

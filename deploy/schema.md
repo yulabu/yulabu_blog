@@ -121,3 +121,10 @@ node scripts/reconcile-schema.js --apply    # 执行补齐（先校验孤儿引�
 - **两库现状（填平后）**：本机（2026-10-01）与生产（2026-10-02）dry-run 均为「已存在 8、待补 0、挡住 0」。
   历史情况保留在上述基线表：本机曾 4 项待补 + 1 项被 `visit_log.post_id` 的 3 行孤儿挡住（那 3 行的 post_id 后来置 NULL），
   生产曾缺 4 项、0 被挡。将来再出现「模型加了关联、老库没跟上」时，照本节的顺序重跑即可
+
+## 2026-11 图片尺寸列（日记照片墙）
+
+- `image.width` / `image.height`：`INT UNSIGNED NULL`，原图 **EXIF 旋转后**的像素；纯增量列，可空，无数据迁移。
+- 新上传由 `services/image/store.js` 的 sharp 输出信息写入；历史图用 `node scripts/backfill-image-dimensions.js` 幂等回填（只补 null/0，读 uploads 原图；缺文件跳过并记 warn）。
+- 部署顺序：`node scripts/sync-schema.js` → `node scripts/backfill-image-dimensions.js` → `pm2 restart blog-server`（sync-schema 启动时也会自动跑，但回填需要列先存在，故先手动跑一次）。
+- 公开日记接口新增 `coverWidth` / `coverHeight`；缺失/null 时前端回退到 id 派生的确定性比例，照片卡按真实 cover 比例陈列。
