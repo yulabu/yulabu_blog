@@ -1,5 +1,5 @@
 <template>
-  <!-- Teleport 守卫与 DiaryNotebook/AboutNode 同款：挂载后再挂，规避 hydrateTeleport mismatch -->
+  <!-- Teleport 守卫与 DiaryNotebook 同款：挂载后再挂，规避 hydrateTeleport mismatch -->
   <Teleport v-if="isMounted" to="body">
     <Transition name="share-pop" @after-leave="handleAfterLeave">
       <div v-if="open" class="share-overlay" @click="close">
@@ -241,7 +241,7 @@ onBeforeUnmount(() => {
   cursor: default;
 }
 
-/* 进出场动画（AboutNode 的 popup 同款节奏） */
+/* 进出场动画（与 DiaryNotebook 的浮层同款节奏） */
 .share-pop-enter-active {
   transition: opacity 0.3s ease;
 }

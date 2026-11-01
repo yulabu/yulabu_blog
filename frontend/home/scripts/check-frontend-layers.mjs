@@ -82,6 +82,9 @@ const STATIC_VUE_ALLOW = {
   // AppIcon 同步渲染 getIcon 的 body（SSR/客户端输出一致），本来就不需要水合，
   // 页脚用它渲染 GitHub/Email 图标是静态件用法
   'src/components/astro/SiteFooter.astro': ['AppIcon'],
+  // About 整页无交互（全是原生 <a> 与 CSS 悬停），内容是纯 Astro 组件；
+  // 图标沿用 AppIcon 的静态件用法，不挂 Vue 岛
+  'src/components/about/AboutContent.astro': ['AppIcon'],
 }
 assert('③ Astro 里 import 的 .vue 必须带 client 指令或登记为静态件', () => {
   for (const f of files.filter((f) => f.endsWith('.astro'))) {

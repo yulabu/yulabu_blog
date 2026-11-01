@@ -1,0 +1,749 @@
+---
+/**
+ * About 页内容（纯 Astro 静态组件，零 JS）。
+ *
+ * 为什么不是 Vue 岛：这一页没有任何交互（链接是原生 <a>，悬停全是 CSS），
+ * 用 islands/ 的页面级岛只会多下发一份框架运行时。图标仍走 components/ui/AppIcon
+ * 的静态件用法（与 SiteFooter 同款，登记在 scripts/check-frontend-layers.mjs 的
+ * STATIC_VUE_ALLOW）。
+ *
+ * 材质纪律：奶油纸是恒定「白天材质」，纸上的文字一律用 --paper-ink / --paper-text /
+ * --paper-muted（暗色刻意不翻转，见 tokens.css）；页面底色上的文字才用会翻转的
+ * --color-heading / --color-text。花体点缀用 --color-primary-hover 而不是
+ * --color-primary：后者在浅绿底上只有约 3:1，18px 以下不达 AA（实算）。
+ */
+import AppIcon from '@/components/ui/AppIcon.vue'
+import personalImg from '@/assets/img/Personal_img.webp'
+import postcardImg from '@/assets/img/about_blog.webp'
+
+const notes = [
+  {
+    icon: 'material-symbols:edit-note',
+    label: '我在做',
+    text: '泰坦尼克号上选座位，也许我能成为大黑调？'
+  },
+  {
+    icon: 'material-symbols:description-outline',
+    label: '我在写',
+    text: '踩坑记录、读书时冒出来的念头，还有一些没头没尾的生活片段。'
+  },
+  {
+    icon: 'material-symbols:auto-awesome',
+    label: '我喜欢',
+    text: '纳西妲、好看的图，还有把一张歌单循环到深夜。'
+  },
+  {
+    icon: 'mdi:sprout',
+    label: '小毛病',
+    text: '随机昏迷一下，胡乱吃到撑死，看到好看的东西就想保存下来。'
+  }
+]
+
+const siteLinks = [
+  {
+    href: '/',
+    icon: 'material-symbols:article-outline',
+    label: '文章',
+    en: 'Writing',
+    desc: '技术踩坑、读书笔记，和一些零散的想法。'
+  },
+  {
+    href: '/diary',
+    icon: 'mdi:notebook',
+    label: '日记',
+    en: 'Diary',
+    desc: '照片，和当天想说的话。'
+  },
+  {
+    href: '/columns',
+    icon: 'material-symbols:album',
+    label: '专栏',
+    en: 'Columns',
+    desc: '成系列的长内容，像 CD 一样一张张摆着。'
+  },
+  {
+    href: '/friends',
+    icon: 'material-symbols:group-outline',
+    label: '友链',
+    en: 'Friends',
+    desc: '常去逛的邻居，也欢迎来交换链接。'
+  }
+]
+---
+
+<main class="about-page">
+  <section class="about-intro" aria-labelledby="about-title">
+    <figure class="about-portrait">
+      <span class="about-portrait__tape" aria-hidden="true"></span>
+      <img
+        class="about-portrait__img"
+        src={personalImg.src}
+        alt="Yulabu 的头像"
+        width={personalImg.width}
+        height={personalImg.height}
+        decoding="async"
+      />
+      <figcaption class="about-portrait__caption">
+        <span class="about-portrait__name" lang="en">Yulabu</span>
+        <span class="about-portrait__status">记录中</span>
+      </figcaption>
+    </figure>
+
+    <div class="about-intro__body">
+      <span class="about-intro__en" lang="en">About</span>
+      <h1 id="about-title" class="about-intro__title">你好，我是 Yulabu。</h1>
+      <p class="about-intro__text">
+        一个喜欢纳西妲的开发者，喜欢折腾新鲜事物，偶尔写点东西记录成长。
+      </p>
+      <p class="about-intro__text">
+        我喜欢把遇到的事情和学到的东西整理成笔记，希望对你有用，也希望你能在这里找到一些有趣的内容。
+      </p>
+    </div>
+  </section>
+
+  <section class="about-notes" aria-labelledby="notes-title">
+    <div class="about-notes__sheet">
+      <span class="about-notes__tape" aria-hidden="true"></span>
+      <h2 id="notes-title" class="about-notes__title">关于我的几件小事</h2>
+      <dl class="about-notes__list">
+        {
+          notes.map((note) => (
+            <div class="note">
+              <dt class="note__label">
+                <span class="note__icon"><AppIcon icon={note.icon} /></span>
+                {note.label}
+              </dt>
+              <dd class="note__text">{note.text}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+  </section>
+
+  <nav class="about-index" aria-labelledby="index-title">
+    <header class="about-index__head">
+      <h2 id="index-title" class="about-index__title">本站导览</h2>
+      <span class="about-index__en" lang="en">The Site</span>
+      <span class="about-index__rule" aria-hidden="true"></span>
+    </header>
+    <ul class="about-index__list">
+      {
+        siteLinks.map((item) => (
+          <li class="index-row">
+            <a class="index-row__link" href={item.href}>
+              <span class="index-row__icon"><AppIcon icon={item.icon} /></span>
+              <span class="index-row__body">
+                <span class="index-row__label">{item.label}</span>
+                <span class="index-row__desc">{item.desc}</span>
+              </span>
+              <span class="index-row__en" lang="en">{item.en}</span>
+              <span class="index-row__arrow">
+                <AppIcon icon="material-symbols:arrow-forward-rounded" />
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
+  <section class="about-outro" aria-label="联系我">
+    <div class="about-outro__body">
+      <blockquote class="about-outro__quote">“愿每一段旅程，都有值得记录的风景。”</blockquote>
+      <p class="about-outro__text">
+        如果你想聊聊技术、分享一个好玩的项目，或者只是路过打个招呼，都可以找到我。看到消息我会尽快回复。
+      </p>
+      <p class="about-outro__signature" lang="en">Yulabu</p>
+      <div class="about-outro__links">
+        <a
+          class="contact-pill"
+          href="https://github.com/yulabu"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span class="contact-pill__icon"><AppIcon icon="mdi:github" /></span>
+          <span>GitHub</span>
+        </a>
+        <a class="contact-pill" href="mailto:hello@yulabu.cn">
+          <span class="contact-pill__icon"><AppIcon icon="mdi:email" /></span>
+          <span>hello@yulabu.cn</span>
+        </a>
+      </div>
+    </div>
+
+    <figure class="about-postcard">
+      <span class="about-postcard__tape" aria-hidden="true"></span>
+      <img
+        class="about-postcard__img"
+        src={postcardImg.src}
+        alt="纳西妲坐在窗边"
+        width={postcardImg.width}
+        height={postcardImg.height}
+        loading="lazy"
+        decoding="async"
+      />
+    </figure>
+  </section>
+</main>
+
+<style>
+  /* 单列页：PageFrame 用 display:contents，宽度与内边距由本页自己给
+     （与 DiaryView 的单列写法一致）。max-width 980 是「一封信」的阅读宽度。 */
+  .about-page {
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: clamp(28px, 4vw, 44px) var(--page-padding) 112px;
+    font-family: var(--font-ui);
+  }
+
+  /* ---------- 开场：冲印 + 自我介绍 ---------- */
+  .about-intro {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: clamp(28px, 4vw, 48px);
+    align-items: start;
+  }
+
+  .about-portrait {
+    position: relative;
+    width: 212px;
+    margin: 4px 0 0;
+    padding: 10px 10px 0;
+    border-radius: 3px;
+    background: var(--gallery-print);
+    box-shadow: var(--gallery-print-shadow);
+    transform: rotate(-1.4deg);
+  }
+
+  .about-portrait__tape {
+    position: absolute;
+    top: -8px;
+    left: 15%;
+    width: 56px;
+    height: 18px;
+    border-radius: 1px;
+    opacity: 0.85;
+    background: var(--gallery-tape-1);
+    clip-path: polygon(2% 0, 100% 4%, 97% 100%, 0 95%);
+    box-shadow: inset 0 1px 0 var(--border-light);
+    transform: rotate(-3deg);
+  }
+
+  .about-portrait__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 1px;
+    background: rgba(var(--color-primary-rgb), 0.08);
+  }
+
+  .about-portrait__caption {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 2px 12px;
+  }
+
+  .about-portrait__name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 19px;
+    line-height: 1;
+    color: var(--paper-ink);
+  }
+
+  .about-portrait__status {
+    font-size: 10.5px;
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+    color: var(--paper-muted);
+  }
+
+  .about-intro__body {
+    min-width: 0;
+  }
+
+  .about-intro__en {
+    display: inline-block;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 21px;
+    line-height: 1;
+    color: var(--color-primary-hover);
+  }
+
+  .about-intro__title {
+    margin: 14px 0 0;
+    font-family: var(--font-kai);
+    font-size: clamp(28px, 3.4vw, 36px);
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--color-heading);
+  }
+
+  .about-intro__text {
+    max-width: 52ch;
+    margin: 18px 0 0;
+    font-size: 15px;
+    line-height: 1.95;
+    color: var(--color-text);
+  }
+
+  .about-intro__text + .about-intro__text {
+    margin-top: 12px;
+  }
+
+  /* ---------- 纸笺：关于我的几件小事 ---------- */
+  .about-notes {
+    margin-top: clamp(52px, 7vw, 78px);
+  }
+
+  .about-notes__sheet {
+    position: relative;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 34px clamp(24px, 4vw, 42px) 30px;
+    border-radius: 3px;
+    background-color: var(--gallery-print);
+    background-image: radial-gradient(var(--notebook-line) 1px, transparent 1.2px);
+    background-size: 18px 18px;
+    box-shadow: var(--gallery-print-shadow);
+  }
+
+  .about-notes__tape {
+    position: absolute;
+    top: -9px;
+    left: 16%;
+    width: 58px;
+    height: 18px;
+    border-radius: 1px;
+    opacity: 0.85;
+    background: var(--gallery-tape-3);
+    clip-path: polygon(2% 0, 100% 4%, 97% 100%, 0 95%);
+    box-shadow: inset 0 1px 0 var(--border-light);
+    transform: rotate(-2deg);
+  }
+
+  .about-notes__title {
+    margin: 0;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed rgba(150, 120, 88, 0.3);
+    font-family: var(--font-kai);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--paper-ink);
+  }
+
+  .about-notes__list {
+    margin: 0;
+    padding: 0;
+  }
+
+  .note {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 18px;
+    padding: 16px 0 15px;
+    border-bottom: 1px dashed rgba(150, 120, 88, 0.26);
+  }
+
+  .note:last-child {
+    padding-bottom: 2px;
+    border-bottom: 0;
+  }
+
+  .note__label {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    font-family: var(--font-kai);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--paper-ink);
+  }
+
+  .note__icon {
+    display: inline-flex;
+    margin-top: 2px;
+    font-size: 17px;
+    line-height: 1;
+    /* 纸上的图标必须用纸墨令牌：--color-primary-hover 在暗色会翻成浅绿，
+       压在恒定奶油纸上只有约 1.9:1（实测），和正文一起失效 */
+    color: var(--paper-text);
+  }
+
+  .note__text {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.85;
+    color: var(--paper-text);
+  }
+
+  /* ---------- 本站导览：一条条门，不做卡片网格 ---------- */
+  .about-index {
+    margin-top: clamp(56px, 7vw, 86px);
+  }
+
+  .about-index__head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+
+  .about-index__title {
+    margin: 0;
+    font-family: var(--font-kai);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--color-heading);
+  }
+
+  .about-index__en {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 19px;
+    color: var(--color-primary-hover);
+  }
+
+  .about-index__rule {
+    flex: 1;
+    height: 1px;
+    background: var(--border-divider);
+    opacity: 0.5;
+  }
+
+  .about-index__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .index-row + .index-row {
+    border-top: 1px dashed var(--border-divider);
+  }
+
+  .index-row__link {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto 20px;
+    align-items: center;
+    gap: 16px;
+    padding: 17px 10px 17px 6px;
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.2s ease;
+  }
+
+  .index-row__link:hover,
+  .index-row__link:focus-visible {
+    background: rgba(var(--color-primary-rgb), 0.07);
+  }
+
+  .index-row__link:focus-visible {
+    outline: 2px solid var(--color-primary-hover);
+    outline-offset: -2px;
+  }
+
+  .index-row__link:active {
+    background: rgba(var(--color-primary-rgb), 0.12);
+  }
+
+  .index-row__icon {
+    display: inline-flex;
+    font-size: 21px;
+    line-height: 1;
+    color: var(--color-primary-hover);
+  }
+
+  .index-row__body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .index-row__label {
+    font-family: var(--font-kai);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--color-heading);
+  }
+
+  .index-row__desc {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--color-text);
+  }
+
+  .index-row__en {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--color-text);
+  }
+
+  .index-row__arrow {
+    display: inline-flex;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--color-primary-hover);
+    transition: transform 0.25s var(--ease-standard);
+  }
+
+  .index-row__link:hover .index-row__arrow,
+  .index-row__link:focus-visible .index-row__arrow {
+    transform: translateX(4px);
+  }
+
+  /* ---------- 结尾：引言 + 签名 + 联系方式 + 明信片 ---------- */
+  .about-outro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: clamp(28px, 4vw, 52px);
+    align-items: center;
+    margin-top: clamp(56px, 7vw, 86px);
+  }
+
+  .about-outro__quote {
+    margin: 0;
+    font-family: var(--font-kai);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.8;
+    color: var(--color-heading);
+  }
+
+  .about-outro__text {
+    max-width: 44ch;
+    margin: 14px 0 0;
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--color-text);
+  }
+
+  .about-outro__signature {
+    margin: 20px 0 0;
+    text-align: right;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1.1;
+    color: var(--color-primary-hover);
+  }
+
+  .about-outro__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .contact-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+    border-radius: 999px;
+    background: rgba(var(--color-primary-rgb), 0.08);
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--color-heading);
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s var(--ease-standard);
+  }
+
+  .contact-pill:hover {
+    border-color: rgba(var(--color-primary-rgb), 0.45);
+    background: rgba(var(--color-primary-rgb), 0.16);
+    transform: translateY(-1px);
+  }
+
+  .contact-pill:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .contact-pill:focus-visible {
+    outline: 2px solid var(--color-primary-hover);
+    outline-offset: 3px;
+  }
+
+  .contact-pill__icon {
+    display: inline-flex;
+    font-size: 17px;
+    line-height: 1;
+    color: var(--color-primary-hover);
+  }
+
+  .about-postcard {
+    position: relative;
+    width: 300px;
+    margin: 0;
+    padding: 8px;
+    border-radius: 3px;
+    background: var(--gallery-print);
+    box-shadow: var(--gallery-print-shadow);
+    transform: rotate(1.2deg);
+  }
+
+  .about-postcard__tape {
+    position: absolute;
+    top: -8px;
+    right: 14%;
+    width: 54px;
+    height: 18px;
+    border-radius: 1px;
+    opacity: 0.85;
+    background: var(--gallery-tape-2);
+    clip-path: polygon(2% 0, 100% 4%, 97% 100%, 0 95%);
+    box-shadow: inset 0 1px 0 var(--border-light);
+    transform: rotate(3deg);
+  }
+
+  .about-postcard__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 1px;
+    background: rgba(var(--color-primary-rgb), 0.08);
+  }
+
+  @media (max-width: 768px) {
+    .about-page {
+      padding-bottom: 128px;
+    }
+
+    .about-intro {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 26px;
+    }
+
+    .about-portrait {
+      width: 196px;
+      margin: 0 auto;
+    }
+
+    .about-intro__en {
+      font-size: 19px;
+    }
+
+    .about-intro__title {
+      font-size: 28px;
+    }
+
+    .about-intro__text {
+      font-size: 14.5px;
+    }
+
+    .note {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 5px;
+      padding: 15px 0 14px;
+    }
+
+    .note__label {
+      font-size: 15px;
+    }
+
+    .note__text {
+      font-size: 13px;
+    }
+
+    .about-index__title {
+      font-size: 20px;
+    }
+
+    .index-row__link {
+      grid-template-columns: 22px minmax(0, 1fr) 20px;
+      gap: 12px;
+      padding: 15px 6px;
+    }
+
+    .index-row__en {
+      display: none;
+    }
+
+    .about-outro {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .about-outro__quote {
+      font-size: 17px;
+    }
+
+    .about-outro__signature {
+      font-size: 36px;
+    }
+
+    .about-postcard {
+      width: min(100%, 320px);
+      margin: 6px auto 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .about-page {
+      padding-top: 22px;
+      padding-bottom: 132px;
+    }
+
+    .about-portrait {
+      width: 184px;
+    }
+
+    .about-intro__title {
+      font-size: 26px;
+    }
+
+    .about-intro__text {
+      font-size: 14px;
+    }
+
+    .about-notes__sheet {
+      padding: 26px 18px 22px;
+    }
+
+    .about-notes__title {
+      font-size: 18px;
+    }
+
+    .about-outro__signature {
+      font-size: 34px;
+    }
+
+    .contact-pill {
+      padding: 9px 15px;
+      font-size: 13px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .index-row__link,
+    .index-row__arrow,
+    .contact-pill {
+      transition: none;
+    }
+
+    .index-row__link:hover .index-row__arrow,
+    .index-row__link:focus-visible .index-row__arrow,
+    .contact-pill:hover,
+    .contact-pill:active {
+      transform: none;
+    }
+  }
+</style>

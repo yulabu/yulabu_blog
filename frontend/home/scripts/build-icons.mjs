@@ -38,9 +38,9 @@ const ICONS = {
     'eco',
   ],
   mdi: [
-    // AboutNode / AboutView
-    'close', 'github', 'email', 'account-heart', 'school', 'notebook', 'message-text',
-    // DiaryPrint 纸笺落款（原 DiaryBook 书脊沿用）
+    // 页脚 / 友链 / 评论区 / About 导览入口
+    'github', 'email', 'account-heart', 'message-text', 'notebook',
+    // DiaryPrint 纸笺落款 / About 的「小毛病」行
     'sprout',
   ],
 }

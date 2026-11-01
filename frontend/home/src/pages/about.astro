@@ -1,13 +1,16 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import PageFrame from '@/components/astro/PageFrame.astro'
-import AboutView from '@/islands/AboutView.vue'
+import AboutContent from '@/components/about/AboutContent.astro'
+// Cormorant Garamond Italic：只给 About / The Site / 签名等英文点缀用；
+// 与 columns/post 页一样按页引入，不做全站字体增重
+import '@fontsource/cormorant-garamond/600-italic.css'
 ---
 
 <Layout title="关于">
-  <!-- 单列页：骨架只提供外壳与刊头（withRail=false），刊头因此是与视图平级的
-       client:visible 岛，不再绑在视图岛上 -->
+  <!-- 单列页：骨架只提供外壳与刊头（withRail=false）。
+       内容本身是零 JS 的 Astro 组件，这一页不挂任何 Vue 岛 -->
   <PageFrame variant="about" withRail={false}>
-    <AboutView client:load />
+    <AboutContent />
   </PageFrame>
 </Layout>
